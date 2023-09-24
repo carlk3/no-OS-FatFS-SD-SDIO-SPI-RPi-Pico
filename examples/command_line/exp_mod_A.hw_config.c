@@ -59,7 +59,7 @@ static spi_t spis[] = {  // One for each SPI.
         .no_miso_gpio_pull_up = true,
 
         // .baud_rate = 25 * 1000 * 1000,  // Actual frequency: 20833333.
-        .baud_rate = 125E6 / 4,  // 31250000 Hz 
+        .baud_rate = 125*1000*1000 / 4,  // 31250000 Hz 
 
         .DMA_IRQ_num = DMA_IRQ_0,
         .use_exclusive_DMA_IRQ_handler = true
@@ -109,8 +109,8 @@ static sd_card_t sd_cards[] = {  // One for each SD card
             .D3_gpio_drive_strength = GPIO_DRIVE_STRENGTH_12MA,
             .SDIO_PIO = pio1,
             .DMA_IRQ_num = DMA_IRQ_1,
-            // .baud_rate = 16E6    // 16 MHz
-            .baud_rate = 125E6 / 4  // 31250000 Hz  
+            // .baud_rate = 16*1000*1000    // 16 MHz
+            .baud_rate = 125*1000*1000 / 4  // 31250000 Hz  
         },
         // SD Card detect:
         .use_card_detect = true,

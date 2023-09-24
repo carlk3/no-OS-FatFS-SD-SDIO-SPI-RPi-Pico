@@ -34,7 +34,7 @@ typedef uint32_t DWORD;
 typedef unsigned int UINT;
 
 static void report(uint64_t size, uint64_t elapsed_us) {
-    float elapsed = elapsed_us / 1E6;
+    float elapsed = elapsed_us / 1*1000*1000;
     printf("Elapsed seconds %.3g\n", elapsed);
     printf("Transfer rate ");
     if ((double)size / elapsed / 1024 /1024 > 1.0) {

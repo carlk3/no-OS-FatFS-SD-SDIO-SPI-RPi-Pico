@@ -116,15 +116,13 @@ static void run_date() {
 }
 static void run_info() {
     const char *arg1 = strtok(NULL, " ");
-    sd_card_t *sd_card_p = NULL;
-    if (!arg1 && 1 == sd_get_num())
-        sd_card_p = sd_get_by_num(0);
+    if (!arg1 && 1 == sd_get_num()) 
+        arg1 = sd_get_by_num(0)->pcName;
     else if (!arg1) {
         printf("Missing argument: Specify logical drive\n");
         return;
-    }
-    if (!sd_card_p)
-        sd_card_p = sd_get_by_name(arg1);
+    }    
+    sd_card_t *sd_card_p = sd_get_by_name(arg1);
     if (!sd_card_p) {
         printf("Unknown logical drive number: \"%s\"\n", arg1);
         return;

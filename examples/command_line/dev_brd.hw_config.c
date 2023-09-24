@@ -180,7 +180,7 @@ static sd_card_t sd_cards[] = {  // One for each SD card
             .D0_gpio = 18,
             .SDIO_PIO = pio1,
             .DMA_IRQ_num = DMA_IRQ_1,
-            .baud_rate = 15E6 // 15 MHz
+            .baud_rate = 15*1000*1000 // 15 MHz
         },
         // SD Card detect:
         .use_card_detect = true,
