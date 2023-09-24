@@ -150,11 +150,17 @@
 #include <inttypes.h>
 #include "crc.h"
 #include "sd_card.h"
-#include "sd_spi.h"
+#include "util.h"
 #include "my_debug.h"
 //
 #include "ff.h"
 #include "diskio.h" /* Declarations of disk functions */  // Needed for STA_NOINIT, ...
+
+#if defined(NDEBUG)
+#  pragma GCC diagnostic ignored "-Wunused-function"
+#  pragma GCC diagnostic ignored "-Wunused-variable"
+#endif
+#include "sd_spi.h"
 
 #ifndef TRACE
 #  define TRACE 0
@@ -172,10 +178,6 @@ static bool crc_on = false;
 
 #define TRACE_PRINTF(fmt, args...)
 //#define TRACE_PRINTF printf  // task_printf
-
-#if defined(NDEBUG)
-#  pragma GCC diagnostic ignored "-Wunused-function"
-#endif
 
 /* Control Tokens   */
 #define SPI_DATA_RESPONSE_MASK (0x1F)
@@ -575,19 +577,6 @@ static int sd_cmd8(sd_card_t *sd_card_p) {
     return status;
 }
 
-static uint32_t ext_bits(unsigned char *data, int msb, int lsb) {
-    uint32_t bits = 0;
-    uint32_t size = 1 + msb - lsb;
-    for (uint32_t i = 0; i < size; i++) {
-        uint32_t position = lsb + i;
-        uint32_t byte = 15 - (position >> 3);
-        uint32_t bit = position & 0x7;
-        uint32_t value = (data[byte] >> bit) & 1;
-        bits |= value << i;
-    }
-    return bits;
-}
-
 static int sd_read_bytes(sd_card_t *sd_card_p, uint8_t *buffer, uint32_t length);
 
 static uint64_t in_sd_spi_sectors(sd_card_t *sd_card_p) {
@@ -601,19 +590,18 @@ static uint64_t in_sd_spi_sectors(sd_card_t *sd_card_p) {
         DBG_PRINTF("Didn't get a response from the disk\r\n");
         return 0;
     }
-    uint8_t csd[16];
-    if (sd_read_bytes(sd_card_p, csd, 16) != 0) {
-        DBG_PRINTF("Couldn't read csd response from disk\r\n");
+    if (sd_read_bytes(sd_card_p, sd_card_p->csd.csd, 16) != 0) {
+        DBG_PRINTF("Couldn't read CSD response from disk\r\n");
         return 0;
     }
     // csd_structure : csd[127:126]
-    int csd_structure = ext_bits(csd, 127, 126);
+    int csd_structure = ext_bits(sd_card_p->csd.csd, 127, 126);
     switch (csd_structure) {
         case 0:
-            c_size = ext_bits(csd, 73, 62);       // c_size        : csd[73:62]
-            c_size_mult = ext_bits(csd, 49, 47);  // c_size_mult   : csd[49:47]
+            c_size = ext_bits(sd_card_p->csd.csd, 73, 62);       // c_size        : csd[73:62]
+            c_size_mult = ext_bits(sd_card_p->csd.csd, 49, 47);  // c_size_mult   : csd[49:47]
             read_bl_len =
-                ext_bits(csd, 83, 80);     // read_bl_len   : csd[83:80] - the
+                ext_bits(sd_card_p->csd.csd, 83, 80);     // read_bl_len   : csd[83:80] - the
                                            // *maximum* read block length
             block_len = 1 << read_bl_len;  // BLOCK_LEN = 2^READ_BL_LEN
             mult = 1 << (c_size_mult +
@@ -622,20 +610,13 @@ static uint64_t in_sd_spi_sectors(sd_card_t *sd_card_p) {
             capacity = (uint64_t)blocknr *
                        block_len;  // memory capacity = BLOCKNR * BLOCK_LEN
             blocks = capacity / _block_size;
-            DBG_PRINTF("Standard Capacity: c_size: %" PRIu32 "\r\n", c_size);
-            DBG_PRINTF("Sectors: 0x%llx : %llu\r\n", blocks, blocks);
-            DBG_PRINTF("Capacity: 0x%llx : %llu MB\r\n", capacity,
-                       (capacity / (1024U * 1024U)));
             break;
 
         case 1:
             hc_c_size =
-                ext_bits(csd, 69, 48);       // device size : C_SIZE : [69:48]
+                ext_bits(sd_card_p->csd.csd, 69, 48);       // device size : C_SIZE : [69:48]
             blocks = (hc_c_size + 1) << 10;  // block count = C_SIZE+1) * 1K
                                              // byte (512B is block size)
-            DBG_PRINTF("SDHC/SDXC Card: hc_c_size: %" PRIu32 "\r\n", hc_c_size);
-            DBG_PRINTF("Sectors: %8llu\r\n", blocks);
-            DBG_PRINTF("Capacity: %8llu MB\r\n", (blocks / (2048U)));
             break;
 
         default:
@@ -652,23 +633,22 @@ uint64_t sd_spi_sectors(sd_card_t *sd_card_p) {
     return sectors;
 }
 
-static bool in_sd_spi_readCID(sd_card_t *sd_card_p, cid_t* cid) {    
-    // https://en.cppreference.com/w/c/language/_Static_assert
-    _Static_assert(16 == sizeof(cid_t), "16 == sizeof(cid_t)");
-    // CMD10, Response R2 (R1 byte + 16-byte block read)
-    if (sd_cmd(sd_card_p, CMD10_SEND_CID, 0x0, false, 0) != 0x0) {
+static bool in_sd_spi_readCSD(sd_card_t *sd_card_p, csd_t* csd_p) {    
+    static_assert(16 == sizeof(csd_t), "16 == sizeof(csd_t)");
+    // CMD9, Response R2 (R1 byte + 16-byte block read)
+    if (sd_cmd(sd_card_p, CMD9_SEND_CSD, 0x0, false, 0) != 0x0) {
         DBG_PRINTF("Didn't get a response from the disk\r\n");
         return false;
     }
-    if (sd_read_bytes(sd_card_p, (uint8_t *)cid, sizeof(cid_t)) != 0) {
-        DBG_PRINTF("Couldn't read cid response from disk\r\n");
+    if (sd_read_bytes(sd_card_p, (uint8_t *)csd_p, sizeof(csd_t)) != 0) {
+        DBG_PRINTF("Couldn't read CSD response from disk\r\n");
         return false;
     }
     return true;
 }
-bool sd_spi_readCID(sd_card_t *sd_card_p, cid_t* cid) {
+bool sd_spi_readCSD(sd_card_t *sd_card_p, csd_t *csd_p) {
     sd_acquire(sd_card_p);
-    bool rc = in_sd_spi_readCID(sd_card_p, cid);
+    bool rc = in_sd_spi_readCSD(sd_card_p, csd_p);
     sd_release(sd_card_p);
     return rc;
 }
@@ -925,11 +905,8 @@ static int in_sd_write_blocks(sd_card_t *sd_card_p, const uint8_t *buffer,
         // Write the data: one block at a time
         do {
             status = sd_write_block(sd_card_p, buffer, SPI_START_BLK_MUL_WRITE, _block_size);
-            if (SD_BLOCK_DEVICE_ERROR_NONE != status) {
-                break;
-            }
             buffer += _block_size;
-        } while (--blockCnt);  // Send all blocks of data
+        } while (--blockCnt && SD_BLOCK_DEVICE_ERROR_NONE == status);  // Send all blocks of data
         /* In a Multiple Block write operation, the stop transmission will be
          * done by sending 'Stop Tran' token instead of 'Start Block' token at
          * the beginning of the next block
@@ -1192,7 +1169,19 @@ int sd_init(sd_card_t *sd_card_p) {
         // CMD9 failed
         sd_release(sd_card_p);
         return sd_card_p->m_Status;
-    }    
+    }
+    // CMD10, Response R2 (R1 byte + 16-byte block read)
+    if (sd_cmd(sd_card_p, CMD10_SEND_CID, 0x0, false, 0) != 0x0) {
+        DBG_PRINTF("Didn't get a response from the disk\r\n");
+        sd_release(sd_card_p);
+        return sd_card_p->m_Status;
+    }
+    if (sd_read_bytes(sd_card_p, (uint8_t *)&sd_card_p->cid, sizeof(cid_t)) != 0) {
+        DBG_PRINTF("Couldn't read CID response from disk\r\n");
+        sd_release(sd_card_p);
+        return sd_card_p->m_Status;
+    }
+
     // Set block length to 512 (CMD16)
     if (sd_cmd(sd_card_p, CMD16_SET_BLOCKLEN, _block_size, false, 0) != 0) {
         DBG_PRINTF("Set %" PRIu32 "-byte block timed out\r\n", _block_size);
@@ -1221,7 +1210,6 @@ void sd_spi_ctor(sd_card_t *sd_card_p) {
     sd_card_p->read_blocks = sd_read_blocks;
     sd_card_p->init = sd_init;
     sd_card_p->get_num_sectors = sd_spi_sectors;
-    sd_card_p->sd_readCID = sd_spi_readCID;
     sd_card_p->sd_test_com = sd_spi_test_com;
 
     if (sd_card_p->spi_if.set_drive_strength) {

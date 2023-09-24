@@ -1,3 +1,4 @@
+
 /* hw_config.c
 Copyright 2021 Carl John Kugler III
 
@@ -40,14 +41,13 @@ socket, which SPI it is driven by, and how it is wired.
 /* Hardware configuration for Expansion Module Type A
 See https://oshwlab.com/carlk3/rpi-pico-sd-card-expansion-module-1
 */
-
-#undef USE_SPI_IF
+#define USE_SPI_IF 0
 
 // Hardware Configuration of SPI "objects"
 // Note: multiple SD cards can be driven by one SPI if they use different slave
 // selects.
 static spi_t spis[] = {  // One for each SPI.
-#ifdef USE_SPI_IF
+#if USE_SPI_IF
     {
         .hw_inst = spi0,  // SPI component
         .sck_gpio = 2,  // GPIO number (not Pico pin number)
@@ -59,7 +59,7 @@ static spi_t spis[] = {  // One for each SPI.
         .no_miso_gpio_pull_up = true,
 
         // .baud_rate = 25 * 1000 * 1000,  // Actual frequency: 20833333.
-        .baud_rate = 125E6 / 4,  
+        .baud_rate = 125E6 / 4,  // 31250000 Hz 
 
         .DMA_IRQ_num = DMA_IRQ_0,
         .use_exclusive_DMA_IRQ_handler = true
@@ -69,7 +69,7 @@ static spi_t spis[] = {  // One for each SPI.
 
 // Hardware Configuration of the SD Card "objects"
 static sd_card_t sd_cards[] = {  // One for each SD card
-#ifdef USE_SPI_IF
+#if USE_SPI_IF
     {        // Socket sd0 over SPI
         .pcName = "0:",  // Name used to mount device
         .type = SD_IF_SPI,
@@ -110,7 +110,7 @@ static sd_card_t sd_cards[] = {  // One for each SD card
             .SDIO_PIO = pio1,
             .DMA_IRQ_num = DMA_IRQ_1,
             // .baud_rate = 16E6    // 16 MHz
-            .baud_rate = 125E6 / 4  // 31250000 Hz
+            .baud_rate = 125E6 / 4  // 31250000 Hz  
         },
         // SD Card detect:
         .use_card_detect = true,

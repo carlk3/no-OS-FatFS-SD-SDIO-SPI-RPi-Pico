@@ -1,6 +1,7 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <inttypes.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,7 +23,6 @@
 #include "rtc.h"
 #include "sd_card.h"
 #include "tests/tests.h"
-// #include "util.h" // for wiring test
 
 #ifndef USE_PRINTF
 #error This program is useless without standard input and output.
@@ -113,6 +113,30 @@ static void run_date() {
              ptm);  // The day of the year as a decimal number (range
                     // 001 to 366).
     printf("Day of year: %s\n", buf);
+}
+static void run_info() {
+    const char *arg1 = strtok(NULL, " ");
+    sd_card_t *sd_card_p = NULL;
+    if (!arg1 && 1 == sd_get_num())
+        sd_card_p = sd_get_by_num(0);
+    else if (!arg1) {
+        printf("Missing argument: Specify logical drive\n");
+        return;
+    }
+    if (!sd_card_p)
+        sd_card_p = sd_get_by_name(arg1);
+    if (!sd_card_p) {
+        printf("Unknown logical drive number: \"%s\"\n", arg1);
+        return;
+    }
+    if (!sd_card_p->mounted) {
+        printf("Drive \"%s\" is not mounted\n", arg1);
+        return;
+    }
+    // Card IDendtification register. 128 buts wide.
+    cidDmp(sd_card_p);
+    // Card-Specific Data register. 128 bits wide.
+    csdDmp(sd_card_p);
 }
 static void run_lliot() {
     char *arg1 = strtok(NULL, " ");
@@ -218,8 +242,9 @@ static void run_getfree() {
     tot_sect = (p_fs->n_fatent - 2) * p_fs->csize;
     fre_sect = fre_clust * p_fs->csize;
     /* Print the free space (assuming 512 bytes/sector) */
-    printf("%10lu KiB total drive space.\n%10lu KiB available.\n", tot_sect / 2,
-           fre_sect / 2);
+    printf("%10lu KiB (%lu MiB) total drive space.\n%10lu KiB (%lu MiB) available.\n", 
+        tot_sect / 2, tot_sect / 2 / 1024, 
+        fre_sect / 2, fre_sect / 2 / 1024);
 }
 static void run_cd() {
     char *arg1 = strtok(NULL, " ");
@@ -449,7 +474,6 @@ static void clr() {
     gpio_set_dir(gp, GPIO_OUT);
     gpio_put(gp, 0);
 }
-
 static void set() {
     char *arg1 = strtok(NULL, " ");
     if (!arg1) {
@@ -480,6 +504,8 @@ static cmd_def_t cmds[] = {
      "(hh mm ss)\n"
      "\te.g.:setrtc 16 3 21 0 4 0"},
     {"date", run_date, "date:\n Print current date and time"},
+    {"info", run_info, "info [<drive#:>]:\n"
+      "  Print information from Card-Specific Data and Card IDentification registers"},
     {"lliot", run_lliot,
      "lliot <drive#>:\n !DESTRUCTIVE! Low Level I/O Driver Test\n"
      "\te.g.: lliot 1"},

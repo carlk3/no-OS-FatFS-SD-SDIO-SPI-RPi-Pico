@@ -58,40 +58,7 @@ static const uint8_t READ_COUNT = 2;
 #define FILE_SIZE (1024 * 1024 * FILE_SIZE_MiB)
 
 static FIL file;
-static sd_card_t* sd_card_p;
 
-static void cidDmp() {
-    cid_t cid;
-    if (!sd_card_p->sd_readCID(sd_card_p, &cid)) {
-        error("readCID failed");
-    }
-    printf("\nManufacturer ID: ");
-    // cout << uppercase << showbase << hex << int(cid.mid) << dec << endl;
-    printf("0x%x\n", cid.mid);
-    printf("OEM ID: ");
-    // << cid.oid[0] << cid.oid[1] << endl;
-    printf("%c%c\n", cid.oid[0], cid.oid[1]);
-    printf("Product: ");
-    for (uint8_t i = 0; i < 5; i++) {
-        printf("%c", cid.pnm[i]);
-    }
-    printf("\nRevision: ");
-    //  << cid.prvN() << '.' << cid.prvM() << endl;
-    // int CID_prvN(cid_t *cid_p)
-    // int CID_prvM(cid_t *cid_p)
-    printf("%d.%d\n", CID_prvN(&cid), CID_prvM(&cid));
-    printf("Serial number: ");
-    //  << hex << cid.psn() << dec << endl;
-    // uint32_t CID_psn(cid_t *cid_p)
-    printf("0x%lx\n", CID_psn(&cid));
-    printf("Manufacturing date: ");
-    // cout << cid.mdtMonth() << '/' << cid.mdtYear() << endl;
-    // int CID_mdtMonth(cid_t *cid_p)
-    // int CID_mdtYear(cid_t *cid_p)
-    printf("%d/%d\n", CID_mdtMonth(&cid), CID_mdtYear(&cid));
-    // cout << endl;
-    printf("\n");
-}
 //------------------------------------------------------------------------------
 void bench(char const* logdrv) {
     float s;
@@ -108,7 +75,7 @@ void bench(char const* logdrv) {
     uint32_t buf32[(BUF_SIZE + 3) / 4] __attribute__ ((aligned (4)));
     uint8_t* buf = (uint8_t*)buf32;
 
-    sd_card_p = sd_get_by_name(logdrv);
+    sd_card_t *sd_card_p = sd_get_by_name(logdrv);
     if (!sd_card_p) {
         printf("Unknown logical drive name: %s\n", logdrv);
         return;
@@ -143,7 +110,7 @@ void bench(char const* logdrv) {
     printf("%.2f", sd_card_p->get_num_sectors(sd_card_p) * 512E-9);
     printf(" GB (GB = 1E9 bytes)\n");
 
-    cidDmp();
+    cidDmp(sd_card_p);
 
     // open or create file - truncate existing file.
     // if (!file.open("bench.dat", O_RDWR | O_CREAT | O_TRUNC)) {

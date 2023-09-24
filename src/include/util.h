@@ -16,7 +16,7 @@ specific language governing permissions and limitations under the License.
 
 #include <stddef.h>    
 #include <stdint.h>
-#include "hardware/structs/scb.h"
+// #include "hardware/structs/scb.h"
 #include "RP2040.h"
 #include "my_debug.h"
 
@@ -42,7 +42,7 @@ static inline void system_reset() {
     __NVIC_SystemReset();
 }
 
-static inline void dump_bytes(size_t num, uint8_t bytes[num]) {
+static inline void dump_bytes(size_t num, uint8_t bytes[]) {
     printf("     ");
     for (size_t j = 0; j < 16; ++j) {
         printf("%02hhx", j);
@@ -68,6 +68,19 @@ static inline void dump_bytes(size_t num, uint8_t bytes[num]) {
 }
 
 char const* uint_binary_str(unsigned int number);
+
+static inline uint32_t ext_bits(unsigned char const *data, int msb, int lsb) {
+    uint32_t bits = 0;
+    uint32_t size = 1 + msb - lsb;
+    for (uint32_t i = 0; i < size; i++) {
+        uint32_t position = lsb + i;
+        uint32_t byte = 15 - (position >> 3);
+        uint32_t bit = position & 0x7;
+        uint32_t value = (data[byte] >> bit) & 1;
+        bits |= value << i;
+    }
+    return bits;
+}
 
 #endif
 /* [] END OF FILE */

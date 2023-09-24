@@ -27,6 +27,7 @@ specific language governing permissions and limitations under the License.
 //
 #include "SPI/spi.h"
 #include "SPI/sd_card_constants.h"
+#include "SDIO/rp2040_sdio.h"
 //
 #include "SdCardInfo.h"
 
@@ -51,6 +52,7 @@ typedef struct sd_spi_t {
     bool set_drive_strength;
     enum gpio_drive_strength ss_gpio_drive_strength;
 } sd_spi_t;
+
 
 typedef struct sd_sdio_t {
     // See sd_driver\SDIO\rp2040_sdio.pio for SDIO_CLK_PIN_D0_OFFSET
@@ -78,10 +80,7 @@ typedef struct sd_sdio_t {
     uint baud_rate;
 
     /* The following fields are not part of the configuration. They are dynamically assigned. */
-    int SDIO_DMA_CH;
-    int SDIO_DMA_CHB;
-    int SDIO_CMD_SM;
-    int SDIO_DATA_SM;
+    sd_sdio_state_t *state_p;
 } sd_sdio_t;
 
 typedef struct sd_card_t sd_card_t;
@@ -101,27 +100,31 @@ struct sd_card_t {
     bool card_detect_pull_hi;
 
     /* The following fields are not part of the configuration. They are dynamically assigned. */
-    int m_Status;                                    // Card status
-    uint64_t sectors;                                // Assigned dynamically
-    int card_type;                                   // Assigned dynamically
+    int m_Status;      // Card status
+    csd_t csd;         // Card-Specific Data register.
+    cid_t cid;         // Card IDentification register
+    uint64_t sectors;  // Assigned dynamically
+    int card_type;     // Assigned dynamically
     mutex_t mutex;
     FATFS fatfs;
     bool mounted;
 
     int (*init)(sd_card_t *sd_card_p);
     int (*write_blocks)(sd_card_t *sd_card_p, const uint8_t *buffer,
-                    uint64_t ulSectorNumber, uint32_t blockCnt);
+                        uint64_t ulSectorNumber, uint32_t blockCnt);
     int (*read_blocks)(sd_card_t *sd_card_p, uint8_t *buffer, uint64_t ulSectorNumber,
-                    uint32_t ulSectorCount);    
+                       uint32_t ulSectorCount);
     uint64_t (*get_num_sectors)(sd_card_t *sd_card_p);
-    bool (*sd_readCID)(sd_card_t *sd_card_p, cid_t *cid);
 
     // Useful when use_card_detect is false - call periodically to check for presence of SD card
     // Returns true if and only if SD card was sensed on the bus
     bool (*sd_test_com)(sd_card_t *sd_card_p);
 };
+
 bool sd_init_driver();
 bool sd_card_detect(sd_card_t *sd_card_p);
+void cidDmp(sd_card_t *sd_card_p);
+void csdDmp(sd_card_t *sd_card_p);
 
 #ifdef __cplusplus
 }

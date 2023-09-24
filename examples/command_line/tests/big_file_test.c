@@ -33,7 +33,7 @@ specific language governing permissions and limitations under the License.
 typedef uint32_t DWORD;
 typedef unsigned int UINT;
 
-static void report(uint64_t size, int64_t elapsed_us) {
+static void report(uint64_t size, uint64_t elapsed_us) {
     float elapsed = elapsed_us / 1E6;
     printf("Elapsed seconds %.3g\n", elapsed);
     printf("Transfer rate ");
@@ -102,12 +102,15 @@ static bool create_big_file(const char *const pathname, uint64_t size,
     }
     
     printf("Writing...\n");
-    absolute_time_t xStart = get_absolute_time();
+    
+    uint64_t cum_time = 0;
 
     for (uint64_t i = 0; i < size / BUFFSZ; ++i) {
         size_t n;
         for (n = 0; n < BUFFSZ / sizeof(DWORD); n++) buff[n] = rand();
         UINT bw;
+
+        absolute_time_t xStart = get_absolute_time();
         fr = f_write(&file, buff, BUFFSZ, &bw);
         if (bw < BUFFSZ) {
             printf("f_write(%s,,%d,): only wrote %d bytes\n", pathname, BUFFSZ, bw);
@@ -119,11 +122,12 @@ static bool create_big_file(const char *const pathname, uint64_t size,
             f_close(&file);
             return false;
         }
+        cum_time += absolute_time_diff_us(xStart, get_absolute_time());
     }
     /* Close the file */
     f_close(&file);
 
-    report(size, absolute_time_diff_us(xStart, get_absolute_time()));
+    report(size, cum_time);
     return true;
 }
 
@@ -142,10 +146,13 @@ static bool check_big_file(char *pathname, uint64_t size,
         return false;
     }
     printf("Reading...\n");
-    absolute_time_t xStart = get_absolute_time();
+
+    uint64_t cum_time = 0;
 
     for (uint64_t i = 0; i < size / BUFFSZ; ++i) {
         UINT br;
+
+        absolute_time_t xStart = get_absolute_time();
         fr = f_read(&file, buff, BUFFSZ, &br);
         if (br < BUFFSZ) {
             printf("f_read(,%s,%d,):only read %u bytes\n", pathname, BUFFSZ, br);
@@ -157,6 +164,8 @@ static bool check_big_file(char *pathname, uint64_t size,
             f_close(&file);
             return false;
         }
+        cum_time += absolute_time_diff_us(xStart, get_absolute_time());
+
         /* Check the buffer is filled with the expected data. */
         size_t n;
         for (n = 0; n < BUFFSZ / sizeof(DWORD); n++) {
@@ -173,7 +182,7 @@ static bool check_big_file(char *pathname, uint64_t size,
     /* Close the file */
     f_close(&file);
 
-    report(size, absolute_time_diff_us(xStart, get_absolute_time()));
+    report(size, cum_time);
     return true;
 }
 // Specify size in Mebibytes (1024x1024 bytes)
