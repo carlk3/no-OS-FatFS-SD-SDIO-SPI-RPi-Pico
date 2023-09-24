@@ -168,8 +168,8 @@ void csdDmp(sd_card_t *sd_card_p) {
             erase_sector_size = ext_bits(sd_card_p->csd.csd, 45, 39) + 1;
 
             printf("SDHC/SDXC Card: hc_c_size: %" PRIu32 "\r\n", hc_c_size);
-            printf("Sectors: %8llu\r\n", blocks);
-            printf("Capacity: %8llu MiB (%8llu MiB)\r\n", blocks / 2048, blocks * _block_size / 1000*1000 );
+            printf("Sectors: %llu\r\n", blocks);
+            printf("Capacity: %llu MiB (%llu MB)\r\n", blocks / 2048, blocks * _block_size / 1000000);
             printf("ERASE_BLK_EN: %s\r\n", erase_single_block_enable ? "units of 512 bytes" : "units of SECTOR_SIZE");
             printf("SECTOR_SIZE (size of an erasable sector): %d\r\n", erase_sector_size);
             break;

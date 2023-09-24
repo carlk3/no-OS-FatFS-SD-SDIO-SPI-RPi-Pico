@@ -147,7 +147,7 @@ bool sd_sdio_begin(sd_card_t *sd_card_p)
     }
     // Increase to high clock rate
     if (!sd_card_p->sdio_if.baud_rate)
-        sd_card_p->sdio_if.baud_rate = 10E6; // 10 MHz default
+        sd_card_p->sdio_if.baud_rate = 10*1000*1000; // 10 MHz default
     if (!rp2040_sdio_init(sd_card_p, calculate_clk_div(sd_card_p->sdio_if.baud_rate)))
         return false; 
 
