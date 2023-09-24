@@ -633,26 +633,6 @@ uint64_t sd_spi_sectors(sd_card_t *sd_card_p) {
     return sectors;
 }
 
-static bool in_sd_spi_readCSD(sd_card_t *sd_card_p, csd_t* csd_p) {    
-    static_assert(16 == sizeof(csd_t), "16 == sizeof(csd_t)");
-    // CMD9, Response R2 (R1 byte + 16-byte block read)
-    if (sd_cmd(sd_card_p, CMD9_SEND_CSD, 0x0, false, 0) != 0x0) {
-        DBG_PRINTF("Didn't get a response from the disk\r\n");
-        return false;
-    }
-    if (sd_read_bytes(sd_card_p, (uint8_t *)csd_p, sizeof(csd_t)) != 0) {
-        DBG_PRINTF("Couldn't read CSD response from disk\r\n");
-        return false;
-    }
-    return true;
-}
-bool sd_spi_readCSD(sd_card_t *sd_card_p, csd_t *csd_p) {
-    sd_acquire(sd_card_p);
-    bool rc = in_sd_spi_readCSD(sd_card_p, csd_p);
-    sd_release(sd_card_p);
-    return rc;
-}
-
 // SPI function to wait till chip is ready and sends start token
 static bool sd_wait_token(sd_card_t *sd_card_p, uint8_t token) {
     TRACE_PRINTF("%s(0x%02hhx)\r\n", __FUNCTION__, token);
