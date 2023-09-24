@@ -34,11 +34,13 @@ typedef uint32_t DWORD;
 typedef unsigned int UINT;
 
 static void report(uint64_t size, uint64_t elapsed_us) {
-    float elapsed = elapsed_us / 1*1000*1000;
+    double elapsed = (double)elapsed_us / 1000 / 1000;
     printf("Elapsed seconds %.3g\n", elapsed);
     printf("Transfer rate ");
-    if ((double)size / elapsed / 1024 /1024 > 1.0) {
-        printf("%.3g MiB/s, or ", (double)size / elapsed / 1024 /1024);
+    if ((double)size / elapsed / 1024 / 1024 > 1.0) {
+        printf("%.3g MiB/s (%.3g MB/s), or ", 
+            (double)size / elapsed / 1024 / 1024,
+            (double)size / elapsed / 1000 / 1000);
     }
     printf("%.3g KiB/s (%.3g kB/s) (%.3g kb/s)\n",
            (double)size / elapsed / 1024, (double)size / elapsed / 1000, 8.0 * size / elapsed / 1000);
