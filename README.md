@@ -10,7 +10,7 @@ and a 4-bit Secure Digital Input Output (SDIO) driver derived from
 It is wrapped up in a complete runnable project, with a little command line interface, some self tests, and an example data logging application.
 
 ## Migration
-If you are migrating a project from an SPI-only branch, e.g., `master`, you will have to change the hardware configuration customization. The `sd_card_t` now contains a new object that specifies the configuration of either an SPI interface or an SDIO interface. See the [Customizing for the Hardware Configuration](#customizing-for-the-hardware-configuration) section below.
+If you are migrating a project from [no-OS-FatFS-SD-SPI-RPi-Pico](https://github.com/carlk3/no-OS-FatFS-SD-SPI-RPi-Pico), you will have to change the hardware configuration customization. The `sd_card_t` now contains a new object that specifies the configuration of either an SPI interface or an SDIO interface. See the [Customizing for the Hardware Configuration](#customizing-for-the-hardware-configuration) section below.
 
 ## Features:
 * Supports multiple SD Cards, all in a common file system
@@ -41,44 +41,38 @@ If you are migrating a project from an SPI-only branch, e.g., `master`, you will
 
 SPI and SDIO can share the same DMA IRQ.
 
-Complete `FatFS_SPI_example`, configured for one SPI attached card and one SDIO attached card, release build, as reported by link flag `-Wl,--print-memory-usage`:
+Complete `FatFS_SPI_example`, configured for one SPI attached card and one SDIO-attached card, release build, as reported by link flag `-Wl,--print-memory-usage`:
 ```
 Memory region         Used Size  Region Size  %age Used
            FLASH:      167056 B         2 MB      7.97%
              RAM:       17524 B       256 KB      6.68%
 ```
+A `MinSizeRel` build for a single SPI-attached card:
+```
+Memory region         Used Size  Region Size  %age Used
+           FLASH:      124568 B         2 MB      5.94%
+             RAM:       12084 B       256 KB      4.61%
+```
 
 ## Performance
-Writing and reading a file of 64 MiB (67,108,864 byes) of psuedorandom data on a two freshly-formatted 
-Silicon Power 3D NAND U1 32GB microSD cards, one on SPI and one on SDIO, release build (using the command `big_file_test bf 64 3`):
+Writing and reading a file of 200 MiB of psuedorandom data on the same Silicon Power 3D NAND U1 32GB microSD card, 
+once on SPI and one on SDIO, `MinSizeRel` build,  using the command `big_file_test bf 200 2`:
+
 * SPI:
   * Writing
-    * Elapsed seconds 58.5
-    * Transfer rate 1121 KiB/s (1148 kB/s) (9184 kb/s)
+    * Elapsed seconds 81.7
+    * Transfer rate 2.45 MiB/s (2.57 MB/s), or 2507 KiB/s (2567 kB/s) (20539 kb/s)
   * Reading
-    * Elapsed seconds 56.1
-    * Transfer rate 1168 KiB/s (1196 kB/s) (9565 kb/s)
+    * Elapsed seconds 73.0
+    * Transfer rate 2.74 MiB/s (2.87 MB/s), or 2804 KiB/s (2871 kB/s) (22967 kb/s)
+
 * SDIO:
   * Writing
-    * Elapsed seconds 20.6
-    * Transfer rate 3186 KiB/s (3263 kB/s) (26103 kb/s)
+    * Elapsed seconds 28.1
+    * Transfer rate 7.12 MiB/s (7.47 MB/s), or 7293 KiB/s (7468 kB/s) (59743 kb/s)
   * Reading
-    * Elapsed seconds 15.9
-    * Transfer rate 4114 KiB/s (4213 kB/s) (33704 kb/s)
-
-Writing and reading a nearly 4 GiB file:
-```
-> big_file_test bf 4095 7
-Writing...
-Elapsed seconds 1360
-Transfer rate 3082 KiB/s (3156 kB/s) (25250 kb/s)
-Reading...
-Elapsed seconds 1047
-Transfer rate 4005 KiB/s (4101 kB/s) (32812 kb/s)
-> ls
-Directory Listing: 0:/
-bf [writable file] [size=4293918720]
-```
+    * Elapsed seconds 16.3
+    * Transfer rate 12.3 MiB/s (12.9 MB/s), or 12558 KiB/s (12860 kB/s) (102877 kb/s)
 
 Results from a port of SdFat's `bench`:
 
@@ -92,36 +86,30 @@ BUF_SIZE = 20480
 write speed and latency
 speed,max,min,avg
 KB/Sec,usec,usec,usec
-1384.4,21733,14159,14777
-1389.9,18609,14150,14723
+2064.1,114193,8013,9907
+2379.9,43894,7991,8591
 ...
 read speed and latency
 speed,max,min,avg
 KB/Sec,usec,usec,usec
-1437.6,15185,14035,14244
-1438.4,15008,14046,14238
+2785.8,8137,7168,7351
+2787.3,7967,7168,7350
 ...
 ```
-
 SDIO:
 ```
-...
-Card size: 31.95 GB (GB = 1E9 bytes)
-...
-FILE_SIZE_MB = 5
-BUF_SIZE = 20480
 ...
 write speed and latency
 speed,max,min,avg
 KB/Sec,usec,usec,usec
-6378.2,13172,2588,3194
-6488.7,6725,2597,3145
+6448.8,7644,2613,3161
+6472.7,6683,2612,3154
 ...
 read speed and latency
 speed,max,min,avg
 KB/Sec,usec,usec,usec
-11915.6,2340,1577,1718
-11915.6,2172,1579,1716
+11472.4,2370,1649,1786
+11472.4,2183,1650,1784
 ...
 ```
 
