@@ -85,11 +85,6 @@ void bench(char const* logdrv) {
         printf("f_chdrive error: %s (%d)\n", FRESULT_str(fr), fr);
         return;
     }
-    // if (sd.fatType() == FAT_TYPE_EXFAT) {
-    //     printf("Type is exFAT\n");
-    // } else {
-    //     printf("Type is FAT") << int(sd.fatType()) << endl;
-    // }
     switch (sd_card_p->fatfs.fs_type) {
         case FS_EXFAT:
             printf("Type is exFAT\n");
@@ -106,21 +101,10 @@ void bench(char const* logdrv) {
     }
 
     printf("Card size: ");
-    // << sd.card()->sectorCount() * 512E-9;
     printf("%.2f", sd_card_p->get_num_sectors(sd_card_p) * 512E-9);
     printf(" GB (GB = 1E9 bytes)\n");
 
     cidDmp(sd_card_p);
-
-    // open or create file - truncate existing file.
-    // if (!file.open("bench.dat", O_RDWR | O_CREAT | O_TRUNC)) {
-    //     error("open failed");
-    // }
-    fr = f_open(&file, "bench.dat", FA_READ | FA_WRITE | FA_CREATE_ALWAYS);
-    if (FR_OK != fr) {
-        printf("f_open error: %s (%d)\n", FRESULT_str(fr), fr);
-        return;
-    }
 
     // fill buf with known data
     if (BUF_SIZE > 1) {
@@ -131,6 +115,12 @@ void bench(char const* logdrv) {
     }
     buf[BUF_SIZE - 1] = '\n';
 
+    // open or create file - truncate existing file.
+    fr = f_open(&file, "bench.dat", FA_READ | FA_WRITE | FA_CREATE_ALWAYS);
+    if (FR_OK != fr) {
+        printf("f_open error: %s (%d)\n", FRESULT_str(fr), fr);
+        return;
+    }
     printf("FILE_SIZE_MB = %d\n", FILE_SIZE_MiB);     // << FILE_SIZE_MB << endl;
     printf("BUF_SIZE = %zu\n", BUF_SIZE);             // << BUF_SIZE << F(" bytes\n");
     printf("Starting write test, please wait.\n\n");  // << endl
@@ -141,25 +131,24 @@ void bench(char const* logdrv) {
     printf("speed,max,min,avg\n");
     printf("KB/Sec,usec,usec,usec\n");
     for (uint8_t nTest = 0; nTest < WRITE_COUNT; nTest++) {
-        // file.truncate(0);
-        // Open with FA_CREATE_ALWAYS creates a new file,
-        // and if the file is existing, it will be truncated and overwritten.
+        fr = f_rewind(&file);
+        if (FR_OK != fr) {
+            printf("f_rewind error: %s (%d)\n", FRESULT_str(fr), fr);
+            f_close(&file);
+            return;
+        }
+        fr = f_truncate(&file);
+        if (FR_OK != fr) {
+            printf("f_truncate error: %s (%d)\n", FRESULT_str(fr), fr);
+            f_close(&file);
+            return;
+        }
         if (PRE_ALLOCATE) {
-            // if (!file.preAllocate(FILE_SIZE)) {
-            //     error("preAllocate failed");
-            // }
-            fr = f_lseek(&file, FILE_SIZE);
+            // prepares or allocates a contiguous data area to the file:
+            fr = f_expand(&file, FILE_SIZE, 0);
             if (FR_OK != fr) {
-                printf("f_lseek error: %s (%d)\n", FRESULT_str(fr), fr);
-                return;
-            }
-            if (f_tell(&file) != FILE_SIZE) {
-                printf("Disk full!\n");
-                return;
-            }
-            fr = f_rewind(&file);
-            if (FR_OK != fr) {
-                printf("f_rewind error: %s (%d)\n", FRESULT_str(fr), fr);
+                printf("f_expand error: %s (%d)\n", FRESULT_str(fr), fr);
+                f_close(&file);
                 return;
             }
         }
@@ -170,14 +159,11 @@ void bench(char const* logdrv) {
         t = millis();
         for (uint32_t i = 0; i < n; i++) {
             uint32_t m = micros();
-
-            // if (file.write(buf, BUF_SIZE) != BUF_SIZE) {
-            //     error("write failed");
-            // }
             unsigned int bw;
             fr = f_write(&file, buf, BUF_SIZE, &bw); /* Write it to the destination file */
             if (FR_OK != fr) {
-                printf("f_rewind error: %s (%d)\n", FRESULT_str(fr), fr);
+                printf("f_write error: %s (%d)\n", FRESULT_str(fr), fr);
+                f_close(&file);
                 return;
             }
             if (bw < BUF_SIZE) { /* error or disk full */
@@ -198,18 +184,15 @@ void bench(char const* logdrv) {
                 }
             }
         }
-        // file.sync();
         fr = f_sync(&file);
         if (FR_OK != fr) {
             printf("f_sync error: %s (%d)\n", FRESULT_str(fr), fr);
+            f_close(&file);
             return;
         }
         t = millis() - t;
-        // s = file.fileSize();
         s = f_size(&file);
-        // cout << s / t << ',' << maxLatency << ',' << minLatency;
         printf("%.1f,%lu,%lu", s / t, maxLatency, minLatency);
-        // cout << ',' << totalLatency / n << endl;
         printf(",%lu\n", totalLatency / n);
     }
     printf("\nStarting read test, please wait.\n");
@@ -219,10 +202,10 @@ void bench(char const* logdrv) {
 
     // do read test
     for (uint8_t nTest = 0; nTest < READ_COUNT; nTest++) {
-        // file.rewind();
         fr = f_rewind(&file);
         if (FR_OK != fr) {
             printf("f_rewind error: %s (%d)\n", FRESULT_str(fr), fr);
+            f_close(&file);
             return;
         }
         maxLatency = 0;
@@ -233,11 +216,11 @@ void bench(char const* logdrv) {
         for (uint32_t i = 0; i < n; i++) {
             buf[BUF_SIZE - 1] = 0;
             uint32_t m = micros();
-            // int32_t nr = file.read(buf, BUF_SIZE);
             unsigned int nr;
             fr = f_read(&file, buf, BUF_SIZE, &nr);
             if (FR_OK != fr) {
                 printf("f_read error: %s (%d)\n", FRESULT_str(fr), fr);
+                f_close(&file);
                 return;
             }
             if (nr != BUF_SIZE) {
@@ -259,20 +242,15 @@ void bench(char const* logdrv) {
                 }
             }
         }
-        // s = file.fileSize();
         s = f_size(&file);
         t = millis() - t;
-        // cout << s / t << ',' << maxLatency << ',' << minLatency;
         printf("%.1f,%lu,%lu", s / t, maxLatency, minLatency);
-        // cout << ',' << totalLatency / n << endl;
         printf(",%lu\n", totalLatency / n);
     }
     printf("\nDone\n");
-    // file.close();
     fr = f_close(&file);
     if (FR_OK != fr) {
         printf("f_close error: %s (%d)\n", FRESULT_str(fr), fr);
         return;
     }
-    // sd.end();
 }
