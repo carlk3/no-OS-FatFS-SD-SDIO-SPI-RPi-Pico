@@ -389,7 +389,7 @@ static int sd_cmd(sd_card_t *sd_card_p, const cmdSupported cmd, uint32_t arg,
                   bool isAcmd, uint32_t *resp) {
     TRACE_PRINTF("%s(%s(0x%08lx)): ", __FUNCTION__, cmd2str(cmd), arg);
     assert(sd_is_locked(sd_card_p));
-    assert(0 == gpio_get(sd_card_p->spi_if.ss_gpio));
+    assert(0 == gpio_get(sd_card_p->spi_if_p->ss_gpio));
 
     int32_t status = SD_BLOCK_DEVICE_ERROR_NONE;
     uint32_t response;
@@ -686,10 +686,10 @@ static int sd_read_bytes(sd_card_t *sd_card_p, uint8_t *buffer, uint32_t length)
 /* Transfer tx to SPI while receiving SPI to rx. 
 tx or rx can be NULL if not important. */
 static void sd_spi_transfer_start(sd_card_t *sd_card_p, const uint8_t *tx, uint8_t *rx, size_t length) {
-    return spi_transfer_start(sd_card_p->spi_if.spi, tx, rx, length);
+    return spi_transfer_start(sd_card_p->spi_if_p->spi, tx, rx, length);
 }
 static bool sd_spi_transfer_wait_complete(sd_card_t *sd_card_p, uint32_t timeout_ms) {
-    return spi_transfer_wait_complete(sd_card_p->spi_if.spi, timeout_ms);
+    return spi_transfer_wait_complete(sd_card_p->spi_if_p->spi, timeout_ms);
 }
 
 static int in_sd_read_blocks(sd_card_t *sd_card_p, uint8_t *buffer_addr,
@@ -1183,6 +1183,7 @@ int sd_init(sd_card_t *sd_card_p) {
 }
 
 void sd_spi_ctor(sd_card_t *sd_card_p) {
+    assert(sd_card_p->spi_if_p); // Must have an interface object
 
     // State variables:
     sd_card_p->m_Status = STA_NOINIT;
@@ -1192,13 +1193,13 @@ void sd_spi_ctor(sd_card_t *sd_card_p) {
     sd_card_p->get_num_sectors = sd_spi_sectors;
     sd_card_p->sd_test_com = sd_spi_test_com;
 
-    if (sd_card_p->spi_if.set_drive_strength) {
-        gpio_set_drive_strength(sd_card_p->spi_if.ss_gpio, sd_card_p->spi_if.ss_gpio_drive_strength);
+    if (sd_card_p->spi_if_p->set_drive_strength) {
+        gpio_set_drive_strength(sd_card_p->spi_if_p->ss_gpio, sd_card_p->spi_if_p->ss_gpio_drive_strength);
     }
     // Chip select is active-low, so we'll initialise it to a
     // driven-high state.
-    gpio_init(sd_card_p->spi_if.ss_gpio);
-    gpio_put(sd_card_p->spi_if.ss_gpio, 1);  // Avoid any glitches when enabling output
-    gpio_set_dir(sd_card_p->spi_if.ss_gpio, GPIO_OUT);
-    gpio_put(sd_card_p->spi_if.ss_gpio, 1);  // In case set_dir does anything
+    gpio_init(sd_card_p->spi_if_p->ss_gpio);
+    gpio_put(sd_card_p->spi_if_p->ss_gpio, 1);  // Avoid any glitches when enabling output
+    gpio_set_dir(sd_card_p->spi_if_p->ss_gpio, GPIO_OUT);
+    gpio_put(sd_card_p->spi_if_p->ss_gpio, 1);  // In case set_dir does anything
 }

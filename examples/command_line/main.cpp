@@ -135,6 +135,11 @@ static void run_info() {
     cidDmp(sd_card_p);
     // Card-Specific Data register. 128 bits wide.
     csdDmp(sd_card_p);
+
+    // Report cluster size ("allocation unit")
+    printf("Cluster size (\"allocation unit\"): %d sectors (%llu bytes)\n", 
+        sd_card_p->fatfs.csize,
+        (uint64_t)sd_card_p->fatfs.csize *FF_MAX_SS);
 }
 static void run_lliot() {
     char *arg1 = strtok(NULL, " ");
@@ -503,7 +508,7 @@ static cmd_def_t cmds[] = {
      "\te.g.:setrtc 16 3 21 0 4 0"},
     {"date", run_date, "date:\n Print current date and time"},
     {"info", run_info, "info [<drive#:>]:\n"
-      "  Print information from Card-Specific Data and Card IDentification registers"},
+      "  Print information about an SD card"},
     {"lliot", run_lliot,
      "lliot <drive#>:\n !DESTRUCTIVE! Low Level I/O Driver Test\n"
      "\te.g.: lliot 1"},

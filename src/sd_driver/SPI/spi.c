@@ -29,6 +29,13 @@ specific language governing permissions and limitations under the License.
 #  pragma GCC diagnostic ignored "-Wunused-variable"
 #endif
 
+size_t __attribute__((weak)) spi_get_num() {
+    return 0;
+}
+spi_t __attribute__((weak)) * spi_get_by_num(size_t num) {
+    return NULL;
+}
+
 static void in_spi_irq_handler(const uint DMA_IRQ_num, io_rw_32 *dma_hw_ints_p) {
     for (size_t i = 0; i < spi_get_num(); ++i) {
         spi_t *spi_p = spi_get_by_num(i);
