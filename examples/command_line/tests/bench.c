@@ -145,7 +145,7 @@ void bench(char const* logdrv) {
         }
         if (PRE_ALLOCATE) {
             // prepares or allocates a contiguous data area to the file:
-            fr = f_expand(&file, FILE_SIZE, 0);
+            fr = f_expand(&file, FILE_SIZE, 1);
             if (FR_OK != fr) {
                 printf("f_expand error: %s (%d)\n", FRESULT_str(fr), fr);
                 f_close(&file);
