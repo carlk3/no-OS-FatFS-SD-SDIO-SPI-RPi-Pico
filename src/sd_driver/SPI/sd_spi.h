@@ -37,25 +37,25 @@ static inline uint8_t sd_spi_write(sd_card_t *sd_card_p, const uint8_t value) {
     // TRACE_PRINTF("%s\n", __FUNCTION__);
     uint8_t received = SPI_FILL_CHAR;
 #if 1
-    int num = spi_write_read_blocking(sd_card_p->spi_if.spi->hw_inst, &value, &received, 1);    
+    int num = spi_write_read_blocking(sd_card_p->spi_if_p->spi->hw_inst, &value, &received, 1);    
     assert(1 == num);
 #else
-    bool success = spi_transfer(sd_card_p->spi_if.spi, &value, &received, 1);
+    bool success = spi_transfer(sd_card_p->spi_if_p->spi, &value, &received, 1);
     assert(success);
 #endif
     return received;
 }
 
-// Would do nothing if sd_card_p->spi_if.ss_gpio were set to GPIO_FUNC_SPI.
+// Would do nothing if sd_card_p->spi_if_p->ss_gpio were set to GPIO_FUNC_SPI.
 static inline void sd_spi_select(sd_card_t *sd_card_p) {
-    gpio_put(sd_card_p->spi_if.ss_gpio, 0);
+    gpio_put(sd_card_p->spi_if_p->ss_gpio, 0);
     // See http://elm-chan.org/docs/mmc/mmc_e.html#spibus
     sd_spi_write(sd_card_p, SPI_FILL_CHAR);
     LED_ON();
 }
 
 static inline void sd_spi_deselect(sd_card_t *sd_card_p) {
-    gpio_put(sd_card_p->spi_if.ss_gpio, 1);
+    gpio_put(sd_card_p->spi_if_p->ss_gpio, 1);
     LED_OFF();
     /*
     MMC/SDC enables/disables the DO output in synchronising to the SCLK. This
@@ -68,10 +68,10 @@ static inline void sd_spi_deselect(sd_card_t *sd_card_p) {
 }
 
 static inline void sd_spi_lock(sd_card_t *sd_card_p) {
-    spi_lock(sd_card_p->spi_if.spi);
+    spi_lock(sd_card_p->spi_if_p->spi);
 }
 static inline void sd_spi_unlock(sd_card_t *sd_card_p) {
-   spi_unlock(sd_card_p->spi_if.spi);
+   spi_unlock(sd_card_p->spi_if_p->spi);
 }
 
 static inline void sd_spi_acquire(sd_card_t *sd_card_p) {

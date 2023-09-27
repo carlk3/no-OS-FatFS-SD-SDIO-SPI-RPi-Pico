@@ -22,23 +22,25 @@ specific language governing permissions and limitations under the License.
 //
 #include "pico/stdlib.h"
 //
-#include "ff.h"
 #include "f_util.h"
+#include "ff.h"
 
 #define FF_MAX_SS 512
 #define BUFFSZ (64 * FF_MAX_SS)  // Should be a factor of 1 Mebibyte
 
-#define PRE_ALLOCATE false
+#define PRE_ALLOCATE true
 
 typedef uint32_t DWORD;
 typedef unsigned int UINT;
 
-static void report(uint64_t size, int64_t elapsed_us) {
-    float elapsed = elapsed_us / 1E6;
+static void report(uint64_t size, uint64_t elapsed_us) {
+    double elapsed = (double)elapsed_us / 1000 / 1000;
     printf("Elapsed seconds %.3g\n", elapsed);
     printf("Transfer rate ");
-    if ((double)size / elapsed / 1024 /1024 > 1.0) {
-        printf("%.3g MiB/s, or ", (double)size / elapsed / 1024 /1024);
+    if ((double)size / elapsed / 1024 / 1024 > 1.0) {
+        printf("%.3g MiB/s (%.3g MB/s), or ",
+               (double)size / elapsed / 1024 / 1024,
+               (double)size / elapsed / 1000 / 1000);
     }
     printf("%.3g KiB/s (%.3g kB/s) (%.3g kb/s)\n",
            (double)size / elapsed / 1024, (double)size / elapsed / 1000, 8.0 * size / elapsed / 1000);
@@ -53,35 +55,14 @@ static bool create_big_file(const char *const pathname, uint64_t size,
     srand(seed);  // Seed pseudo-random number generator
 
     /* Open the file, creating the file if it does not already exist. */
-    FILINFO fno;
-    size_t fsz = 0;
-    fr = f_stat(pathname, &fno);
-    if (FR_OK == fr)
-        fsz = fno.fsize;
-    if (0 < fsz && fsz <= size) {
-        // This is an attempt at optimization:
-        // rewriting the file should be faster than
-        // writing it from scratch.
-        fr = f_open(&file, pathname, FA_READ | FA_WRITE);
-        if (FR_OK != fr) {
-            printf("f_open error: %s (%d)\n", FRESULT_str(fr), fr);
-            return false;
-        }
-        fr = f_rewind(&file);
-        if (FR_OK != fr) {
-            printf("f_rewind error: %s (%d)\n", FRESULT_str(fr), fr);
-            f_close(&file);
-            return false;
-        }
-    } else {
-        fr = f_open(&file, pathname, FA_WRITE | FA_CREATE_ALWAYS);
-        if (FR_OK != fr) {
-            printf("f_open error: %s (%d)\n", FRESULT_str(fr), fr);
-            f_close(&file);
-            return false;
-        }
+    fr = f_open(&file, pathname, FA_WRITE | FA_CREATE_ALWAYS);
+    if (FR_OK != fr) {
+        printf("f_open error: %s (%d)\n", FRESULT_str(fr), fr);
+        f_close(&file);
+        return false;
     }
     if (PRE_ALLOCATE) {
+#if 0
         FRESULT fr = f_lseek(&file, size);
         if (FR_OK != fr) {
             printf("f_lseek error: %s (%d)\n", FRESULT_str(fr), fr);
@@ -99,15 +80,32 @@ static bool create_big_file(const char *const pathname, uint64_t size,
             f_close(&file);
             return false;
         }
+#endif
+        fr = f_truncate(&file);
+        if (FR_OK != fr) {
+            printf("f_truncate error: %s (%d)\n", FRESULT_str(fr), fr);
+            f_close(&file);
+            return false;
+        }
+        // prepares or allocates a contiguous data area to the file:
+        fr = f_expand(&file, size, 1);
+        if (FR_OK != fr) {
+            printf("f_expand error: %s (%d)\n", FRESULT_str(fr), fr);
+            f_close(&file);
+            return false;
+        }
     }
-    
+
     printf("Writing...\n");
-    absolute_time_t xStart = get_absolute_time();
+
+    uint64_t cum_time = 0;
 
     for (uint64_t i = 0; i < size / BUFFSZ; ++i) {
         size_t n;
         for (n = 0; n < BUFFSZ / sizeof(DWORD); n++) buff[n] = rand();
         UINT bw;
+
+        absolute_time_t xStart = get_absolute_time();
         fr = f_write(&file, buff, BUFFSZ, &bw);
         if (bw < BUFFSZ) {
             printf("f_write(%s,,%d,): only wrote %d bytes\n", pathname, BUFFSZ, bw);
@@ -119,11 +117,12 @@ static bool create_big_file(const char *const pathname, uint64_t size,
             f_close(&file);
             return false;
         }
+        cum_time += absolute_time_diff_us(xStart, get_absolute_time());
     }
     /* Close the file */
     f_close(&file);
 
-    report(size, absolute_time_diff_us(xStart, get_absolute_time()));
+    report(size, cum_time);
     return true;
 }
 
@@ -142,10 +141,13 @@ static bool check_big_file(char *pathname, uint64_t size,
         return false;
     }
     printf("Reading...\n");
-    absolute_time_t xStart = get_absolute_time();
+
+    uint64_t cum_time = 0;
 
     for (uint64_t i = 0; i < size / BUFFSZ; ++i) {
         UINT br;
+
+        absolute_time_t xStart = get_absolute_time();
         fr = f_read(&file, buff, BUFFSZ, &br);
         if (br < BUFFSZ) {
             printf("f_read(,%s,%d,):only read %u bytes\n", pathname, BUFFSZ, br);
@@ -157,6 +159,8 @@ static bool check_big_file(char *pathname, uint64_t size,
             f_close(&file);
             return false;
         }
+        cum_time += absolute_time_diff_us(xStart, get_absolute_time());
+
         /* Check the buffer is filled with the expected data. */
         size_t n;
         for (n = 0; n < BUFFSZ / sizeof(DWORD); n++) {
@@ -173,11 +177,11 @@ static bool check_big_file(char *pathname, uint64_t size,
     /* Close the file */
     f_close(&file);
 
-    report(size, absolute_time_diff_us(xStart, get_absolute_time()));
+    report(size, cum_time);
     return true;
 }
 // Specify size in Mebibytes (1024x1024 bytes)
-void big_file_test(char * pathname, size_t size_MiB, uint32_t seed) {
+void big_file_test(char *pathname, size_t size_MiB, uint32_t seed) {
     //  /* Working buffer */
     DWORD *buff = malloc(BUFFSZ);
     assert(buff);

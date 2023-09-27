@@ -91,25 +91,6 @@ bool sd_sdio_readSector(sd_card_t *sd_card_p, uint32_t sector, uint8_t *dst);
  * \return true for success or false for failure.
  */
 bool sd_sdio_readSectors(sd_card_t *sd_card_p, uint32_t sector, uint8_t *dst, size_t ns);
-/**
- * Read a card's CID register. The CID contains card identification
- * information such as Manufacturer ID, Product name, Product serial
- * number and Manufacturing date.
- *
- * \param[out] cid pointer to area for returned data.
- *
- * \return true for success or false for failure.
- */
-bool sd_sdio_readCID(sd_card_t *sd_card_p, cid_t *cid);
-/**
- * Read a card's CSD register. The CSD contains Card-Specific Data that
- * provides information regarding access to the card's contents.
- *
- * \param[out] csd pointer to area for returned data.
- *
- * \return true for success or false for failure.
- */
-bool sd_sdio_readCSD(sd_card_t *sd_card_p, csd_t *csd);
 /** Read one data sector in a multiple sector read sequence
  *
  * \param[out] dst Pointer to the location for the data to be read.

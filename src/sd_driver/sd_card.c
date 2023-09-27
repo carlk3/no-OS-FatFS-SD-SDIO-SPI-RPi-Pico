@@ -22,6 +22,7 @@ specific language governing permissions and limitations under the License.
 #include "SPI/sd_card_spi.h"
 #include "hw_config.h"  // Hardware Configuration of the SPI and SD Card "objects"
 #include "my_debug.h"
+#include "util.h"
 //
 #include "sd_card.h"
 //
@@ -95,5 +96,86 @@ bool sd_init_driver() {
     }
     mutex_exit(&initialized_mutex);
     return true;
+}
+
+void cidDmp(sd_card_t *sd_card_p) {
+    printf("\nManufacturer ID: ");
+    printf("0x%x\n", sd_card_p->cid.mid);
+    printf("OEM ID: ");
+    printf("%c%c\n", sd_card_p->cid.oid[0], sd_card_p->cid.oid[1]);
+    printf("Product: ");
+    for (uint8_t i = 0; i < 5; i++) {
+        printf("%c", sd_card_p->cid.pnm[i]);
+    }
+    printf("\nRevision: ");
+    printf("%d.%d\n", CID_prvN(&sd_card_p->cid), CID_prvM(&sd_card_p->cid));
+    printf("Serial number: ");
+    printf("0x%lx\n", CID_psn(&sd_card_p->cid));
+    printf("Manufacturing date: ");
+    printf("%d/%d\n", CID_mdtMonth(&sd_card_p->cid), CID_mdtYear(&sd_card_p->cid));
+    printf("\n");
+}
+void csdDmp(sd_card_t *sd_card_p) {
+    uint32_t c_size, c_size_mult, read_bl_len;
+    uint32_t block_len, mult, blocknr;
+    uint32_t hc_c_size;
+    uint64_t blocks = 0, capacity = 0;
+    bool erase_single_block_enable = 0;
+    uint8_t erase_sector_size = 0;
+
+    // csd_structure : csd[127:126]
+    int csd_structure = ext_bits(sd_card_p->csd.csd, 127, 126);
+    switch (csd_structure) {
+        case 0:
+            c_size = ext_bits(sd_card_p->csd.csd, 73, 62);       // c_size        : csd[73:62]
+            c_size_mult = ext_bits(sd_card_p->csd.csd, 49, 47);  // c_size_mult   : csd[49:47]
+            read_bl_len =
+                ext_bits(sd_card_p->csd.csd, 83, 80);  // read_bl_len   : csd[83:80] - the
+                                            // *maximum* read block length
+            block_len = 1 << read_bl_len;   // BLOCK_LEN = 2^READ_BL_LEN
+            mult = 1 << (c_size_mult +
+                         2);                // MULT = 2^C_SIZE_MULT+2 (C_SIZE_MULT < 8)
+            blocknr = (c_size + 1) * mult;  // BLOCKNR = (C_SIZE+1) * MULT
+            capacity = (uint64_t)blocknr *
+                       block_len;  // memory capacity = BLOCKNR * BLOCK_LEN
+            blocks = capacity / _block_size;
+
+            printf("Standard Capacity: c_size: %" PRIu32 "\r\n", c_size);
+            printf("Sectors: 0x%llx : %llu\r\n", blocks, blocks);
+            printf("Capacity: 0x%llx : %llu MiB\r\n", capacity,
+                   (capacity / (1024U * 1024U)));
+            break;
+
+        case 1:
+            hc_c_size =
+                ext_bits(sd_card_p->csd.csd, 69, 48);   // device size : C_SIZE : [69:48]
+            blocks = (hc_c_size + 1) << 10;  // block count = C_SIZE+1) * 1K
+                                             // byte (512B is block size)
+
+            /* ERASE_BLK_EN
+            The ERASE_BLK_EN defines the granularity of the unit size of the data to be erased. The erase
+            operation can erase either one or multiple units of 512 bytes or one or multiple units (or sectors) of
+            SECTOR_SIZE. If ERASE_BLK_EN=0, the host can erase one or multiple units of SECTOR_SIZE.
+            If ERASE_BLK_EN=1 the host can erase one or multiple units of 512 bytes.
+            */
+            erase_single_block_enable = ext_bits(sd_card_p->csd.csd, 46, 46);
+
+            /* SECTOR_SIZE
+            The size of an erasable sector. The content of this register is a 7-bit binary coded value, defining the
+            number of write blocks. The actual size is computed by increasing this number
+            by one. A value of zero means one write block, 127 means 128 write blocks.
+            */
+            erase_sector_size = ext_bits(sd_card_p->csd.csd, 45, 39) + 1;
+
+            printf("SDHC/SDXC Card: hc_c_size: %" PRIu32 "\r\n", hc_c_size);
+            printf("Sectors: %llu\r\n", blocks);
+            printf("Capacity: %llu MiB (%llu MB)\r\n", blocks / 2048, blocks * _block_size / 1000000);
+            printf("ERASE_BLK_EN: %s\r\n", erase_single_block_enable ? "units of 512 bytes" : "units of SECTOR_SIZE");
+            printf("SECTOR_SIZE (size of an erasable sector): %d\r\n", erase_sector_size);
+            break;
+
+        default:
+            printf("CSD struct unsupported\r\n");
+    };
 }
 /* [] END OF FILE */
