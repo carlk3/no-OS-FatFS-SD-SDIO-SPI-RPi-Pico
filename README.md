@@ -292,7 +292,7 @@ Attributes (or "fields", or "members") of these objects specify which pins to us
 
 ![Illustration of the configuration dev_brd.hw_config.c](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/assets/50121841/0eedadea-f6cf-44cb-9b76-544ec74287d2)
 
-Illustration of the configuration [dev_brd.hw_config.c](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/tree/main/examples/command_line)
+Illustration of the configuration [dev_brd.hw_config.c](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/blob/main/examples/command_line/dev_brd.hw_config.c)
 
 ### An instance of `sd_card_t` describes the configuration of one SD card socket.
 ```
@@ -704,7 +704,7 @@ You are welcome to contribute to this project! Just submit a Pull Request. Here 
 * ~~PlatformIO library~~ Done: See https://registry.platformio.org/libraries/carlk3/no-OS-FatFS-SD-SPI-RPi-Pico
 * [RP2040: Enable up to 42 MHz SDIO bus speed](https://github.com/ZuluSCSI/ZuluSCSI-firmware/tree/rp2040_highspeed_sdio)
 
-![image](https://github.com/carlk3/no-OS-FatFS-SD-SPI-RPi-Pico/assets/50121841/cc5bb9eb-0da8-49ef-bd7c-3046ee27e4de)
+![image](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/assets/50121841/8a28782e-84c4-40c8-8757-a063a4b83292)
 
 ## Appendix A: Adding Additional Cards
 When you're dealing with information storage, it's always nice to have redundancy. There are many possible combinations of SPIs and SD cards. One of these is putting multiple SD cards on the same SPI bus, at a cost of one (or two) additional Pico I/O pins (depending on whether or you care about Card Detect). I will illustrate that example here. 
