@@ -28,9 +28,8 @@ specific language governing permissions and limitations under the License.
 #define SPI_FILL_CHAR (0xFF)
 
 // "Class" representing SPIs
-typedef struct {
-    // SPI HW
-    spi_inst_t *hw_inst;
+typedef struct spi_t {
+    spi_inst_t *hw_inst;    // SPI HW
     uint miso_gpio;  // SPI MISO GPIO number (not pin number)
     uint mosi_gpio;
     uint sck_gpio;

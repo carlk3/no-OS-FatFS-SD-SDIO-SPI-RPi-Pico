@@ -59,7 +59,7 @@ bool sd_sdio_begin(sd_card_t *sd_card_p)
     sdio_status_t status;
     
     // Initialize at 400 kHz clock speed
-    if (!rp2040_sdio_init(sd_card_p, calculate_clk_div(400E3)))
+    if (!rp2040_sdio_init(sd_card_p, calculate_clk_div(400 * 1000)))
         return false; 
 
     // Establish initial connection with the card
