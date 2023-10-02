@@ -1,3 +1,4 @@
+
 /* hw_config.c
 Copyright 2021 Carl John Kugler III
 
@@ -25,15 +26,8 @@ socket, which SPI it is driven by, and how it is wired.
 
 */
 
-#include <string.h>
-//
-#include "my_debug.h"
-//
+#include <assert.h>
 #include "hw_config.h"
-//
-#include "ff.h" /* Obtains integer types */
-//
-#include "diskio.h" /* Declarations of disk functions */
 
 // Hardware Configuration of SPI "objects"
 // Note: multiple SD cards can be driven by one SPI if they use different slave
@@ -60,10 +54,9 @@ static sd_spi_if_t spi_ifs[] = {
 // Hardware Configuration of the SD Card "objects"
 static sd_card_t sd_cards[] = {  // One for each SD card
     {
+        .pcName = "0:",  // Name used to mount device
         .type = SD_IF_SPI,
-        .spi_if_p = &spi_ifs[0],  // Pointer to the SPI interface driving this card
-
-        .pcName = "0:"   // Name used to mount device
+        .spi_if_p = &spi_ifs[0]  // Pointer to the SPI interface driving this card
     }
 };
 
@@ -71,6 +64,7 @@ static sd_card_t sd_cards[] = {  // One for each SD card
 size_t sd_get_num() { return count_of(sd_cards); }
 
 sd_card_t *sd_get_by_num(size_t num) {
+    assert(num <= sd_get_num());
     if (num <= sd_get_num()) {
         return &sd_cards[num];
     } else {
@@ -80,6 +74,7 @@ sd_card_t *sd_get_by_num(size_t num) {
 size_t spi_get_num() { return count_of(spis); }
 
 spi_t *spi_get_by_num(size_t num) {
+    assert(num <= spi_get_num());
     if (num <= spi_get_num()) {
         return &spis[num];
     } else {
