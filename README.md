@@ -1,4 +1,4 @@
-# no-OS-FatFS-SD-SPI-RPi-Pico
+# no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
 
 ## C/C++ Library for SD Cards on the Pico
 
