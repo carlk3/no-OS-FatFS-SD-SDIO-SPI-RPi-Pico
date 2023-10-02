@@ -768,27 +768,19 @@ bool rp2040_sdio_init(sd_card_t *sd_card_p, float clk_div) {
         // dma_channel_claim(SDIO_DMA_CHB);
         SDIO_DMA_CHB = dma_claim_unused_channel(true);
 
-        /* Set up IRQ handler when DMA completes. */
+        /* Set up IRQ handler for when DMA completes. */        
 
-        if (!sd_card_p->sdio_if_p->DMA_IRQ_num)
-            sd_card_p->sdio_if_p->DMA_IRQ_num = DMA_IRQ_0;  // Default
+        void (*sdio_irq_handler_p)();
+        if (DMA_IRQ_1 == sd_card_p->sdio_if_p->DMA_IRQ_num)
+            sdio_irq_handler_p = rp2040_sdio_tx_irq_1;
+        else 
+            sdio_irq_handler_p = rp2040_sdio_tx_irq_0; // Default
 
-        static void (*sdio_irq_handler_p)();
-        switch (sd_card_p->sdio_if_p->DMA_IRQ_num) {
-            case DMA_IRQ_0:
-                sdio_irq_handler_p = rp2040_sdio_tx_irq_0;
-                break;
-            case DMA_IRQ_1:
-                sdio_irq_handler_p = rp2040_sdio_tx_irq_1;
-                break;
-            default:
-                assert(false);
-        }
         if (sd_card_p->sdio_if_p->use_exclusive_DMA_IRQ_handler) {
-            irq_set_exclusive_handler(sd_card_p->sdio_if_p->DMA_IRQ_num, *sdio_irq_handler_p);
+            irq_set_exclusive_handler(sd_card_p->sdio_if_p->DMA_IRQ_num, sdio_irq_handler_p);
         } else {
             irq_add_shared_handler(
-                sd_card_p->sdio_if_p->DMA_IRQ_num, *sdio_irq_handler_p,
+                sd_card_p->sdio_if_p->DMA_IRQ_num, sdio_irq_handler_p,
                 PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
         }
         STATE.resources_claimed = true;
@@ -845,16 +837,10 @@ bool rp2040_sdio_init(sd_card_t *sd_card_p, float clk_div) {
 
     // Redirect GPIOs to PIO
     enum gpio_function fn;
-    switch (sd_card_p->sdio_if_p->DMA_IRQ_num) {
-        case DMA_IRQ_0:
-            fn = GPIO_FUNC_PIO0;
-            break;
-        case DMA_IRQ_1:
+    if (DMA_IRQ_1 == sd_card_p->sdio_if_p->DMA_IRQ_num)
         fn = GPIO_FUNC_PIO1;
-            break;
-        default:
-            assert(false);
-    }
+    else
+        fn = GPIO_FUNC_PIO0; // default
     gpio_set_function(SDIO_CMD, fn);
     gpio_set_function(SDIO_CLK, fn);
     gpio_set_function(SDIO_D0, fn);
