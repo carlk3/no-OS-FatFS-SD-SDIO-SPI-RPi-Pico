@@ -8,6 +8,7 @@
 // https://www.sdcard.org/downloads/pls/
 // "SDIO Physical Layer Simplified Specification Version 8.00"
 
+#include <assert.h>
 #include <string.h>
 #include <stdlib.h>
 //
@@ -16,7 +17,6 @@
 #include <hardware/pio.h>
 //
 #include "hw_config.h"
-#include "my_debug.h"
 #include "rp2040_sdio.h"
 #include "rp2040_sdio.pio.h"
 #include "RP2040.h"
@@ -782,7 +782,7 @@ bool rp2040_sdio_init(sd_card_t *sd_card_p, float clk_div) {
                 sdio_irq_handler_p = rp2040_sdio_tx_irq_1;
                 break;
             default:
-                myASSERT(false);
+                assert(false);
         }
         if (sd_card_p->sdio_if_p->use_exclusive_DMA_IRQ_handler) {
             irq_set_exclusive_handler(sd_card_p->sdio_if_p->DMA_IRQ_num, *sdio_irq_handler_p);
@@ -844,12 +844,23 @@ bool rp2040_sdio_init(sd_card_t *sd_card_p, float clk_div) {
     SDIO_PIO->input_sync_bypass |= (1 << SDIO_CLK) | (1 << SDIO_CMD) | (1 << SDIO_D0) | (1 << SDIO_D1) | (1 << SDIO_D2) | (1 << SDIO_D3);
 
     // Redirect GPIOs to PIO
-    gpio_set_function(SDIO_CMD, GPIO_FUNC_PIO1);
-    gpio_set_function(SDIO_CLK, GPIO_FUNC_PIO1);
-    gpio_set_function(SDIO_D0, GPIO_FUNC_PIO1);
-    gpio_set_function(SDIO_D1, GPIO_FUNC_PIO1);
-    gpio_set_function(SDIO_D2, GPIO_FUNC_PIO1);
-    gpio_set_function(SDIO_D3, GPIO_FUNC_PIO1);
+    enum gpio_function fn;
+    switch (sd_card_p->sdio_if_p->DMA_IRQ_num) {
+        case DMA_IRQ_0:
+            fn = GPIO_FUNC_PIO0;
+            break;
+        case DMA_IRQ_1:
+        fn = GPIO_FUNC_PIO1;
+            break;
+        default:
+            assert(false);
+    }
+    gpio_set_function(SDIO_CMD, fn);
+    gpio_set_function(SDIO_CLK, fn);
+    gpio_set_function(SDIO_D0, fn);
+    gpio_set_function(SDIO_D1, fn);
+    gpio_set_function(SDIO_D2, fn);
+    gpio_set_function(SDIO_D3, fn);
 
     gpio_set_slew_rate(SDIO_CMD, GPIO_SLEW_RATE_FAST);
     gpio_set_slew_rate(SDIO_CLK, GPIO_SLEW_RATE_FAST);
