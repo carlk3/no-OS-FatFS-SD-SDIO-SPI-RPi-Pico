@@ -116,7 +116,8 @@ static sd_sdio_if_t sdio_ifs[] = {
         .SDIO_PIO = pio1,
         .DMA_IRQ_num = DMA_IRQ_1,
         .baud_rate = 15 * 1000 * 1000  // 15 MHz
-    }};
+    }
+};
 
 /* Hardware Configuration of the SD Card "objects"
     These correspond to SD card sockets
