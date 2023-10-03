@@ -756,8 +756,12 @@ sdio_status_t rp2040_sdio_stop(sd_card_t *sd_card_p)
 bool rp2040_sdio_init(sd_card_t *sd_card_p, float clk_div) {
     // Mark resources as being in use, unless it has been done already.
     if (!STATE.resources_claimed) {
+
         if (!SDIO_PIO)
-            SDIO_PIO = pio0;
+            SDIO_PIO = pio0; // Default
+        if (!sd_card_p->sdio_if_p->DMA_IRQ_num)
+            sd_card_p->sdio_if_p->DMA_IRQ_num = DMA_IRQ_0; // Default
+
         // pio_sm_claim(SDIO_PIO, SDIO_CMD_SM);
         // int pio_claim_unused_sm(PIO pio, bool required);
         SDIO_CMD_SM = pio_claim_unused_sm(SDIO_PIO, true);
@@ -774,7 +778,7 @@ bool rp2040_sdio_init(sd_card_t *sd_card_p, float clk_div) {
         if (DMA_IRQ_1 == sd_card_p->sdio_if_p->DMA_IRQ_num)
             sdio_irq_handler_p = rp2040_sdio_tx_irq_1;
         else 
-            sdio_irq_handler_p = rp2040_sdio_tx_irq_0; // Default
+            sdio_irq_handler_p = rp2040_sdio_tx_irq_0;
 
         if (sd_card_p->sdio_if_p->use_exclusive_DMA_IRQ_handler) {
             irq_set_exclusive_handler(sd_card_p->sdio_if_p->DMA_IRQ_num, sdio_irq_handler_p);
@@ -837,10 +841,10 @@ bool rp2040_sdio_init(sd_card_t *sd_card_p, float clk_div) {
 
     // Redirect GPIOs to PIO
     enum gpio_function fn;
-    if (DMA_IRQ_1 == sd_card_p->sdio_if_p->DMA_IRQ_num)
+    if (pio1 == SDIO_PIO) 
         fn = GPIO_FUNC_PIO1;
     else
-        fn = GPIO_FUNC_PIO0; // default
+        fn = GPIO_FUNC_PIO0; 
     gpio_set_function(SDIO_CMD, fn);
     gpio_set_function(SDIO_CLK, fn);
     gpio_set_function(SDIO_D0, fn);
