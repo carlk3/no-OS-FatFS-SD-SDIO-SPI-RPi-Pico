@@ -249,7 +249,7 @@ On some SD cards, you can even configure the card's output drivers using the Dri
 
 ## Notes about Card Detect
 * There is one case in which Card Detect can be important: when the user can hot swap the physical card while the file system is mounted. In this case, the file system might have no way of knowing that the card was swapped, and so it will continue to assume that its prior knowledge of the FATs and directories is still valid. File system corruption and data loss are the likely results.
-* If Card Detect is used, in order to detect a card swap there needs to be a way for the application to be made aware of a change in state when the card is removed. This could take the form of a GPIO interrupt (see [FatFS_SPI_example.cpp](https://github.com/carlk3/no-OS-FatFS-SD-SPI-RPi-Pico/blob/master/example/FatFS_SPI_example.cpp)), or polling.
+* If Card Detect is used, in order to detect a card swap there needs to be a way for the application to be made aware of a change in state when the card is removed. This could take the form of a GPIO interrupt (see [examples/command_line](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/blob/6c523f713ffa80dfeed2a61444a9ac58ac2bd1f8/examples/command_line/main.cpp#L652)), or polling.
 * Some workarounds for absence of Card Detect:
   * Periodically poll sd_test_com() which can be called any time after sd_init_driver() is called. This function minimally accesses the bus to check for the presence of an SD card. The internals of this call automatically flags the SD interface for reinitialization when false is returned. If false is returned when the previous call returned true, it is important to invalidate any file handles that are still opened, unmount, and reset any mounted flags. Then don't try to remount until sd_test_com() returns true once again.
   * If you don't care much about performance or battery life, you could mount the card before each access and unmount it after. This might be a good strategy for a slow data logging application, for example.
@@ -480,8 +480,6 @@ If `set_drive_strength` is true, each GPIO's drive strength can be set individua
 However, it might be done externally. If `no_miso_gpio_pull_up` is false, the library will set the RP2040 GPIO internal pull up.
 
 ### You must provide a definition for the functions declared in `sd_driver/hw_config.h`:  
-`size_t spi_get_num()` Returns the number of SPIs to use  
-`spi_t *spi_get_by_num(size_t num)` Returns a pointer to the SPI "object" at the given (zero origin) index  
 `size_t sd_get_num()` Returns the number of SD cards  
 `sd_card_t *sd_get_by_num(size_t num)` Returns a pointer to the SD card "object" at the given (zero origin) index.  
 

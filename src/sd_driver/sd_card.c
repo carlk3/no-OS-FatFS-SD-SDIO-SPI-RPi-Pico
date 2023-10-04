@@ -65,6 +65,10 @@ bool sd_init_driver() {
             switch (sd_card_p->type) {
                 case SD_IF_SPI:
                     sd_spi_ctor(sd_card_p);
+                    if (!my_spi_init(sd_card_p->spi_if_p->spi)) {
+                        mutex_exit(&initialized_mutex);
+                        return false;
+                    }
                     break;
                 case SD_IF_SDIO:
                     sd_sdio_ctor(sd_card_p);
@@ -73,24 +77,16 @@ bool sd_init_driver() {
 
             if (sd_card_p->use_card_detect) {
                 gpio_init(sd_card_p->card_detect_gpio);
-                gpio_set_dir(sd_card_p->card_detect_gpio, GPIO_IN);
                 if (sd_card_p->card_detect_use_pull) {
                     if (sd_card_p->card_detect_pull_hi) {
                         gpio_pull_up(sd_card_p->card_detect_gpio);
                     } else {
-                        gpio_pull_down(sd_card_p->card_detect_gpio);                        
+                        gpio_pull_down(sd_card_p->card_detect_gpio);
                     }
                 }
+                gpio_set_dir(sd_card_p->card_detect_gpio, GPIO_IN);
             }
-
         }  // for
-        for (size_t i = 0; i < spi_get_num(); ++i) {
-            spi_t *spi_p = spi_get_by_num(i);
-            if (!my_spi_init(spi_p)) {
-                mutex_exit(&initialized_mutex);
-                return false;
-            }
-        }
 
         initialized = true;
     }
@@ -131,8 +127,8 @@ void csdDmp(sd_card_t *sd_card_p) {
             c_size_mult = ext_bits(sd_card_p->csd.csd, 49, 47);  // c_size_mult   : csd[49:47]
             read_bl_len =
                 ext_bits(sd_card_p->csd.csd, 83, 80);  // read_bl_len   : csd[83:80] - the
-                                            // *maximum* read block length
-            block_len = 1 << read_bl_len;   // BLOCK_LEN = 2^READ_BL_LEN
+                                                       // *maximum* read block length
+            block_len = 1 << read_bl_len;              // BLOCK_LEN = 2^READ_BL_LEN
             mult = 1 << (c_size_mult +
                          2);                // MULT = 2^C_SIZE_MULT+2 (C_SIZE_MULT < 8)
             blocknr = (c_size + 1) * mult;  // BLOCKNR = (C_SIZE+1) * MULT
@@ -148,9 +144,9 @@ void csdDmp(sd_card_t *sd_card_p) {
 
         case 1:
             hc_c_size =
-                ext_bits(sd_card_p->csd.csd, 69, 48);   // device size : C_SIZE : [69:48]
-            blocks = (hc_c_size + 1) << 10;  // block count = C_SIZE+1) * 1K
-                                             // byte (512B is block size)
+                ext_bits(sd_card_p->csd.csd, 69, 48);  // device size : C_SIZE : [69:48]
+            blocks = (hc_c_size + 1) << 10;            // block count = C_SIZE+1) * 1K
+                                                       // byte (512B is block size)
 
             /* ERASE_BLK_EN
             The ERASE_BLK_EN defines the granularity of the unit size of the data to be erased. The erase

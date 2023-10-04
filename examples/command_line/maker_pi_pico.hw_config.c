@@ -17,72 +17,43 @@ This file should be tailored to match the hardware design.
 See 
   https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/tree/main#customizing-for-the-hardware-configuration
 
-There should be one element of the spi_ifs[] array for each SPI interface object.
-* Each element of spi_ifs[] must point to an spi_t instance with member "spi".
-
-There should be one element of the sdio_ifs[] array for each SDIO interface object.
-
-There should be one element of the sd_cards[] array for each SD card slot.
-* Each element of sd_cards[] must point to its interface with spi_if_p or sdio_if_p.
-* The name (pcName) should correspond to the FatFs "logical drive" identifier.
-  (See http://elm-chan.org/fsw/ff/doc/filename.html#vol)
-  In general, this should correspond to the (zero origin) array index.
-
 */
 
-#include <assert.h>
-//
 #include "hw_config.h"
 
 // Hardware Configuration of SPI "objects"
 // Note: multiple SD cards can be driven by one SPI if they use different slave
 // selects.
-static spi_t spis[] = {  // One for each RP2040 SPI component used
-    {
-        .hw_inst = spi1,  // SPI component
-        .miso_gpio = 12, // GPIO number (not pin number)
-        .mosi_gpio = 11,
-        .sck_gpio = 10,
-        .baud_rate = 12500 * 1000,  
-        //.baud_rate = 25 * 1000 * 1000, // Actual frequency: 20833333. 
-    }
+static spi_t spi = {  // One for each RP2040 SPI component used
+    .hw_inst = spi1,  // SPI component
+    .miso_gpio = 12, // GPIO number (not pin number)
+    .mosi_gpio = 11,
+    .sck_gpio = 10,
+    .baud_rate = 12500 * 1000,  
+    //.baud_rate = 25 * 1000 * 1000, // Actual frequency: 20833333. 
 };
 /* SPI Interfaces */
-static sd_spi_if_t spi_ifs[] = {
-    {
-        .spi = &spis[0],          // Pointer to the SPI driving this card
-        .ss_gpio = 15             // The SPI slave select GPIO for this SD card
-    }
+static sd_spi_if_t spi_if = {
+    .spi = &spi,          // Pointer to the SPI driving this card
+    .ss_gpio = 15             // The SPI slave select GPIO for this SD card
 };
 
 // Hardware Configuration of the SD Card "objects"
-static sd_card_t sd_cards[] = {  // One for each SD card
-    {
-        .pcName = "0:",           // Name used to mount device
-        .type = SD_IF_SPI,
-        .spi_if_p = &spi_ifs[0],  // Pointer to the SPI interface driving this card
-    }
+static sd_card_t sd_card = {
+    /* "pcName" is the FatFs "logical drive" identifier.
+    (See http://elm-chan.org/fsw/ff/doc/filename.html#vol) */
+    .pcName = "0:", 
+    .type = SD_IF_SPI,
+    .spi_if_p = &spi_if,  // Pointer to the SPI interface driving this card
 };
 
 /* ********************************************************************** */
 
-size_t sd_get_num() { return count_of(sd_cards); }
+size_t sd_get_num() { return 1; }
 
 sd_card_t *sd_get_by_num(size_t num) {
-    assert(num <= sd_get_num());
-    if (num <= sd_get_num()) {
-        return &sd_cards[num];
-    } else {
-        return NULL;
-    }
-}
-
-size_t spi_get_num() { return count_of(spis); }
-
-spi_t *spi_get_by_num(size_t num) {
-    assert(num <= spi_get_num());
-    if (num <= spi_get_num()) {
-        return &spis[num];
+    if (0 == num) {
+        return &sd_card;
     } else {
         return NULL;
     }

@@ -116,7 +116,8 @@ static sd_sdio_if_t sdio_ifs[] = {
         .SDIO_PIO = pio1,
         .DMA_IRQ_num = DMA_IRQ_1,
         .baud_rate = 15 * 1000 * 1000  // 15 MHz
-    }};
+    }
+};
 
 /* Hardware Configuration of the SD Card "objects"
     These correspond to SD card sockets
@@ -173,23 +174,13 @@ static sd_card_t sd_cards[] = {  // One for each SD card
 };
 
 /* ********************************************************************** */
+
 size_t sd_get_num() { return count_of(sd_cards); }
 
 sd_card_t *sd_get_by_num(size_t num) {
-    assert(num <= sd_get_num());
-    if (num <= sd_get_num()) {
+    assert(num < sd_get_num());
+    if (num < sd_get_num()) {
         return &sd_cards[num];
-    } else {
-        return NULL;
-    }
-}
-
-size_t spi_get_num() { return count_of(spis); }
-
-spi_t *spi_get_by_num(size_t num) {
-    assert(num <= spi_get_num());
-    if (num <= spi_get_num()) {
-        return &spis[num];
     } else {
         return NULL;
     }
