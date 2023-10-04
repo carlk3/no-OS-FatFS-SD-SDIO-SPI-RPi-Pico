@@ -1,20 +1,26 @@
 /* Instead of a statically linked hw_config.c,
-   create configuration dynamically */
+   create configuration dynamically.   
+   
+   This file should be tailored to match the hardware design.
+
+    See 
+    https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/tree/main#customizing-for-the-hardware-configuration
+
+    */
+
+
 
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
-
 #include <vector>
-//
+
 #include "f_util.h"
 #include "ff.h"
 #include "pico/stdlib.h"
 #include "rtc.h"
 //
 #include "hw_config.h"
-//
-#include "diskio.h" /* Declarations of disk functions */
 
 static std::vector<spi_t *> spis;             // SPI H/W components
 static std::vector<sd_spi_if_t *> spi_ifs;    // SPI Interfaces
@@ -26,15 +32,6 @@ size_t sd_get_num() { return sd_cards.size(); }
 sd_card_t *sd_get_by_num(size_t num) {
     if (num <= sd_get_num()) {
         return sd_cards[num];
-    } else {
-        return NULL;
-    }
-}
-
-size_t spi_get_num() { return spis.size(); }
-spi_t *spi_get_by_num(size_t num) {
-    if (num <= spi_get_num()) {
-        return spis[num];
     } else {
         return NULL;
     }

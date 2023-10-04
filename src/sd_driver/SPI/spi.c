@@ -29,24 +29,22 @@ specific language governing permissions and limitations under the License.
 #  pragma GCC diagnostic ignored "-Wunused-variable"
 #endif
 
-size_t __attribute__((weak)) spi_get_num() {
-    return 0;
-}
-spi_t __attribute__((weak)) * spi_get_by_num(size_t num) {
-    return NULL;
-}
+// The RP2040 has two built in hardware SPI instances
+static spi_t *spi_ps[2];
 
 static void in_spi_irq_handler(const uint DMA_IRQ_num, io_rw_32 *dma_hw_ints_p) {
-    for (size_t i = 0; i < spi_get_num(); ++i) {
-        spi_t *spi_p = spi_get_by_num(i);
-        if (DMA_IRQ_num == spi_p->DMA_IRQ_num)  {
-            // Is the SPI's channel requesting interrupt?
-            if (*dma_hw_ints_p & (1 << spi_p->rx_dma)) {
-                *dma_hw_ints_p = 1 << spi_p->rx_dma;  // Clear it.
-                assert(!dma_channel_is_busy(spi_p->rx_dma));
-                assert(!sem_available(&spi_p->sem));
-                bool ok = sem_release(&spi_p->sem);
-                assert(ok);
+    for (size_t i = 0; i < count_of(spi_ps); ++i) {
+        spi_t *spi_p = spi_ps[i];
+        if (spi_p) {
+            if (DMA_IRQ_num == spi_p->DMA_IRQ_num)  {
+                // Is the SPI's channel requesting interrupt?
+                if (*dma_hw_ints_p & (1 << spi_p->rx_dma)) {
+                    *dma_hw_ints_p = 1 << spi_p->rx_dma;  // Clear it.
+                    assert(!dma_channel_is_busy(spi_p->rx_dma));
+                    assert(!sem_available(&spi_p->sem));
+                    bool ok = sem_release(&spi_p->sem);
+                    assert(ok);
+                }
             }
         }
     }
@@ -197,10 +195,12 @@ bool my_spi_init(spi_t *spi_p) {
         spi_lock(spi_p);
 
         // Defaults:
+        if (!spi_p->hw_inst)
+            spi_p->hw_inst = spi0;
         if (!spi_p->baud_rate)
             spi_p->baud_rate = 10 * 1000 * 1000;
         if (!spi_p->DMA_IRQ_num)
-            spi_p->DMA_IRQ_num = DMA_IRQ_0;
+            spi_p->DMA_IRQ_num = DMA_IRQ_0;            
 
         // For the IRQ notification:
         sem_init(&spi_p->sem, 0, 1);
@@ -290,6 +290,12 @@ bool my_spi_init(spi_t *spi_p) {
         }
         irq_set_enabled(spi_p->DMA_IRQ_num, true);
         LED_INIT();
+
+        if (spi0 == spi_p->hw_inst)
+            spi_ps[0] = spi_p;
+        else
+            spi_ps[1] = spi_p;
+
         spi_p->initialized = true;
         spi_unlock(spi_p);
     }
