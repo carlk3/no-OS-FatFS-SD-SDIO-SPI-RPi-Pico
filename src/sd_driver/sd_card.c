@@ -22,7 +22,6 @@ specific language governing permissions and limitations under the License.
 #include "SPI/sd_card_spi.h"
 #include "hw_config.h"  // Hardware Configuration of the SPI and SD Card "objects"
 #include "my_debug.h"
-#include "util.h"
 //
 #include "sd_card.h"
 //
@@ -94,24 +93,24 @@ bool sd_init_driver() {
     return true;
 }
 
-void cidDmp(sd_card_t *sd_card_p) {
-    printf("\nManufacturer ID: ");
-    printf("0x%x\n", sd_card_p->cid.mid);
-    printf("OEM ID: ");
-    printf("%c%c\n", sd_card_p->cid.oid[0], sd_card_p->cid.oid[1]);
-    printf("Product: ");
+void cidDmp(sd_card_t *sd_card_p, printer_t printer) {
+    (*printer)("\nManufacturer ID: ");
+    (*printer)("0x%x\n", sd_card_p->cid.mid);
+    (*printer)("OEM ID: ");
+    (*printer)("%c%c\n", sd_card_p->cid.oid[0], sd_card_p->cid.oid[1]);
+    (*printer)("Product: ");
     for (uint8_t i = 0; i < 5; i++) {
-        printf("%c", sd_card_p->cid.pnm[i]);
+        (*printer)("%c", sd_card_p->cid.pnm[i]);
     }
-    printf("\nRevision: ");
-    printf("%d.%d\n", CID_prvN(&sd_card_p->cid), CID_prvM(&sd_card_p->cid));
-    printf("Serial number: ");
-    printf("0x%lx\n", CID_psn(&sd_card_p->cid));
-    printf("Manufacturing date: ");
-    printf("%d/%d\n", CID_mdtMonth(&sd_card_p->cid), CID_mdtYear(&sd_card_p->cid));
-    printf("\n");
+    (*printer)("\nRevision: ");
+    (*printer)("%d.%d\n", CID_prvN(&sd_card_p->cid), CID_prvM(&sd_card_p->cid));
+    (*printer)("Serial number: ");
+    (*printer)("0x%lx\n", CID_psn(&sd_card_p->cid));
+    (*printer)("Manufacturing date: ");
+    (*printer)("%d/%d\n", CID_mdtMonth(&sd_card_p->cid), CID_mdtYear(&sd_card_p->cid));
+    (*printer)("\n");
 }
-void csdDmp(sd_card_t *sd_card_p) {
+void csdDmp(sd_card_t *sd_card_p, printer_t printer) {
     uint32_t c_size, c_size_mult, read_bl_len;
     uint32_t block_len, mult, blocknr;
     uint32_t hc_c_size;
@@ -136,9 +135,9 @@ void csdDmp(sd_card_t *sd_card_p) {
                        block_len;  // memory capacity = BLOCKNR * BLOCK_LEN
             blocks = capacity / _block_size;
 
-            printf("Standard Capacity: c_size: %" PRIu32 "\r\n", c_size);
-            printf("Sectors: 0x%llx : %llu\r\n", blocks, blocks);
-            printf("Capacity: 0x%llx : %llu MiB\r\n", capacity,
+            (*printer)("Standard Capacity: c_size: %" PRIu32 "\r\n", c_size);
+            (*printer)("Sectors: 0x%llx : %llu\r\n", blocks, blocks);
+            (*printer)("Capacity: 0x%llx : %llu MiB\r\n", capacity,
                    (capacity / (1024U * 1024U)));
             break;
 
@@ -163,15 +162,15 @@ void csdDmp(sd_card_t *sd_card_p) {
             */
             erase_sector_size = ext_bits(sd_card_p->csd.csd, 45, 39) + 1;
 
-            printf("SDHC/SDXC Card: hc_c_size: %" PRIu32 "\r\n", hc_c_size);
-            printf("Sectors: %llu\r\n", blocks);
-            printf("Capacity: %llu MiB (%llu MB)\r\n", blocks / 2048, blocks * _block_size / 1000000);
-            printf("ERASE_BLK_EN: %s\r\n", erase_single_block_enable ? "units of 512 bytes" : "units of SECTOR_SIZE");
-            printf("SECTOR_SIZE (size of an erasable sector): %d\r\n", erase_sector_size);
+            (*printer)("SDHC/SDXC Card: hc_c_size: %" PRIu32 "\r\n", hc_c_size);
+            (*printer)("Sectors: %llu\r\n", blocks);
+            (*printer)("Capacity: %llu MiB (%llu MB)\r\n", blocks / 2048, blocks * _block_size / 1000000);
+            (*printer)("ERASE_BLK_EN: %s\r\n", erase_single_block_enable ? "units of 512 bytes" : "units of SECTOR_SIZE");
+            (*printer)("SECTOR_SIZE (size of an erasable sector): %d\r\n", erase_sector_size);
             break;
 
         default:
-            printf("CSD struct unsupported\r\n");
+            (*printer)("CSD struct unsupported\r\n");
     };
 }
 /* [] END OF FILE */

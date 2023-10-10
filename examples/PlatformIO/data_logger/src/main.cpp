@@ -19,13 +19,14 @@ This example reads analog input A0 and logs the voltage
 It also demonstates a way to do static configuration.
 */
 #include <time.h>
-
-#include "FatFsSd.h"
-#include "SerialUART.h"
+//
 #include "hardware/adc.h"
 #include "hardware/rtc.h"
-#include "iostream/ArduinoStream.h"
 #include "pico/stdlib.h"
+//
+#include "FatFsSd.h"
+#include "SerialUART.h"
+#include "iostream/ArduinoStream.h"
 
 // Serial output stream
 ArduinoOutStream cout(Serial1);
@@ -36,19 +37,15 @@ using namespace FatFsNs;
 
 // Check the FRESULT of a library call.
 //  (See http://elm-chan.org/fsw/ff/doc/rc.html.)
-#define FAIL(s, fr)                                              \
-    {                                                            \
-        cout << __FILE__ << ":" << __LINE__ << ": " << s << ": " \
-             << FRESULT_str(fr) << " (" << fr << ")" << endl;    \
-        for (;;) __breakpoint();                                 \
-    }
-
-#define CHK_FRESULT(s, fr) \
-    {                      \
-        if (FR_OK != fr)   \
-            FAIL(s, fr);   \
-    }
-
+static void FAIL(const char* s, FRESULT fr) {
+    cout << __FILE__ << ":" << __LINE__ << ": " << s << ": "
+         << FRESULT_str(fr) << " (" << fr << ")" << endl;
+    for (;;) __breakpoint();
+}
+static void CHK_FRESULT(const char* s, FRESULT fr) {
+    if (FR_OK != fr)
+        FAIL(s, fr);
+}
 #define ASSERT(pred)                                       \
     {                                                      \
         if (!(pred)) {                                     \
@@ -66,7 +63,7 @@ static bool print_heading(File& file) {
     if (0 == file.tell()) {
         // Print header
         if (file.printf("Date,Time,Voltage\n") < 0) {
-           cout << "printf error" << endl;
+            cout << "printf error" << endl;
             return false;
         }
     }
@@ -171,41 +168,51 @@ void setup() {
         .sec = 0};
     rtc_set_datetime(&t);
 
-/*
-This example assumes the following wiring for the SD card:
-
-    | signal | SPI1 | GPIO | card | Description            |
-    | ------ | ---- | ---- | ---- | ---------------------- |
-    | MISO   | RX   | 12   |  DO  | Master In, Slave Out   |
-    | CS0    | CSn  | 09   |  CS  | Slave (or Chip) Select |
-    | SCK    | SCK  | 14   | SCLK | SPI clock              |
-    | MOSI   | TX   | 15   |  DI  | Master Out, Slave In   |
-    | CD     |      | 13   |  DET | Card Detect            |
-*/
-
-    /* Hardware Configuration of SPI object */
-
+    /* This example assumes the following wiring:
+    | GPIO | SPI1     | SD Card |
+    | ---- | -------- | ------- |
+    | GP8  | SPI1_RX  | D0/DO   |
+    | GP10 | SPI1_SCK | CLK     |
+    | GP11 | SPI1_TX  | CMD/DI  |
+    | GP12 |          | D3/CS   |
+    | GP14 |          | DET     |
+    */
     // GPIO numbers, not Pico pin numbers!
-    SpiCfg spi(
-        spi1,             // spi_inst_t *hw_inst,
-        12,               // uint miso_gpio,
-        15,               // uint mosi_gpio,
-        14,               // uint sck_gpio
-        25 * 1000 * 1000  // uint baud_rate
-    );
-    spi_handle_t spi_handle = FatFs::add_spi(spi);
 
-    /* Hardware Configuration of the SD Card object */
+    // Hardware Configuration of SPI object:
+    static spi_t spi = {
+        .hw_inst = spi1,  // RP2040 SPI component
+        .miso_gpio = 8,   // GPIO number (not Pico pin number)
+        .mosi_gpio = 11,
+        .sck_gpio = 10,
+        .baud_rate = 12 * 1000 * 1000,  // Actual frequency: 10416666
+        .DMA_IRQ_num = DMA_IRQ_1,
+        .set_drive_strength = true,
+        .mosi_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
+        .sck_gpio_drive_strength = GPIO_DRIVE_STRENGTH_2MA};
 
-    SdCardSpiCfg spi_sd_card(
-        spi_handle,  // spi_handle_t spi_handle,
-        "0:",        // const char *pcName,
-        9,           // uint ss_gpio,  // Slave select for this SD card
-        true,        // bool use_card_detect = false,
-        13,          // uint card_detect_gpio = 0,       // Card detect; ignored if !use_card_detect
-        1            // uint card_detected_true = false  // Varies with card socket; ignored if !use_card_detect
-    );
-    FatFsNs::SdCard* SdCard_p(FatFs::add_sd_card(spi_sd_card));
+    // Hardware Configuration of SPI Interface object:
+    static sd_spi_if_t spi_if = {
+        .spi = &spi,    // Pointer to the SPI driving this card
+        .ss_gpio = 12,  // The SPI slave select GPIO for this SD card
+        .set_drive_strength = true,
+        .ss_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA};
+
+    // Hardware Configuration of the SD Card object:
+    static sd_card_t sd_card = {
+        /* "pcName" is the FatFs "logical drive" identifier.
+        (See http://elm-chan.org/fsw/ff/doc/filename.html#vol) */
+        .pcName = "0:",
+        .type = SD_IF_SPI,
+        .spi_if_p = &spi_if,  // Pointer to the SPI interface driving this card
+        // SD Card detect:
+        .use_card_detect = true,
+        .card_detect_gpio = 14,
+        .card_detected_true = 0,  // What the GPIO read returns when a card is present.
+        .card_detect_use_pull = true,
+        .card_detect_pull_hi = true};
+
+    FatFsNs::SdCard* SdCard_p(FatFsNs::FatFs::add_sd_card(&sd_card));
 
     FRESULT fr = SdCard_p->mount();
     CHK_FRESULT("mount", fr);
@@ -218,8 +225,8 @@ void loop() {
     if (absolute_time_diff_us(get_absolute_time(), next_log_time) < 0) {
         FRESULT fr;
         if (logger_enabled) {
-            if (!process_logger()) 
-                logger_enabled= false;
+            if (!process_logger())
+                logger_enabled = false;
         }
         next_log_time = delayed_by_ms(next_log_time, period);
     }

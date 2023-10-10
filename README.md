@@ -180,6 +180,27 @@ It is possible to put more than one card on an SDIO bus (each card has an addres
 One strategy: use SDIO for cache and SPI for backing store. 
 A similar strategy that I have used: SDIO for fast, interactive use, and SPI to offload data.
 
+## Notes about FreeRTOS
+This library is not specifically designed for use with FreeRTOS. 
+For use with FreeRTOS, I suggest you consider [FreeRTOS-FAT-CLI-for-RPi-Pico](https://github.com/carlk3/FreeRTOS-FAT-CLI-for-RPi-Pico) instead. That implementation is designed from the ground up for FreeRTOS.
+
+While FatFS has some support for “re-entrancy” or thread safety (where "thread" == "task", in FreeRTOS terminology), it is limited to operations such as:
+
+- f_read
+- f_write
+- f_sync
+- f_close
+- f_lseek
+- f_closedir
+- f_readdir
+- f_truncate
+
+There does not appear to be sufficient FAT and directory locking in FatFS to make operations like f_mkdir, f_chdir and f_getcwd thread safe. If your application has a static directory tree, it should be OK in a multi-tasking application with FatFS. Otherwise, you probably need to add some additional locking. 
+
+Then, there are the facilities used for mutual exclusion and various ways of waiting (delay, wait for interrupt, etc.). This library uses the Pico SDK facilities (which are oriented towards multi-processing on the two cores), but FreeRTOS-FAT-CLI-for-RPi-Pico uses the FreeRTOS facilities, which put the waiting task into a Blocked state, allowing other, Ready tasks to run. 
+
+FreeRTOS-FAT-CLI-for-RPi-Pico is designed to maximize parallelism. So, if you have two cores and multiple SD card buses (SPI or SDIO), multiple FreeRTOS tasks can keep them all busy simultaneously.
+
 ## Hardware
 ### My boards
 * [Pico SD Card Development Board](https://forums.raspberrypi.com/viewtopic.php?p=2123146#p2123146)

@@ -132,9 +132,9 @@ static void run_info() {
         return;
     }
     // Card IDendtification register. 128 buts wide.
-    cidDmp(sd_card_p);
+    cidDmp(sd_card_p, printf);
     // Card-Specific Data register. 128 bits wide.
-    csdDmp(sd_card_p);
+    csdDmp(sd_card_p, printf);
 
     // Report cluster size ("allocation unit")
     printf("Cluster size (\"allocation unit\"): %d sectors (%llu bytes)\n", 

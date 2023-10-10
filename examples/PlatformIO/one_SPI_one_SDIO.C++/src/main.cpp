@@ -21,40 +21,6 @@ specific language governing permissions and limitations under the License.
 // Serial output stream
 ArduinoOutStream cout(Serial1);
 
-/* ********************************************************************** */
-/*
-This example assumes the following wiring for SD card 0:
-
-    | signal | SPI1 | GPIO | card | Description            |
-    | ------ | ---- | ---- | ---- | ---------------------- |
-    | MISO   | RX   | 12   |  DO  | Master In, Slave Out   |
-    | CS0    | CSn  | 09   |  CS  | Slave (or Chip) Select |
-    | SCK    | SCK  | 14   | SCLK | SPI clock              |
-    | MOSI   | TX   | 15   |  DI  | Master Out, Slave In   |
-    | CD     |      | 13   |  DET | Card Detect            |
-
-This example assumes the following wiring for SD card 1:
-
-    | GPIO  |  card | Function    |
-    | ----  |  ---- | ----------- |
-    |  16   |  DET  | Card Detect |
-    |  17   |  CLK  | SDIO_CLK    |
-    |  18   |  CMD  | SDIO_CMD    |
-    |  19   |  DAT0 | SDIO_D0     |
-    |  20   |  DAT1 | SDIO_D1     |
-    |  21   |  DAT2 | SDIO_D2     |
-    |  22   |  DAT3 | SDIO_D3     |
-
-Pins CLK_gpio, D1_gpio, D2_gpio, and D3_gpio are at offsets from pin D0_gpio.
-The offsets are determined by sd_driver\SDIO\rp2040_sdio.pio.
-    CLK_gpio = (D0_gpio + SDIO_CLK_PIN_D0_OFFSET) % 32;
-    As of this writing, SDIO_CLK_PIN_D0_OFFSET is 30,
-        which is -2 in mod32 arithmetic, so:
-    CLK_gpio = D0_gpio - 2
-    D1_gpio = D0_gpio + 1
-    D2_gpio = D0_gpio + 2
-    D3_gpio = D0_gpio + 3
-*/
 
 void setup() {
     Serial1.begin(115200);  // set up Serial library at 9600 bps
@@ -63,42 +29,92 @@ void setup() {
     cout << "\033[2J\033[H";  // Clear Screen
     cout << "Hello, world!" << endl;
 
+    /*
+    This example assumes the following wiring for SD card 0:
+        | GPIO | Function                         | SD Card | SPI0     |
+        | ---- | -------------------------------- | ------- | -------- |
+        | GP2  | SCK                              | CLK     | SPI0_SCK |
+        | GP3  | MOSI (COPI or Peripheral's SDI)  | CMD/DI  | SPI0_TX  |
+        | GP4  | MISO (CIPO or Peripheral's SDO)  | D0/DO   | SPI0_RX  |
+        | GP7  | SS (CS)                          | D3/CS   |          |
+        | GP9  | Card Detect                      | DET     |          |
+
+    This example assumes the following wiring for SD card 1:
+        | GPIO | SD Card |
+        | ---- | ------- |
+        | GP16 | CLK     |
+        | GP17 | CMD     |
+        | GP18 | D0      |
+        | GP19 | D1      |
+        | GP20 | D2      |
+        | GP21 | D3      |
+        | GP22 | DET     |
+    */
+
     /* Hardware Configuration of SPI object */
+    static spi_t spi = {
+        .hw_inst = spi0,  // RP2040 SPI component
+        .miso_gpio = 4,
+        .mosi_gpio = 3,
+        .sck_gpio = 2,                 // GPIO number (not Pico pin number)
+        .baud_rate = 12 * 1000 * 1000  // Actual frequency: 10416666.
+    };
 
-    // GPIO numbers, not Pico pin numbers!
-    FatFsNs::SpiCfg spi(
-        spi1,             // spi_inst_t *hw_inst,
-        12,               // uint miso_gpio,
-        15,               // uint mosi_gpio,
-        14,               // uint sck_gpio
-        25 * 1000 * 1000  // uint baud_rate
-    );
-    FatFsNs::spi_handle_t spi_handle(FatFsNs::FatFs::add_spi(spi));
+    static sd_spi_if_t spi_if = {
+        .spi = &spi,  // Pointer to the SPI driving this card
+        .ss_gpio = 7  // The SPI slave select GPIO for this SD card
+    };
 
-    /* Hardware Configuration of the SD Card objects */
+    static sd_sdio_if_t sdio_if = {
+        /*
+        Pins CLK_gpio, D1_gpio, D2_gpio, and D3_gpio are at offsets from pin D0_gpio.
+        The offsets are determined by sd_driver\SDIO\rp2040_sdio.pio.
+            CLK_gpio = (D0_gpio + SDIO_CLK_PIN_D0_OFFSET) % 32;
+            As of this writing, SDIO_CLK_PIN_D0_OFFSET is 30,
+                which is -2 in mod32 arithmetic, so:
+            CLK_gpio = D0_gpio -2.
+            D1_gpio = D0_gpio + 1;
+            D2_gpio = D0_gpio + 2;
+            D3_gpio = D0_gpio + 3;
+        */
+        .CMD_gpio = 17,
+        .D0_gpio = 18,
+        .SDIO_PIO = pio1,
+        .DMA_IRQ_num = DMA_IRQ_1,
+        .baud_rate = 15 * 1000 * 1000  // 15 MHz
+    };
 
-    FatFsNs::SdCardSpiCfg spi_sd_card(
-        spi_handle,  // spi_handle_t spi_handle,
-        "0:",        // const char *pcName,
-        9,           // uint ss_gpio,  // Slave select for this SD card
-        true,        // bool use_card_detect = false,
-        13,          // uint card_detect_gpio = 0,       // Card detect; ignored if !use_card_detect
-        1            // uint card_detected_true = false  // Varies with card socket; ignored if !use_card_detect
-    );
-    FatFsNs::FatFs::add_sd_card(spi_sd_card);
+    // Hardware Configuration of the SD Card "objects"
+    static sd_card_t sd_cards[] = {
+        {   // sd_cards[0]
+         /* "pcName" is the FatFs "logical drive" identifier.
+         (See http://elm-chan.org/fsw/ff/doc/filename.html#vol) */
+         .pcName = "0:",
+         .type = SD_IF_SPI,
+         .spi_if_p = &spi_if,  // Pointer to the SPI interface driving this card
+         .use_card_detect = true,
+         .card_detect_gpio = 9,
+         .card_detected_true = 0,  // What the GPIO read returns when a card is present.
+         .card_detect_use_pull = true,
+         .card_detect_pull_hi = true
+        },
+        {   // sd_cards[1]
+            /* "pcName" is the FatFs "logical drive" identifier.
+            (See http://elm-chan.org/fsw/ff/doc/filename.html#vol) */
+            .pcName = "1:",
+            .type = SD_IF_SDIO,
+            .sdio_if_p = &sdio_if,
+            // SD Card detect:
+            .use_card_detect = true,
+            .card_detect_gpio = 22,
+            .card_detected_true = 0,  // What the GPIO read returns when a card is present.
+            .card_detect_use_pull = true,
+            .card_detect_pull_hi = true
+        }
+    };
 
-    // Add another SD card:
-    FatFsNs::SdCardSdioCfg sdio_sd_card(
-        "1:",      // const char *pcName,
-        18,        // uint CMD_gpio,
-        19,        // uint D0_gpio,  // D0
-        true,      // bool use_card_detect = false,
-        16,        // uint card_detect_gpio = 0,    // Card detect, ignored if !use_card_detect
-        1,         // uint card_detected_true = 0,  // Varies with card socket, ignored if !use_card_detect
-        pio1,      // PIO SDIO_PIO = pio0,          // either pio0 or pio1
-        DMA_IRQ_1  // uint DMA_IRQ_num = DMA_IRQ_0  // DMA_IRQ_0 or DMA_IRQ_1
-    );
-    FatFsNs::FatFs::add_sd_card(sdio_sd_card);
+    FatFsNs::FatFs::add_sd_card(&sd_cards[0]);
+    FatFsNs::FatFs::add_sd_card(&sd_cards[1]);
 }
 
 /* ********************************************************************** */

@@ -18,10 +18,21 @@ specific language governing permissions and limitations under the License.
 #include "SerialUART.h"
 #include "iostream/ArduinoStream.h"
 
-using namespace FatFsNs;
-
 // Serial output stream
 ArduinoOutStream cout(Serial1);
+
+/* Infrastructure */
+extern "C" int printf(const char *__restrict format, ...) {
+    char buf[256] = {0};
+    va_list xArgs;
+    va_start(xArgs, format);
+    vsnprintf(buf, sizeof buf, format, xArgs);
+    va_end(xArgs);
+    return Serial1.printf("%s", buf);
+}
+extern "C" int puts(const char *s) {
+    return Serial1.println(s);
+}
 
 /* ********************************************************************** */
 
@@ -40,13 +51,13 @@ void setup() {
         ;  // Serial is via USB; wait for enumeration
 
     /* This example assumes the following wiring:
-        | signal | SPI1 | GPIO | card | Description            |
-        | ------ | ---- | ---- | ---- | ---------------------- |
-        | MISO   | RX   | 12   |  DO  | Master In, Slave Out   |
-        | CS0    | CSn  | 09   |  CS  | Slave (or Chip) Select |
-        | SCK    | SCK  | 14   | SCLK | SPI clock              |
-        | MOSI   | TX   | 15   |  DI  | Master Out, Slave In   |
-        | CD     |      | 13   |  DET | Card Detect            |
+    | GPIO | SPI1     | SD Card |
+    | ---- | -------- | ------- |
+    | GP8  | SPI1_RX  | D0/DO   |
+    | GP10 | SPI1_SCK | CLK     |
+    | GP11 | SPI1_TX  | CMD/DI  |
+    | GP12 |          | D3/CS   |
+    | GP14 |          | DET     |    
     */
 
     // GPIO numbers, not Pico pin numbers!
@@ -57,37 +68,51 @@ void setup() {
     Note: None, either or both of the RP2040 SPI components can be used.
     */
 
-    // Hardware Configuration of SPI object
+    // Hardware Configuration of SPI object:
+    static spi_t spi = {
+        .hw_inst = spi1,  // RP2040 SPI component
+        .miso_gpio = 8,   // GPIO number (not Pico pin number)
+        .mosi_gpio = 11,
+        .sck_gpio = 10,
+        .baud_rate = 12 * 1000 * 1000,   // Actual frequency: 10416666
+        .DMA_IRQ_num = DMA_IRQ_1,
+        .set_drive_strength = true,
+        .mosi_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
+        .sck_gpio_drive_strength = GPIO_DRIVE_STRENGTH_2MA
+    };
 
-    SpiCfg spi(
-        spi1,             // spi_inst_t *hw_inst,
-        12,               // uint miso_gpio,
-        15,               // uint mosi_gpio,
-        14,               // uint sck_gpio
-        25 * 1000 * 1000  // uint baud_rate
-    );
-    spi_handle_t spi_handle(FatFs::add_spi(spi));
+    // Hardware Configuration of SPI Interface object:
+    static sd_spi_if_t spi_if = {
+        .spi = &spi,   // Pointer to the SPI driving this card
+        .ss_gpio = 12,     // The SPI slave select GPIO for this SD card
+        .set_drive_strength = true,
+        .ss_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA
+    };
 
-    // Hardware Configuration of the SD Card object
-
-    SdCardSpiCfg spi_sd_card(
-        spi_handle,  // spi_handle_t spi_handle,
-        "0:",        // const char *pcName,
-        9,           // uint ss_gpio,  // Slave select for this SD card
-        true,        // bool use_card_detect = false,
-        13,          // uint card_detect_gpio = 0,       // Card detect; ignored if !use_card_detect
-        1            // uint card_detected_true = false  // Varies with card socket; ignored if !use_card_detect
-    );
-
-    FatFsNs::SdCard* card_p(FatFs::add_sd_card(spi_sd_card));
+    // Hardware Configuration of the SD Card object:
+    static sd_card_t sd_card = {
+        /* "pcName" is the FatFs "logical drive" identifier.
+        (See http://elm-chan.org/fsw/ff/doc/filename.html#vol) */
+        .pcName = "0:",
+        .type = SD_IF_SPI,
+        .spi_if_p = &spi_if,  // Pointer to the SPI interface driving this card
+        // SD Card detect:
+        .use_card_detect = true,
+        .card_detect_gpio = 14,  
+        .card_detected_true = 0, // What the GPIO read returns when a card is present.
+        .card_detect_use_pull = true,
+        .card_detect_pull_hi = true                                 
+    };
+    
+    // static FatFsNs::SdCard card = FatFsNs::SdCard(&sd_card);
+    FatFsNs::SdCard* card_p(FatFsNs::FatFs::add_sd_card(&sd_card));
 
     /* ********************************************************************** */
     cout << "\033[2J\033[H";  // Clear Screen
     cout << "Hello, world!" << endl;
-    // sd_card_t* pSD = sd_get_by_num(0);
     FRESULT fr = card_p->mount();
     CHK_RESULT("mount", fr);
-    File file;
+    FatFsNs::File file;
     char const* const filename = "filename.txt";
     fr = file.open(filename, FA_OPEN_APPEND | FA_WRITE);
     CHK_RESULT("open", fr);

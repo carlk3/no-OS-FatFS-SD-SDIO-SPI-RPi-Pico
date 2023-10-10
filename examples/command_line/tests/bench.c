@@ -104,7 +104,7 @@ void bench(char const* logdrv) {
     printf("%.2f", sd_card_p->get_num_sectors(sd_card_p) * 512E-9);
     printf(" GB (GB = 1E9 bytes)\n");
 
-    cidDmp(sd_card_p);
+    cidDmp(sd_card_p, printf);
 
     // fill buf with known data
     if (BUF_SIZE > 1) {
@@ -115,11 +115,23 @@ void bench(char const* logdrv) {
     }
     buf[BUF_SIZE - 1] = '\n';
 
-    // open or create file - truncate existing file.
+    // Open or create file.
+    // FA_CREATE_ALWAYS:
+    //	Creates a new file. 
+    //  If the file is existing, it will be truncated and overwritten.
     fr = f_open(&file, "bench.dat", FA_READ | FA_WRITE | FA_CREATE_ALWAYS);
     if (FR_OK != fr) {
         printf("f_open error: %s (%d)\n", FRESULT_str(fr), fr);
         return;
+    }
+    if (PRE_ALLOCATE) {
+        // prepares or allocates a contiguous data area to the file:
+        fr = f_expand(&file, FILE_SIZE, 1);
+        if (FR_OK != fr) {
+            printf("f_expand error: %s (%d)\n", FRESULT_str(fr), fr);
+            f_close(&file);
+            return;
+        }
     }
     printf("FILE_SIZE_MB = %d\n", FILE_SIZE_MiB);     // << FILE_SIZE_MB << endl;
     printf("BUF_SIZE = %zu\n", BUF_SIZE);             // << BUF_SIZE << F(" bytes\n");
@@ -136,21 +148,6 @@ void bench(char const* logdrv) {
             printf("f_rewind error: %s (%d)\n", FRESULT_str(fr), fr);
             f_close(&file);
             return;
-        }
-        fr = f_truncate(&file);
-        if (FR_OK != fr) {
-            printf("f_truncate error: %s (%d)\n", FRESULT_str(fr), fr);
-            f_close(&file);
-            return;
-        }
-        if (PRE_ALLOCATE) {
-            // prepares or allocates a contiguous data area to the file:
-            fr = f_expand(&file, FILE_SIZE, 1);
-            if (FR_OK != fr) {
-                printf("f_expand error: %s (%d)\n", FRESULT_str(fr), fr);
-                f_close(&file);
-                return;
-            }
         }
         maxLatency = 0;
         minLatency = 9999999;
