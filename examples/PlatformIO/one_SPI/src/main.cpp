@@ -22,55 +22,51 @@ specific language governing permissions and limitations under the License.
 /* ********************************************************************** */
 
 /* This example assumes the following wiring:
-    | signal | SPI1 | GPIO | card | Description            | 
-    | ------ | ---- | ---- | ---- | ---------------------- |
-    | MISO   | RX   | 12   |  DO  | Master In, Slave Out   |
-    | CS0    | CSn  | 09   |  CS  | Slave (or Chip) Select |
-    | SCK    | SCK  | 14   | SCLK | SPI clock              |
-    | MOSI   | TX   | 15   |  DI  | Master Out, Slave In   |
-    | CD     |      | 13   |  DET | Card Detect            |
+| GPIO | Function                               | SD Card | SPI0     |
+| ---- | -------------------------------------- | ------- | -------- |
+| GP2  | CLK/SCK                                | CLK     | SPI0_SCK |
+| GP3  | CMD/MOSI (COPI or Peripheral's SDI)    | CMD/DI  | SPI0_TX  |
+| GP4  | DATA 0/MISO (CIPO or Peripheral's SDO) | D0/DO   | SPI0_RX  |
+| GP7  | DATA 3/CS                              | D3/CS   |          |
+| GP9  | Card Detect                            | DET     |          |
 */
 
 // Hardware Configuration of SPI "objects"
 // Note: multiple SD cards can be driven by one SPI if they use different slave
 // selects.
-static spi_t spis[] = {  // One for each SPI.
-    {
-    .hw_inst = spi1,  // SPI component
-    .miso_gpio = 12,  // GPIO number (not Pico pin number)
-    .mosi_gpio = 15,
-    .sck_gpio = 14,
-    .baud_rate = 25 * 1000 * 1000,  // Actual frequency: 20833333.
-    .DMA_IRQ_num = DMA_IRQ_0
-    }
+static spi_t spi = {
+    .hw_inst = spi0,  // RP2040 SPI component
+    .miso_gpio = 4,
+    .mosi_gpio = 3,
+    .sck_gpio = 2,    // GPIO number (not Pico pin number)
+    .baud_rate = 12 * 1000 * 1000   // Actual frequency: 10416666.
 };
 
+static sd_spi_if_t spi_if = {
+    .spi = &spi,  // Pointer to the SPI driving this card
+    .ss_gpio = 7      // The SPI slave select GPIO for this SD card
+} ;
+
 // Hardware Configuration of the SD Card "objects"
-static sd_card_t sd_cards[] = {  // One for each SD card
-    {
-        .pcName = "0:",          // Name used to mount device
-        .spi_if = {
-            .spi = &spis[0],  // Pointer to the SPI driving this card
-            .ss_gpio = 9,     // The SPI slave select GPIO for this SD card
-        },
-        .use_card_detect = true,
-        .card_detect_gpio = 13,  // Card detect
-        .card_detected_true = 1  // What the GPIO read returns when a card is
-                                 // present.
-    }
+static sd_card_t sd_card = {
+    /* "pcName" is the FatFs "logical drive" identifier.
+    (See http://elm-chan.org/fsw/ff/doc/filename.html#vol) */
+    .pcName = "0:",
+    .type = SD_IF_SPI,
+    .spi_if_p = &spi_if,  // Pointer to the SPI interface driving this card
+    .use_card_detect = true,
+    .card_detect_gpio = 9,  
+    .card_detected_true = 0, // What the GPIO read returns when a card is present.
+    .card_detect_use_pull = true,
+    .card_detect_pull_hi = true                                 
+
 };
-extern "C" size_t sd_get_num() { return count_of(sd_cards); }
-extern "C" sd_card_t *sd_get_by_num(size_t num) {
-    if (num <= sd_get_num()) {
-        return &sd_cards[num];
-    } else {
-        return NULL;
-    }
+extern "C" size_t sd_get_num() { 
+    return 1; 
 }
-extern "C" size_t spi_get_num() { return count_of(spis); }
-extern "C" spi_t *spi_get_by_num(size_t num) {
-    if (num <= spi_get_num()) {
-        return &spis[num];
+extern "C" sd_card_t *sd_get_by_num(size_t num) {
+    if (0 == num) {
+        return &sd_card;
     } else {
         return NULL;
     }

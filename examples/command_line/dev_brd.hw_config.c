@@ -124,7 +124,9 @@ static sd_sdio_if_t sdio_ifs[] = {
 */
 static sd_card_t sd_cards[] = {  // One for each SD card
     {   // sd_cards[0]: Socket sd0
-        .pcName = "0:",  // Name used to mount device
+        /* "pcName" is the FatFs "logical drive" identifier.
+        (See http://elm-chan.org/fsw/ff/doc/filename.html#vol) */
+        .pcName = "0:",
         .type = SD_IF_SPI,
         .spi_if_p = &spi_ifs[0],  // Pointer to the SPI interface driving this card
         // SD Card detect:
@@ -136,7 +138,9 @@ static sd_card_t sd_cards[] = {  // One for each SD card
         .card_detect_pull_hi = true                                 
     },
     {   // sd_cards[1]: Socket sd1
-        .pcName = "1:",  // Name used to mount device
+        /* "pcName" is the FatFs "logical drive" identifier.
+        (See http://elm-chan.org/fsw/ff/doc/filename.html#vol) */
+        .pcName = "1:",
         .type = SD_IF_SPI,
         .spi_if_p = &spi_ifs[1],  // Pointer to the SPI interface driving this card
         // SD Card detect:
@@ -148,7 +152,9 @@ static sd_card_t sd_cards[] = {  // One for each SD card
         .card_detect_pull_hi = true                                 
     },
     {   // sd_cards[2]: Socket sd2
-        .pcName = "2:",  // Name used to mount device
+        /* "pcName" is the FatFs "logical drive" identifier.
+        (See http://elm-chan.org/fsw/ff/doc/filename.html#vol) */
+        .pcName = "2:", 
         .type = SD_IF_SPI,
         .spi_if_p = &spi_ifs[2],  // Pointer to the SPI interface driving this card
         // SD Card detect:
@@ -160,7 +166,9 @@ static sd_card_t sd_cards[] = {  // One for each SD card
         .card_detect_pull_hi = true                                 
     },
     {   // sd_cards[3]: Socket sd3
-        .pcName = "3:",  // Name used to mount device
+        /* "pcName" is the FatFs "logical drive" identifier.
+        (See http://elm-chan.org/fsw/ff/doc/filename.html#vol) */
+        .pcName = "3:",
         .type = SD_IF_SDIO,
         .sdio_if_p = &sdio_ifs[0],
         // SD Card detect:

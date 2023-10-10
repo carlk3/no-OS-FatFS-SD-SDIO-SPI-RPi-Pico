@@ -25,7 +25,6 @@ using namespace FatFsNs;
     http://elm-chan.org/fsw/ff/00index_e.html
  */
 
-std::vector<Spi> FatFs::Spis;
 std::vector<SdCard> FatFs::SdCards;
 
 /* Put a formatted string to the file */
@@ -73,15 +72,9 @@ bool FatFs::begin() {
     return true;
 }
 
-size_t __attribute__((weak)) spi_get_num() {
-    return FatFs::Spi_get_num();
-}
-spi_t __attribute__((weak)) * spi_get_by_num(size_t num) {
-    return &FatFs::Spi_get_by_num(num)->m_spi;
-}
 size_t __attribute__((weak)) sd_get_num() {
     return FatFs::SdCard_get_num();
 }
-sd_card_t __attribute__((weak)) * sd_get_by_num(size_t num) {
-    return &(FatFs::SdCard_get_by_num(num)->m_sd_card);
+sd_card_t * __attribute__((weak)) sd_get_by_num(size_t num) {
+    return (FatFs::SdCard_get_by_num(num)->m_sd_card_p);
 }

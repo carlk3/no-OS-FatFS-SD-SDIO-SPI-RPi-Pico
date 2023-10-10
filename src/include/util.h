@@ -16,9 +16,12 @@ specific language governing permissions and limitations under the License.
 
 #include <stddef.h>    
 #include <stdint.h>
+#include <stdio.h>
 // #include "hardware/structs/scb.h"
-#include "RP2040.h"
-#include "my_debug.h"
+// #include "RP2040.h"
+// #include "my_debug.h"
+
+typedef int (*printer_t)(const char* format, ...);
 
 // works with negative index
 static inline int wrap_ix(int index, int n)
@@ -38,9 +41,9 @@ __attribute__((always_inline)) static inline uint32_t calculate_checksum(uint32_
 	return checksum;
 }
 
-static inline void system_reset() {
-    __NVIC_SystemReset();
-}
+// static inline void system_reset() {
+//     __NVIC_SystemReset();
+// }
 
 static inline void dump_bytes(size_t num, uint8_t bytes[]) {
     printf("     ");

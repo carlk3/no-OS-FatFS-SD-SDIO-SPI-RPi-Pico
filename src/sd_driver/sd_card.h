@@ -28,6 +28,7 @@ specific language governing permissions and limitations under the License.
 #include "SPI/spi.h"
 #include "SPI/sd_card_constants.h"
 #include "SDIO/rp2040_sdio.h"
+#include "util.h"
 //
 #include "SdCardInfo.h"
 
@@ -124,8 +125,8 @@ struct sd_card_t {
 
 bool sd_init_driver();
 bool sd_card_detect(sd_card_t *sd_card_p);
-void cidDmp(sd_card_t *sd_card_p);
-void csdDmp(sd_card_t *sd_card_p);
+void cidDmp(sd_card_t *sd_card_p, printer_t printer);
+void csdDmp(sd_card_t *sd_card_p, printer_t printer);
 
 #ifdef __cplusplus
 }
