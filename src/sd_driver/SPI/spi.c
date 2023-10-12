@@ -147,12 +147,12 @@ bool spi_transfer_wait_complete(spi_t *spi_p, uint32_t timeout_ms) {
     bool spi_ok = chk_spi(spi_p->hw_inst);
     if (timed_out || !spi_ok) { 
 #       ifndef NDEBUG
-            // printf("RX DMA control regs:\n");
+            // DBG_PRINTF("RX DMA control regs:\n");
             // print_dma_ctrl(&dma_hw->ch[spi_p->rx_dma]); // pico-sdk\src\rp2_common\hardware_dma\dma.c
-            // printf("\n");
-            printf("DMA CTRL_TRIG: 0b%s\n", uint_binary_str(dma_hw->ch[spi_p->rx_dma].ctrl_trig));
-            printf("SPI SSPCR0: 0b%s\n", uint_binary_str(spi_get_hw(spi_p->hw_inst)->cr0));
-            printf("SPI SSPCR1: 0b%s\n", uint_binary_str(spi_get_hw(spi_p->hw_inst)->cr1));
+            // DBG_PRINTF("\n");
+            DBG_PRINTF("DMA CTRL_TRIG: 0b%s\n", uint_binary_str(dma_hw->ch[spi_p->rx_dma].ctrl_trig));
+            DBG_PRINTF("SPI SSPCR0: 0b%s\n", uint_binary_str(spi_get_hw(spi_p->hw_inst)->cr0));
+            DBG_PRINTF("SPI SSPCR1: 0b%s\n", uint_binary_str(spi_get_hw(spi_p->hw_inst)->cr1));
 #       endif
         return false;
     }

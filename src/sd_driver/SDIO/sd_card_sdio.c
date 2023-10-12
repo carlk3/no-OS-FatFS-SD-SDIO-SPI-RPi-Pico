@@ -26,7 +26,7 @@
 
 //FIXME
 #define azdbg(arg1, ...) {\
-    printf("%s,%d: %s\n", __func__, __LINE__, arg1); \
+    DBG_PRINTF("%s,%d: %s\n", __func__, __LINE__, arg1); \
 }
 #define azlog azdbg
 
@@ -79,7 +79,7 @@ bool sd_sdio_begin(sd_card_t *sd_card_p)
     if (reply != 0x1AA || status != SDIO_OK)
     {
         // azdbg("SDIO not responding to CMD8 SEND_IF_COND, status ", (int)status, " reply ", reply);
-        printf("%s,%d SDIO not responding to CMD8 SEND_IF_COND, status 0x%x reply 0x%lx\n", 
+        EMSG_PRINTF("%s,%d SDIO not responding to CMD8 SEND_IF_COND, status 0x%x reply 0x%lx\n", 
             __func__, __LINE__, status, reply);
         return false;
     }
@@ -142,7 +142,7 @@ bool sd_sdio_begin(sd_card_t *sd_card_p)
     }
     if (!checkReturnOk(rp2040_sdio_command_R1(sd_card_p, 16, 512, &reply))) // SET_BLOCKLEN
     {
-        printf("%s,%d SDIO failed to set BLOCKLEN\n", __func__, __LINE__);
+        EMSG_PRINTF("%s,%d SDIO failed to set BLOCKLEN\n", __func__, __LINE__);
         return false;
     }
     // Increase to high clock rate
@@ -397,7 +397,7 @@ bool sd_sdio_readSector(sd_card_t *sd_card_p, uint32_t sector, uint8_t* dst)
     if (STATE.error != SDIO_OK)
     {
         // azlog("sd_sdio_readSector(", sector, ") failed: ", (int)STATE.error);
-        printf("%s,%d sd_sdio_readSector(%lu) failed: %d\n", 
+        EMSG_PRINTF("%s,%d sd_sdio_readSector(%lu) failed: %d\n", 
             __func__, __LINE__, sector, STATE.error);
     }
 
@@ -440,7 +440,7 @@ bool sd_sdio_readSectors(sd_card_t *sd_card_p, uint32_t sector, uint8_t* dst, si
     if (STATE.error != SDIO_OK)
     {
         // azlog("sd_sdio_readSectors(", sector, ",...,", (int)n, ") failed: ", (int)STATE.error);
-        printf("sd_sdio_readSectors(%ld,...,%d)  failed: %d\n", sector, n, STATE.error);
+        EMSG_PRINTF("sd_sdio_readSectors(%ld,...,%d)  failed: %d\n", sector, n, STATE.error);
         sd_sdio_stopTransmission(sd_card_p, true);
         return false;
     }

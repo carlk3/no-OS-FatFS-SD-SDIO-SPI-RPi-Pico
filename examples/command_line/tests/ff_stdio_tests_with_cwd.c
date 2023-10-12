@@ -85,10 +85,13 @@ specific language governing permissions and limitations under the License.
  */
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 /* FreeRTOS+FAT headers. */
 //#include "ff_headers.h"
 #include "ff_stdio.h"
+//
+#include "my_debug.h"
 
 #ifdef NDEBUG 
 #   warning "This test relies on asserts to verify test results!"
@@ -111,6 +114,8 @@ multiple tasks simultaneously. */
 //#include "hardware/gpio.h" //DEBUG
 //#define TRACE_PRINTF(fmt, args...)
 #define TRACE_PRINTF printf
+
+#define configASSERT myASSERT
 
 /*
  * Examples and basic tests of the ff_truncate() function.

@@ -19,6 +19,18 @@ specific language governing permissions and limitations under the License.
 #define printf Serial1.printf
 #define puts Serial1.println
 
+/* Implement library message callbacks */
+void put_out_error_message(const char *s) {
+    Serial1.write(s);
+}
+void put_out_info_message(const char *s) {
+    Serial1.write(s);
+}
+// This will not be called unless build_flags include "-D USE_DBG_PRINTF":
+void put_out_debug_message(const char *s) {
+    Serial1.write(s);
+}
+
 /* ********************************************************************** */
 
 /* This example assumes the following wiring:

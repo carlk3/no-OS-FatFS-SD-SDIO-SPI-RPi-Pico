@@ -16,12 +16,9 @@ specific language governing permissions and limitations under the License.
 
 #include <stddef.h>    
 #include <stdint.h>
-#include <stdio.h>
 // #include "hardware/structs/scb.h"
 // #include "RP2040.h"
-// #include "my_debug.h"
-
-typedef int (*printer_t)(const char* format, ...);
+#include "my_debug.h"
 
 // works with negative index
 static inline int wrap_ix(int index, int n)
@@ -46,28 +43,27 @@ __attribute__((always_inline)) static inline uint32_t calculate_checksum(uint32_
 // }
 
 static inline void dump_bytes(size_t num, uint8_t bytes[]) {
-    printf("     ");
+    DBG_PRINTF("     ");
     for (size_t j = 0; j < 16; ++j) {
-        printf("%02hhx", j);
+        DBG_PRINTF("%02hhx", j);
         if (j < 15)
-            printf(" ");
+            DBG_PRINTF(" ");
         else {
-            printf("\n");
+            DBG_PRINTF("\n");
         }
     }
     for (size_t i = 0; i < num; i += 16) {
-        printf("%04x ", i);        
+        DBG_PRINTF("%04x ", i);        
         for (size_t j = 0; j < 16 && i + j < num; ++j) {
-            printf("%02hhx", bytes[i + j]);
+            DBG_PRINTF("%02hhx", bytes[i + j]);
             if (j < 15)
-                printf(" ");
+                DBG_PRINTF(" ");
             else {
-                printf("\n");
+                DBG_PRINTF("\n");
             }
         }
     }
-    printf("\n");
-    fflush(stdout);
+    DBG_PRINTF("\n");
 }
 
 char const* uint_binary_str(unsigned int number);

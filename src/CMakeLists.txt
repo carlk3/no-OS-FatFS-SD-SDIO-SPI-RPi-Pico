@@ -5,6 +5,7 @@ pico_generate_pio_header(FatFs_SPI ${CMAKE_CURRENT_LIST_DIR}/sd_driver/SDIO/rp20
 target_compile_definitions(FatFs_SPI INTERFACE
     PICO_MAX_SHARED_IRQ_HANDLERS=8u
 )
+target_compile_options(FatFs_SPI INTERFACE -ffile-prefix-map=${CMAKE_CURRENT_LIST_DIR}=)
 
 target_sources(FatFs_SPI INTERFACE
     ${CMAKE_CURRENT_LIST_DIR}/ff15/source/ff.c

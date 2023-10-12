@@ -13,40 +13,59 @@ specific language governing permissions and limitations under the License.
 */
 #pragma once
 
-#ifdef USE_PRINTF
-#  include <stdio.h>
-#else 
-#  define printf(...)  // Do nothing
-#  define puts(...)
-#  define fflush(...)
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-    // void my_printf(const char *pcFormat, ...) __attribute__((format(__printf__, 1, 2)));
+/* USE_PRINTF
+If this is defined and not zero, 
+these message output functions will use the Pico SDK's stdout.
+*/
 
-    void my_assert_func(const char *file, int line, const char *func,
-                        const char *pred);
+/* USE_DBG_PRINTF
+If this is not defined or is zero or NDEBUG is defined, 
+DBG_PRINTF statements will be effectively stripped from the code.
+*/
+
+/* Single string output callbacks: send message output somewhere.
+To use these, do not define the USE_PRINTF compile definition,
+and override these "weak" functions by strongly implementing them in user code.
+The weak implementations do nothing.
+ */
+void put_out_error_message(const char *s);
+void put_out_info_message(const char *s);
+void put_out_debug_message(const char *s);
+
+// https://gcc.gnu.org/onlinedocs/gcc-3.2.3/cpp/Variadic-Macros.html
+
+int error_message_printf(const char *file, int line, const char *fmt, ...) __attribute__ ((format (__printf__, 3, 4)));
+#ifndef EMSG_PRINTF
+#define EMSG_PRINTF(fmt, ...) error_message_printf(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#endif
+
+int error_message_printf_plain(const char *fmt, ...) __attribute__ ((format (__printf__, 1, 2)));
+
+int debug_message_printf(const char *file, int line, const char *fmt, ...) __attribute__ ((format (__printf__, 3, 4)));
+#ifndef DBG_PRINTF
+#  if defined(USE_DBG_PRINTF) && USE_DBG_PRINTF && !defined(NDEBUG)
+#    define DBG_PRINTF(fmt, ...) debug_message_printf(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#  else
+#    define DBG_PRINTF(fmt, ...) (void)0
+#  endif
+#endif
+
+int info_message_printf(const char *fmt, ...) __attribute__ ((format (__printf__, 1, 2)));
+#ifndef IMSG_PRINTF
+#define IMSG_PRINTF(fmt, ...) info_message_printf(fmt, ##__VA_ARGS__)
+#endif
+
+/* For passing an output function as an argument */
+typedef int (*printer_t)(const char* format, ...);
+
+void my_assert_func(const char *file, int line, const char *func, const char *pred);
+#define myASSERT(__e) \
+    { ((__e) ? (void)0 : my_assert_func(__FILE__, __LINE__, __func__, #__e)); }
 
 #ifdef __cplusplus
 }
-#endif
-
-//#if defined(DEBUG) && !defined(NDEBUG)
-// #define DBG_PRINTF my_printf
-//#else
-
-#if defined(USE_DBG_PRINTF) && !defined(NDEBUG)
-#  define DBG_PRINTF printf
-#else
-#  define DBG_PRINTF(fmt, args...) {} /* Don't do anything in release builds*/
-#endif
-
-#ifdef NDEBUG           /* required by ANSI standard */
-# define myASSERT(__e) ((void)0)
-#else
-# define myASSERT(__e) \
-    ((__e) ? (void)0 : my_assert_func(__FILE__, __LINE__, __func__, #__e))
 #endif

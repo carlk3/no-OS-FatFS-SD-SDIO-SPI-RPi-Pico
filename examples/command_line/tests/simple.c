@@ -20,6 +20,7 @@ specific language governing permissions and limitations under the License.
 //
 #include "f_util.h"
 #include "ff.h"
+#include "my_debug.h"
 
 // Maximum number of elements in buffer
 #define BUFFER_MAX_LEN 10
@@ -30,33 +31,33 @@ specific language governing permissions and limitations under the License.
 extern void ls(const char *dir);
 
 void simple() {
-    printf("\nSimple Test\n");
+    IMSG_PRINTF("\nSimple Test\n");
 
     char cwdbuf[FF_LFN_BUF - 12] = {0};
     FRESULT fr = f_getcwd(cwdbuf, sizeof cwdbuf);
     if (FR_OK != fr) {
-        printf("f_getcwd error: %s (%d)\n", FRESULT_str(fr), fr);
+        EMSG_PRINTF("f_getcwd error: %s (%d)\n", FRESULT_str(fr), fr);
         return;
     }
     // Open the numbers file
-    printf("Opening \"numbers.txt\"... ");
+    IMSG_PRINTF("Opening \"numbers.txt\"... ");
     FIL f;
     fr = f_open(&f, "numbers.txt", FA_READ | FA_WRITE);
-    printf("%s\n", (FR_OK != fr ? "Fail :(" : "OK"));
+    IMSG_PRINTF("%s\n", (FR_OK != fr ? "Fail :(" : "OK"));
     fflush(stdout);
     if (FR_OK != fr && FR_NO_FILE != fr) {
-        printf("f_open error: %s (%d)\n", FRESULT_str(fr), fr);
+        EMSG_PRINTF("f_open error: %s (%d)\n", FRESULT_str(fr), fr);
         return;
     } else if (FR_NO_FILE == fr) {
         // Create the numbers file if it doesn't exist
-        printf("No file found, creating a new file... ");
+        IMSG_PRINTF("No file found, creating a new file... ");
         fflush(stdout);
         fr = f_open(&f, "numbers.txt", FA_CREATE_ALWAYS | FA_WRITE | FA_READ);
-        printf("%s\n", (FR_OK != fr ? "Fail :(" : "OK"));
-        if (FR_OK != fr) printf("f_open error: %s (%d)\n", FRESULT_str(fr), fr);
+        IMSG_PRINTF("%s\n", (FR_OK != fr ? "Fail :(" : "OK"));
+        if (FR_OK != fr) EMSG_PRINTF("f_open error: %s (%d)\n", FRESULT_str(fr), fr);
         fflush(stdout);
         for (int i = 0; i < 10; i++) {
-            printf("\rWriting numbers (%d/%d)... ", i, 10);
+            IMSG_PRINTF("\rWriting numbers (%d/%d)... ", i, 10);
             fflush(stdout);
             // When the string was written successfuly, it returns number of
             // character encoding units written to the file. When the function
@@ -64,23 +65,23 @@ void simple() {
             // returned.
             int rc = f_printf(&f, "    %d\n", i);
             if (rc < 0) {
-                printf("Fail :(\n");
-                printf("f_printf error: %s (%d)\n", FRESULT_str(fr), fr);
+                EMSG_PRINTF("Fail :(\n");
+                EMSG_PRINTF("f_printf error: %s (%d)\n", FRESULT_str(fr), fr);
             }
         }
-        printf("\rWriting numbers (%d/%d)... OK\n", 10, 10);
+        IMSG_PRINTF("\rWriting numbers (%d/%d)... OK\n", 10, 10);
         fflush(stdout);
 
-        printf("Seeking file... ");
+        IMSG_PRINTF("Seeking file... ");
         fr = f_lseek(&f, 0);
-        printf("%s\n", (FR_OK != fr ? "Fail :(" : "OK"));
+        IMSG_PRINTF("%s\n", (FR_OK != fr ? "Fail :(" : "OK"));
         if (FR_OK != fr)
-            printf("f_lseek error: %s (%d)\n", FRESULT_str(fr), fr);
+            EMSG_PRINTF("f_lseek error: %s (%d)\n", FRESULT_str(fr), fr);
         fflush(stdout);
     }
     // Go through and increment the numbers
     for (int i = 0; i < 10; i++) {
-        printf("\nIncrementing numbers (%d/%d)... ", i, 10);
+        IMSG_PRINTF("\nIncrementing numbers (%d/%d)... ", i, 10);
 
         // Get current stream position
         long pos = f_tell(&f);
@@ -88,7 +89,7 @@ void simple() {
         // Parse out the number and increment
         char buf[BUFFER_MAX_LEN];
         if (!f_gets(buf, BUFFER_MAX_LEN, &f)) {
-            printf("error: f_gets returned NULL\n");
+            EMSG_PRINTF("error: f_gets returned NULL\n");
         }
         char *endptr;
         int32_t number = strtol(buf, &endptr, 10);
@@ -108,47 +109,47 @@ void simple() {
         // Flush between write and read on same file
         f_sync(&f);
     }
-    printf("\rIncrementing numbers (%d/%d)... OK\n", 10, 10);
+    IMSG_PRINTF("\rIncrementing numbers (%d/%d)... OK\n", 10, 10);
     fflush(stdout);
 
     // Close the file which also flushes any cached writes
-    printf("Closing \"numbers.txt\"... ");
+    IMSG_PRINTF("Closing \"numbers.txt\"... ");
     fr = f_close(&f);
-    printf("%s\n", (FR_OK != fr ? "Fail :(" : "OK"));
-    if (FR_OK != fr) printf("f_close error: %s (%d)\n", FRESULT_str(fr), fr);
+    IMSG_PRINTF("%s\n", (FR_OK != fr ? "Fail :(" : "OK"));
+    if (FR_OK != fr) EMSG_PRINTF("f_close error: %s (%d)\n", FRESULT_str(fr), fr);
     fflush(stdout);
 
     ls("");
 
     fr = f_chdir("/");
-    if (FR_OK != fr) printf("chdir error: %s (%d)\n", FRESULT_str(fr), fr);
+    if (FR_OK != fr) EMSG_PRINTF("chdir error: %s (%d)\n", FRESULT_str(fr), fr);
 
     ls("");
 
     // Display the numbers file
     char pathbuf[FF_LFN_BUF] = {0};
     snprintf(pathbuf, sizeof pathbuf, "%s/%s", cwdbuf, "numbers.txt");
-    printf("Opening \"%s\"... ", pathbuf);
+    IMSG_PRINTF("Opening \"%s\"... ", pathbuf);
     fr = f_open(&f, pathbuf, FA_READ);
-    printf("%s\n", (FR_OK != fr ? "Fail :(" : "OK"));
-    if (FR_OK != fr) printf("f_open error: %s (%d)\n", FRESULT_str(fr), fr);
+    IMSG_PRINTF("%s\n", (FR_OK != fr ? "Fail :(" : "OK"));
+    if (FR_OK != fr) EMSG_PRINTF("f_open error: %s (%d)\n", FRESULT_str(fr), fr);
     fflush(stdout);
 
-    printf("numbers:\n");
+    IMSG_PRINTF("numbers:\n");
     while (!f_eof(&f)) {
         // int c = f_getc(f);
         char c;
         UINT br;
         fr = f_read(&f, &c, sizeof c, &br);
         if (FR_OK != fr)
-            printf("f_read error: %s (%d)\n", FRESULT_str(fr), fr);
+            EMSG_PRINTF("f_read error: %s (%d)\n", FRESULT_str(fr), fr);
         else
-            printf("%c", c);
+            IMSG_PRINTF("%c", c);
     }
 
-    printf("\nClosing \"%s\"... ", pathbuf);
+    IMSG_PRINTF("\nClosing \"%s\"... ", pathbuf);
     fr = f_close(&f);
-    printf("%s\n", (FR_OK != fr ? "Fail :(" : "OK"));
-    if (FR_OK != fr) printf("f_close error: %s (%d)\n", FRESULT_str(fr), fr);
+    IMSG_PRINTF("%s\n", (FR_OK != fr ? "Fail :(" : "OK"));
+    if (FR_OK != fr) EMSG_PRINTF("f_close error: %s (%d)\n", FRESULT_str(fr), fr);
     fflush(stdout);
 }

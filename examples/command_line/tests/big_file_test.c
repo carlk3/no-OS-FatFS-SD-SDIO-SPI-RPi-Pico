@@ -24,6 +24,7 @@ specific language governing permissions and limitations under the License.
 //
 #include "f_util.h"
 #include "ff.h"
+#include "my_debug.h"
 
 #define FF_MAX_SS 512
 #define BUFFSZ (64 * FF_MAX_SS)  // Should be a factor of 1 Mebibyte
@@ -35,14 +36,14 @@ typedef unsigned int UINT;
 
 static void report(uint64_t size, uint64_t elapsed_us) {
     double elapsed = (double)elapsed_us / 1000 / 1000;
-    printf("Elapsed seconds %.3g\n", elapsed);
-    printf("Transfer rate ");
+    IMSG_PRINTF("Elapsed seconds %.3g\n", elapsed);
+    IMSG_PRINTF("Transfer rate ");
     if ((double)size / elapsed / 1024 / 1024 > 1.0) {
-        printf("%.3g MiB/s (%.3g MB/s), or ",
+        IMSG_PRINTF("%.3g MiB/s (%.3g MB/s), or ",
                (double)size / elapsed / 1024 / 1024,
                (double)size / elapsed / 1000 / 1000);
     }
-    printf("%.3g KiB/s (%.3g kB/s) (%.3g kb/s)\n",
+    IMSG_PRINTF("%.3g KiB/s (%.3g kB/s) (%.3g kb/s)\n",
            (double)size / elapsed / 1024, (double)size / elapsed / 1000, 8.0 * size / elapsed / 1000);
 }
 
@@ -57,7 +58,7 @@ static bool create_big_file(const char *const pathname, uint64_t size,
     /* Open the file, creating the file if it does not already exist. */
     fr = f_open(&file, pathname, FA_WRITE | FA_CREATE_ALWAYS);
     if (FR_OK != fr) {
-        printf("f_open error: %s (%d)\n", FRESULT_str(fr), fr);
+        EMSG_PRINTF("f_open error: %s (%d)\n", FRESULT_str(fr), fr);
         f_close(&file);
         return false;
     }
@@ -65,38 +66,38 @@ static bool create_big_file(const char *const pathname, uint64_t size,
 #if 0
         FRESULT fr = f_lseek(&file, size);
         if (FR_OK != fr) {
-            printf("f_lseek error: %s (%d)\n", FRESULT_str(fr), fr);
+            EMSG_PRINTF("f_lseek error: %s (%d)\n", FRESULT_str(fr), fr);
             f_close(&file);
             return false;
         }
         if (f_tell(&file) != size) {
-            printf("Disk full?\n");
+            EMSG_PRINTF("Disk full?\n");
             f_close(&file);
             return false;
         }
         fr = f_rewind(&file);
         if (FR_OK != fr) {
-            printf("f_rewind error: %s (%d)\n", FRESULT_str(fr), fr);
+            EMSG_PRINTF("f_rewind error: %s (%d)\n", FRESULT_str(fr), fr);
             f_close(&file);
             return false;
         }
 #endif
         fr = f_truncate(&file);
         if (FR_OK != fr) {
-            printf("f_truncate error: %s (%d)\n", FRESULT_str(fr), fr);
+            EMSG_PRINTF("f_truncate error: %s (%d)\n", FRESULT_str(fr), fr);
             f_close(&file);
             return false;
         }
         // prepares or allocates a contiguous data area to the file:
         fr = f_expand(&file, size, 1);
         if (FR_OK != fr) {
-            printf("f_expand error: %s (%d)\n", FRESULT_str(fr), fr);
+            EMSG_PRINTF("f_expand error: %s (%d)\n", FRESULT_str(fr), fr);
             f_close(&file);
             return false;
         }
     }
 
-    printf("Writing...\n");
+    IMSG_PRINTF("Writing...\n");
 
     uint64_t cum_time = 0;
 
@@ -108,12 +109,12 @@ static bool create_big_file(const char *const pathname, uint64_t size,
         absolute_time_t xStart = get_absolute_time();
         fr = f_write(&file, buff, BUFFSZ, &bw);
         if (bw < BUFFSZ) {
-            printf("f_write(%s,,%d,): only wrote %d bytes\n", pathname, BUFFSZ, bw);
+            EMSG_PRINTF("f_write(%s,,%d,): only wrote %d bytes\n", pathname, BUFFSZ, bw);
             f_close(&file);
             return false;
         }
         if (FR_OK != fr) {
-            printf("f_write error: %s (%d)\n", FRESULT_str(fr), fr);
+            EMSG_PRINTF("f_write error: %s (%d)\n", FRESULT_str(fr), fr);
             f_close(&file);
             return false;
         }
@@ -137,10 +138,10 @@ static bool check_big_file(char *pathname, uint64_t size,
 
     fr = f_open(&file, pathname, FA_READ);
     if (FR_OK != fr) {
-        printf("f_open error: %s (%d)\n", FRESULT_str(fr), fr);
+        EMSG_PRINTF("f_open error: %s (%d)\n", FRESULT_str(fr), fr);
         return false;
     }
-    printf("Reading...\n");
+    IMSG_PRINTF("Reading...\n");
 
     uint64_t cum_time = 0;
 
@@ -150,12 +151,12 @@ static bool check_big_file(char *pathname, uint64_t size,
         absolute_time_t xStart = get_absolute_time();
         fr = f_read(&file, buff, BUFFSZ, &br);
         if (br < BUFFSZ) {
-            printf("f_read(,%s,%d,):only read %u bytes\n", pathname, BUFFSZ, br);
+            EMSG_PRINTF("f_read(,%s,%d,):only read %u bytes\n", pathname, BUFFSZ, br);
             f_close(&file);
             return false;
         }
         if (FR_OK != fr) {
-            printf("f_read error: %s (%d)\n", FRESULT_str(fr), fr);
+            EMSG_PRINTF("f_read error: %s (%d)\n", FRESULT_str(fr), fr);
             f_close(&file);
             return false;
         }
@@ -167,7 +168,7 @@ static bool check_big_file(char *pathname, uint64_t size,
             unsigned int expected = rand();
             unsigned int val = buff[n];
             if (val != expected) {
-                printf("Data mismatch at dword %llu: expected=0x%8x val=0x%8x\n",
+                EMSG_PRINTF("Data mismatch at dword %llu: expected=0x%8x val=0x%8x\n",
                        (i * sizeof(buff)) + n, expected, val);
                 f_close(&file);
                 return false;
@@ -184,10 +185,10 @@ static bool check_big_file(char *pathname, uint64_t size,
 void big_file_test(char *pathname, size_t size_MiB, uint32_t seed) {
     //  /* Working buffer */
     DWORD *buff = malloc(BUFFSZ);
-    assert(buff);
-    assert(size_MiB);
+    myASSERT(buff);
+    myASSERT(size_MiB);
     if (4095 < size_MiB) {
-        printf("Warning: Maximum file size: 2^32 - 1 bytes on FAT volume\n");
+        EMSG_PRINTF("Warning: Maximum file size: 2^32 - 1 bytes on FAT volume\n");
     }
     uint64_t size_B = (uint64_t)size_MiB * 1024 * 1024;
 

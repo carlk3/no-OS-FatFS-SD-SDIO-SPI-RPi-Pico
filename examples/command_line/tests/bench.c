@@ -2,8 +2,7 @@
  *
  * This program is a simple binary write/read benchmark.
  */
-#include <assert.h>
-#include <stdio.h>
+#include <my_debug.h>
 #include <string.h>
 
 #include "SdCardInfo.h"
@@ -12,10 +11,10 @@
 #include "ff.h"
 #include "hw_config.h"
 
-#define error(s)                  \
-    {                             \
-        printf("ERROR: %s\n", s); \
-        assert(!s);               \
+#define error(s)                       \
+    {                                  \
+        EMSG_PRINTF("ERROR: %s\n", s); \
+        __breakpoint();                \
     }
 
 static uint32_t millis() {
@@ -27,7 +26,7 @@ static uint64_t micros() {
 static sd_card_t* sd_get_by_name(const char* const name) {
     for (size_t i = 0; i < sd_get_num(); ++i)
         if (0 == strcmp(sd_get_by_num(i)->pcName, name)) return sd_get_by_num(i);
-    printf("%s: unknown name %s\n", __func__, name);
+    EMSG_PRINTF("%s: unknown name %s\n", __func__, name);
     return NULL;
 }
 
@@ -72,39 +71,39 @@ void bench(char const* logdrv) {
             "For accurate results, FILE_SIZE must be a multiple of BUF_SIZE.");
 
     // Insure 4-byte alignment.
-    uint32_t buf32[(BUF_SIZE + 3) / 4] __attribute__ ((aligned (4)));
+    uint32_t buf32[BUF_SIZE] __attribute__ ((aligned (4)));
     uint8_t* buf = (uint8_t*)buf32;
 
     sd_card_t *sd_card_p = sd_get_by_name(logdrv);
     if (!sd_card_p) {
-        printf("Unknown logical drive name: %s\n", logdrv);
+        EMSG_PRINTF("Unknown logical drive name: %s\n", logdrv);
         return;
     }
     FRESULT fr = f_chdrive(logdrv);
     if (FR_OK != fr) {
-        printf("f_chdrive error: %s (%d)\n", FRESULT_str(fr), fr);
+        EMSG_PRINTF("f_chdrive error: %s (%d)\n", FRESULT_str(fr), fr);
         return;
     }
     switch (sd_card_p->fatfs.fs_type) {
         case FS_EXFAT:
-            printf("Type is exFAT\n");
+            IMSG_PRINTF("Type is exFAT\n");
             break;
         case FS_FAT12:
-            printf("Type is FAT12\n");
+            IMSG_PRINTF("Type is FAT12\n");
             break;
         case FS_FAT16:
-            printf("Type is FAT16\n");
+            IMSG_PRINTF("Type is FAT16\n");
             break;
         case FS_FAT32:
-            printf("Type is FAT32\n");
+            IMSG_PRINTF("Type is FAT32\n");
             break;
     }
 
-    printf("Card size: ");
-    printf("%.2f", sd_card_p->get_num_sectors(sd_card_p) * 512E-9);
-    printf(" GB (GB = 1E9 bytes)\n");
+    IMSG_PRINTF("Card size: ");
+    IMSG_PRINTF("%.2f", sd_card_p->get_num_sectors(sd_card_p) * 512E-9);
+    IMSG_PRINTF(" GB (GB = 1E9 bytes)\n");
 
-    cidDmp(sd_card_p, printf);
+    cidDmp(sd_card_p, info_message_printf);
 
     // fill buf with known data
     if (BUF_SIZE > 1) {
@@ -121,31 +120,31 @@ void bench(char const* logdrv) {
     //  If the file is existing, it will be truncated and overwritten.
     fr = f_open(&file, "bench.dat", FA_READ | FA_WRITE | FA_CREATE_ALWAYS);
     if (FR_OK != fr) {
-        printf("f_open error: %s (%d)\n", FRESULT_str(fr), fr);
+        EMSG_PRINTF("f_open error: %s (%d)\n", FRESULT_str(fr), fr);
         return;
     }
     if (PRE_ALLOCATE) {
         // prepares or allocates a contiguous data area to the file:
         fr = f_expand(&file, FILE_SIZE, 1);
         if (FR_OK != fr) {
-            printf("f_expand error: %s (%d)\n", FRESULT_str(fr), fr);
+            EMSG_PRINTF("f_expand error: %s (%d)\n", FRESULT_str(fr), fr);
             f_close(&file);
             return;
         }
     }
-    printf("FILE_SIZE_MB = %d\n", FILE_SIZE_MiB);     // << FILE_SIZE_MB << endl;
-    printf("BUF_SIZE = %zu\n", BUF_SIZE);             // << BUF_SIZE << F(" bytes\n");
-    printf("Starting write test, please wait.\n\n");  // << endl
+    IMSG_PRINTF("FILE_SIZE_MB = %d\n", FILE_SIZE_MiB);     // << FILE_SIZE_MB << endl;
+    IMSG_PRINTF("BUF_SIZE = %zu\n", BUF_SIZE);             // << BUF_SIZE << F(" bytes\n");
+    IMSG_PRINTF("Starting write test, please wait.\n\n");  // << endl
                                                       // << endl;
     // do write test
     uint32_t n = FILE_SIZE / BUF_SIZE;
-    printf("write speed and latency\n");
-    printf("speed,max,min,avg\n");
-    printf("KB/Sec,usec,usec,usec\n");
+    IMSG_PRINTF("write speed and latency\n");
+    IMSG_PRINTF("speed,max,min,avg\n");
+    IMSG_PRINTF("KB/Sec,usec,usec,usec\n");
     for (uint8_t nTest = 0; nTest < WRITE_COUNT; nTest++) {
         fr = f_rewind(&file);
         if (FR_OK != fr) {
-            printf("f_rewind error: %s (%d)\n", FRESULT_str(fr), fr);
+            EMSG_PRINTF("f_rewind error: %s (%d)\n", FRESULT_str(fr), fr);
             f_close(&file);
             return;
         }
@@ -159,7 +158,7 @@ void bench(char const* logdrv) {
             unsigned int bw;
             fr = f_write(&file, buf, BUF_SIZE, &bw); /* Write it to the destination file */
             if (FR_OK != fr) {
-                printf("f_write error: %s (%d)\n", FRESULT_str(fr), fr);
+                EMSG_PRINTF("f_write error: %s (%d)\n", FRESULT_str(fr), fr);
                 f_close(&file);
                 return;
             }
@@ -183,25 +182,25 @@ void bench(char const* logdrv) {
         }
         fr = f_sync(&file);
         if (FR_OK != fr) {
-            printf("f_sync error: %s (%d)\n", FRESULT_str(fr), fr);
+            EMSG_PRINTF("f_sync error: %s (%d)\n", FRESULT_str(fr), fr);
             f_close(&file);
             return;
         }
         t = millis() - t;
         s = f_size(&file);
-        printf("%.1f,%lu,%lu", s / t, maxLatency, minLatency);
-        printf(",%lu\n", totalLatency / n);
+        IMSG_PRINTF("%.1f,%lu,%lu", s / t, maxLatency, minLatency);
+        IMSG_PRINTF(",%lu\n", totalLatency / n);
     }
-    printf("\nStarting read test, please wait.\n");
-    printf("\nread speed and latency\n");
-    printf("speed,max,min,avg\n");
-    printf("KB/Sec,usec,usec,usec\n");
+    IMSG_PRINTF("\nStarting read test, please wait.\n");
+    IMSG_PRINTF("\nread speed and latency\n");
+    IMSG_PRINTF("speed,max,min,avg\n");
+    IMSG_PRINTF("KB/Sec,usec,usec,usec\n");
 
     // do read test
     for (uint8_t nTest = 0; nTest < READ_COUNT; nTest++) {
         fr = f_rewind(&file);
         if (FR_OK != fr) {
-            printf("f_rewind error: %s (%d)\n", FRESULT_str(fr), fr);
+            EMSG_PRINTF("f_rewind error: %s (%d)\n", FRESULT_str(fr), fr);
             f_close(&file);
             return;
         }
@@ -216,7 +215,7 @@ void bench(char const* logdrv) {
             unsigned int nr;
             fr = f_read(&file, buf, BUF_SIZE, &nr);
             if (FR_OK != fr) {
-                printf("f_read error: %s (%d)\n", FRESULT_str(fr), fr);
+                EMSG_PRINTF("f_read error: %s (%d)\n", FRESULT_str(fr), fr);
                 f_close(&file);
                 return;
             }
@@ -241,13 +240,13 @@ void bench(char const* logdrv) {
         }
         s = f_size(&file);
         t = millis() - t;
-        printf("%.1f,%lu,%lu", s / t, maxLatency, minLatency);
-        printf(",%lu\n", totalLatency / n);
+        IMSG_PRINTF("%.1f,%lu,%lu", s / t, maxLatency, minLatency);
+        IMSG_PRINTF(",%lu\n", totalLatency / n);
     }
-    printf("\nDone\n");
+    IMSG_PRINTF("\nDone\n");
     fr = f_close(&file);
     if (FR_OK != fr) {
-        printf("f_close error: %s (%d)\n", FRESULT_str(fr), fr);
+        EMSG_PRINTF("f_close error: %s (%d)\n", FRESULT_str(fr), fr);
         return;
     }
 }

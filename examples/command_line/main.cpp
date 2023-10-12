@@ -40,55 +40,59 @@ static absolute_time_t next_log_time;
 static sd_card_t *sd_get_by_name(const char *const name) {
     for (size_t i = 0; i < sd_get_num(); ++i)
         if (0 == strcmp(sd_get_by_num(i)->pcName, name)) return sd_get_by_num(i);
-    DBG_PRINTF("%s: unknown name %s\n", __func__, name);
+    printf("%s: unknown name %s\n", __func__, name);
     return NULL;
 }
 static FATFS *sd_get_fs_by_name(const char *name) {
     for (size_t i = 0; i < sd_get_num(); ++i)
         if (0 == strcmp(sd_get_by_num(i)->pcName, name)) return &sd_get_by_num(i)->fatfs;
-    DBG_PRINTF("%s: unknown name %s\n", __func__, name);
+    printf("%s: unknown name %s\n", __func__, name);
     return NULL;
+}
+
+static void missing_argument() {
+    printf("Missing argument\n");
 }
 
 static void run_setrtc() {
     const char *dateStr = strtok(NULL, " ");
     if (!dateStr) {
-        printf("Missing argument\n");
+        missing_argument();
         return;
     }
     int date = atoi(dateStr);
 
     const char *monthStr = strtok(NULL, " ");
     if (!monthStr) {
-        printf("Missing argument\n");
+        missing_argument();
         return;
     }
     int month = atoi(monthStr);
 
     const char *yearStr = strtok(NULL, " ");
     if (!yearStr) {
-        printf("Missing argument\n");
+        missing_argument();
         return;
     }
     int year = atoi(yearStr) + 2000;
 
     const char *hourStr = strtok(NULL, " ");
     if (!hourStr) {
-        printf("Missing argument\n");
+        missing_argument();
         return;
     }
     int hour = atoi(hourStr);
 
     const char *minStr = strtok(NULL, " ");
     if (!minStr) {
-        printf("Missing argument\n");
+        missing_argument();
         return;
     };
     int min = atoi(minStr);
 
     const char *secStr = strtok(NULL, " ");
     if (!secStr) {
-        printf("Missing argument\n");
+        missing_argument();
         return;
     }
     int sec = atoi(secStr);
@@ -252,7 +256,7 @@ static void run_getfree() {
 static void run_cd() {
     char *arg1 = strtok(NULL, " ");
     if (!arg1) {
-        printf("Missing argument\n");
+        missing_argument();
         return;
     }
     FRESULT fr = f_chdir(arg1);
@@ -261,7 +265,7 @@ static void run_cd() {
 static void run_mkdir() {
     char *arg1 = strtok(NULL, " ");
     if (!arg1) {
-        printf("Missing argument\n");
+        missing_argument();
         return;
     }
     FRESULT fr = f_mkdir(arg1);
@@ -322,7 +326,7 @@ static void run_ls() {
 static void run_cat() {
     char *arg1 = strtok(NULL, " ");
     if (!arg1) {
-        printf("Missing argument\n");
+        missing_argument();
         return;
     }
     FIL fil;
@@ -341,18 +345,18 @@ static void run_cat() {
 static void run_big_file_test() {
     const char *pcPathName = strtok(NULL, " ");
     if (!pcPathName) {
-        printf("Missing argument\n");
+        missing_argument();
         return;
     }
     const char *pcSize = strtok(NULL, " ");
     if (!pcSize) {
-        printf("Missing argument\n");
+        missing_argument();
         return;
     }
     size_t size = strtoul(pcSize, 0, 0);
     const char *pcSeed = strtok(NULL, " ");
     if (!pcSeed) {
-        printf("Missing argument\n");
+        missing_argument();
         return;
     }
     uint32_t seed = atoi(pcSeed);
@@ -374,7 +378,7 @@ static void del_node(const char *path) {
 static void run_del_node() {
     char *arg1 = strtok(NULL, " ");
     if (!arg1) {
-        printf("Missing argument\n");
+        missing_argument();
         return;
     }
     del_node(arg1);
@@ -438,7 +442,7 @@ static void run_set_sys_clock_48mhz() {
 static void run_set_sys_clock_khz() {
     char *arg1 = strtok(NULL, " ");
     if (!arg1) {
-        printf("Missing argument\n");
+        missing_argument();
         return;
     }
     int khz = atoi(arg1);
@@ -468,7 +472,7 @@ static void run_set_sys_clock_khz() {
 static void clr() {
     char *arg1 = strtok(NULL, " ");
     if (!arg1) {
-        printf("Missing argument\n");
+        missing_argument();
         return;
     }
     int gp = atoi(arg1);
@@ -480,7 +484,7 @@ static void clr() {
 static void set() {
     char *arg1 = strtok(NULL, " ");
     if (!arg1) {
-        printf("Missing argument\n");
+        missing_argument();
         return;
     }
     int gp = atoi(arg1);

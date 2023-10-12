@@ -20,10 +20,22 @@ specific language governing permissions and limitations under the License.
 #include "SerialUART.h"
 #include "iostream/ArduinoStream.h"
 
+static const uint led_pin = PICO_DEFAULT_LED_PIN;
+
 // Serial output stream
 ArduinoOutStream cout(Serial1);
 
-static const uint led_pin = PICO_DEFAULT_LED_PIN;
+/* Implement library message callbacks */
+void put_out_error_message(const char *s) {
+    Serial1.write(s);
+}
+void put_out_info_message(const char *s) {
+    Serial1.write(s);
+}
+// This will not be called unless build_flags include "-D USE_DBG_PRINTF":
+void put_out_debug_message(const char *s) {
+    Serial1.write(s);
+}
 
 /* ********************************************************************** */
 

@@ -20,10 +20,8 @@ pico_sdk_init()
 add_subdirectory(../../src build)
 
 # Add executable. Default name is the project name, version 0.1
-add_executable(simple_sdio 
-    main.c
-    hw_config.c
-)
+add_executable(simple_sdio main.c)
+
 # Can leave these off for silent mode:
 # add_compile_definitions(USE_PRINTF USE_DBG_PRINTF)
 add_compile_definitions(USE_PRINTF)

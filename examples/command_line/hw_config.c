@@ -42,9 +42,8 @@ See https://docs.google.com/spreadsheets/d/1BrzLWTyifongf_VQCc2IpJqXWtsrjmG7KnIb
 tab "Monster", for pin assignments assumed in this configuration file.
 */
 
-#include <assert.h>
-//
 #include "hw_config.h"
+#include "my_debug.h"
 
 
 // Hardware Configuration of SPI "objects"
@@ -178,7 +177,7 @@ static sd_card_t sd_cards[] = {  // One for each SD card
 size_t sd_get_num() { return count_of(sd_cards); }
 
 sd_card_t *sd_get_by_num(size_t num) {
-    assert(num < sd_get_num());
+    myASSERT(num < sd_get_num());
     if (num < sd_get_num()) {
         return &sd_cards[num];
     } else {
