@@ -21,13 +21,14 @@
 #include "rp2040_sdio.pio.h"
 #include "RP2040.h"
 #include "sd_card.h"
+#include "my_debug.h"
 #include "util.h"
 
 // #define azdbg(Params...)DMA_CH
 // #define azlog(Params...)
 
 #define azdbg(arg1, ...) {\
-    printf("%s,%s:%d %s\n", __func__, __FILE__, __LINE__, arg1); \
+    DBG_PRINTF("%s,%s:%d %s\n", __func__, __FILE__, __LINE__, arg1); \
 }
 #define azlog azdbg
 
@@ -176,7 +177,7 @@ sdio_status_t rp2040_sdio_command_R1(sd_card_t *sd_card_p, uint8_t command, uint
                     "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_CMD_SM) - (int)STATE.pio_cmd_clk_offset,
                     " RXF: ", (int)pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_CMD_SM),
                     " TXF: ", (int)pio_sm_get_tx_fifo_level(SDIO_PIO, SDIO_CMD_SM));
-                printf("%s: Timeout waiting for response in rp2040_sdio_command_R1(0x%hx)\n", __func__, command);
+                EMSG_PRINTF("%s: Timeout waiting for response in rp2040_sdio_command_R1(0x%hx)\n", __func__, command);
             }
 
             // Reset the state machine program
@@ -205,7 +206,7 @@ sdio_status_t rp2040_sdio_command_R1(sd_card_t *sd_card_p, uint8_t command, uint
         if (crc != actual_crc)
         {
             // azdbg("rp2040_sdio_command_R1(", (int)command, "): CRC error, calculated ", crc, " packet has ", actual_crc);
-            printf("rp2040_sdio_command_R1(%d): CRC error, calculated 0x%hx, packet has 0x%hx\n", command, crc, actual_crc);
+            EMSG_PRINTF("rp2040_sdio_command_R1(%d): CRC error, calculated 0x%hx, packet has 0x%hx\n", command, crc, actual_crc);
             return SDIO_ERR_RESPONSE_CRC;
         }
 
@@ -213,7 +214,7 @@ sdio_status_t rp2040_sdio_command_R1(sd_card_t *sd_card_p, uint8_t command, uint
         if (response_cmd != command && command != 41)
         {
             // azdbg("rp2040_sdio_command_R1(", (int)command, "): received reply for ", (int)response_cmd);
-            printf("%d rp2040_sdio_command_R1(%d): received reply for %d\n", __LINE__, command, response_cmd);
+            EMSG_PRINTF("%d rp2040_sdio_command_R1(%d): received reply for %d\n", __LINE__, command, response_cmd);
             return SDIO_ERR_RESPONSE_CODE;
         }
 
@@ -429,7 +430,7 @@ static void sdio_verify_rx_checksums(sd_card_t *sd_card_p, uint32_t maxcount)
             {
                 // azlog("SDIO checksum error in reception: block ", blockidx,
                 //       " calculated ", checksum, " expected ", expected);
-                printf("%s,%d SDIO checksum error in reception: block %d calculated 0x%llx expected 0x%llx\n",
+                EMSG_PRINTF("%s,%d SDIO checksum error in reception: block %d calculated 0x%llx expected 0x%llx\n",
                     __func__, __LINE__, blockidx, checksum, expected);
                 dump_bytes(SDIO_WORDS_PER_BLOCK, (uint8_t *)STATE.data_buf + blockidx * SDIO_WORDS_PER_BLOCK);
             }

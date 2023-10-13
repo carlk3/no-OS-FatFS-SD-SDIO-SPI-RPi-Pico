@@ -46,17 +46,19 @@ It will destroy the format of the SD card!
 #include "FatFsSd_C.h"
 #include "SerialUART.h"
 
-/* Infrastructure*/
-extern "C" int printf(const char *__restrict format, ...) {
-    char buf[256] = {0};
-    va_list xArgs;
-    va_start(xArgs, format);
-    vsnprintf(buf, sizeof buf, format, xArgs);
-    va_end(xArgs);
-    return Serial1.printf("%s", buf);
+#define printf Serial1.printf
+#define puts Serial1.println
+
+/* Implement library message callbacks */
+void put_out_error_message(const char *s) {
+    Serial1.write(s);
 }
-extern "C" int puts(const char *s) {
-    return Serial1.println(s);
+void put_out_info_message(const char *s) {
+    Serial1.write(s);
+}
+// This will not be called unless build_flags include "-D USE_DBG_PRINTF":
+void put_out_debug_message(const char *s) {
+    Serial1.write(s);
 }
 
 /* ********************************************************************** */

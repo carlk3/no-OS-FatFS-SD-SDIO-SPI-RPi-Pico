@@ -49,7 +49,7 @@ bool sd_card_detect(sd_card_t *sd_card_p) {
         // The socket is now empty
         sd_card_p->m_Status |= (STA_NODISK | STA_NOINIT);
         sd_card_p->card_type = SDCARD_NONE;
-        printf("No SD card detected!\r\n");
+        EMSG_PRINTF("No SD card detected!\r\n");
         return false;
     }
 }
@@ -75,7 +75,6 @@ bool sd_init_driver() {
             }  // switch (sd_card_p->type)
 
             if (sd_card_p->use_card_detect) {
-                gpio_init(sd_card_p->card_detect_gpio);
                 if (sd_card_p->card_detect_use_pull) {
                     if (sd_card_p->card_detect_pull_hi) {
                         gpio_pull_up(sd_card_p->card_detect_gpio);
@@ -83,7 +82,7 @@ bool sd_init_driver() {
                         gpio_pull_down(sd_card_p->card_detect_gpio);
                     }
                 }
-                gpio_set_dir(sd_card_p->card_detect_gpio, GPIO_IN);
+                gpio_init(sd_card_p->card_detect_gpio);
             }
         }  // for
 

@@ -86,11 +86,12 @@ specific language governing permissions and limitations under the License.
  * based reads and writes.
  */
 
+#include <stdio.h>
 /* FreeRTOS+FAT headers. */
 //#include "ff_headers.h"
 #include "ff_stdio.h"
-
-#include <stdio.h>
+//
+#include "my_debug.h"
 
 #ifdef NDEBUG 
 #   warning "This test relies on asserts to verify test results!"
@@ -98,7 +99,9 @@ specific language governing permissions and limitations under the License.
 #endif
 
 //#define TRACE_PRINTF(fmt, args...)
-#define TRACE_PRINTF printf
+#define TRACE_PRINTF DBG_PRINTF
+
+#define configASSERT myASSERT
 
 /* The number of bytes read/written to the example files at a time. */
 #define fsRAM_BUFFER_SIZE 				200
@@ -154,7 +157,7 @@ void vCreateAndVerifyExampleFiles( const char *pcMountPath )
 	// Pretend mount path:
 	int lResult = ff_mkdir(pcMountPath);
 	if (-1 == lResult && errno != EEXIST) {
-		printf("ff_mkdir %s failed: %s (%d)\n", pcMountPath,
+		EMSG_PRINTF("ff_mkdir %s failed: %s (%d)\n", pcMountPath,
 				strerror(errno), errno);
 		return;
 	}

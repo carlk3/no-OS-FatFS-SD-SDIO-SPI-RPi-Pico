@@ -33,19 +33,34 @@ ArduinoOutStream cout(Serial1);
 
 using namespace FatFsNs;
 
+/* Implement library message callbacks */
+void put_out_error_message(const char *s) {
+    Serial1.write(s);
+}
+void put_out_info_message(const char *s) {
+    Serial1.write(s);
+}
+/* This will not be called unless build_flags include "-D USE_DBG_PRINTF": */
+// void put_out_debug_message(const char *s) {
+//     Serial1.write(s);
+// }
+
 /* ********************************************************************** */
 
 // Check the FRESULT of a library call.
 //  (See http://elm-chan.org/fsw/ff/doc/rc.html.)
-static void FAIL(const char* s, FRESULT fr) {
-    cout << __FILE__ << ":" << __LINE__ << ": " << s << ": "
-         << FRESULT_str(fr) << " (" << fr << ")" << endl;
-    for (;;) __breakpoint();
-}
+#define FAIL(s, fr)                                              \
+    {                                                            \
+        cout << __FILE__ << ":" << __LINE__ << ": " << s << ": " \
+             << FRESULT_str(fr) << " (" << fr << ")" << endl;    \
+        for (;;) __breakpoint();                                 \
+    }
+
 static void CHK_FRESULT(const char* s, FRESULT fr) {
     if (FR_OK != fr)
         FAIL(s, fr);
 }
+
 #define ASSERT(pred)                                       \
     {                                                      \
         if (!(pred)) {                                     \

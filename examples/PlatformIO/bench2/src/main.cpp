@@ -9,24 +9,24 @@
 
 #include "Arduino.h"
 #include "FatFsSd.h"
+#include "my_debug.h"
 
 using namespace FatFsNs;
 
-/* Infrastructure*/
-// This implementation has the advantage that it works for
-//   printfs elsewhere in the system; e.g., in an assert
-//   somewhere in the runtime.
-extern "C" int printf(const char* __restrict format, ...) {
-    char buf[256] = {0};
-    va_list xArgs;
-    va_start(xArgs, format);
-    vsnprintf(buf, sizeof buf, format, xArgs);
-    va_end(xArgs);
-    return Serial1.write(buf);
+#define printf Serial1.printf
+#define puts Serial1.println
+
+/* Implement library message callbacks */
+void put_out_error_message(const char *s) {
+    Serial1.write(s);
 }
-extern "C" int puts(const char* s) {
-    return Serial1.write(s);
+void put_out_info_message(const char *s) {
+    Serial1.write(s);
 }
+/* This will not be called unless build_flags include "-D USE_DBG_PRINTF": */
+// void put_out_debug_message(const char *s) {
+//     Serial1.write(s);
+// }
 
 #define error(s)                  \
     {                             \
@@ -200,7 +200,7 @@ static void bench(char const* logdrv) {
                   "For accurate results, FILE_SIZE must be a multiple of BUF_SIZE.");
 
     // Insure 4-byte alignment.
-    uint32_t buf32[(BUF_SIZE + 3) / 4] __attribute__((aligned(4)));
+    uint32_t buf32[BUF_SIZE] __attribute__((aligned(4)));
     uint8_t* buf = (uint8_t*)buf32;
 
     SdCard* SdCard_p(FatFs::SdCard_get_by_name(logdrv));
@@ -232,8 +232,8 @@ static void bench(char const* logdrv) {
 
     // typedef int (*printer_t)(const char* format, ...);
 
-    SdCard_p->cidDmp(printf);
-    SdCard_p->csdDmp(printf);
+    SdCard_p->cidDmp(info_message_printf);
+    SdCard_p->csdDmp(info_message_printf);
 
     // fr = f_mount(&SdCard_p->fatfs, SdCard_p->pcName, 1);
     SdCard_p->mount();

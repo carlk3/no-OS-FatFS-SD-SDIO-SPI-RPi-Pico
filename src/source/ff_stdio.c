@@ -396,7 +396,7 @@ FF_FILE *ff_truncate(const char *pcFileName, long lTruncateSize) {
     }
     FRESULT fr = f_open(fp, pcFileName, FA_OPEN_APPEND | FA_WRITE);
     if (FR_OK != fr)
-        printf("%s: f_open error: %s (%d)\n", __func__, FRESULT_str(fr), fr);
+        EMSG_PRINTF("%s: f_open error: %s (%d)\n", __func__, FRESULT_str(fr), fr);
     errno = fresult2errno(fr);
     if (FR_OK != fr) return NULL;
     while (f_tell(fp) < (FSIZE_t)lTruncateSize) {
@@ -411,11 +411,11 @@ FF_FILE *ff_truncate(const char *pcFileName, long lTruncateSize) {
     fr = f_lseek(fp, lTruncateSize);
     errno = fresult2errno(fr);
     if (FR_OK != fr)
-        printf("%s: f_lseek error: %s (%d)\n", __func__, FRESULT_str(fr), fr);
+        EMSG_PRINTF("%s: f_lseek error: %s (%d)\n", __func__, FRESULT_str(fr), fr);
     if (FR_OK != fr) return NULL;
     fr = f_truncate(fp);
     if (FR_OK != fr)
-        printf("%s: f_truncate error: %s (%d)\n", __func__, FRESULT_str(fr),
+        EMSG_PRINTF("%s: f_truncate error: %s (%d)\n", __func__, FRESULT_str(fr),
                fr);
     errno = fresult2errno(fr);
     if (FR_OK == fr)
