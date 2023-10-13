@@ -524,9 +524,20 @@ you may call `sd_init_driver()` to initialize the block device driver. `sd_init_
 * There is a simple example in the `simple_example` subdirectory.
 * There is also POSIX-like API wrapper layer in `ff_stdio.h` and `ff_stdio.c`, written for compatibility with [FreeRTOS+FAT API](https://www.freertos.org/FreeRTOS-Plus/FreeRTOS_Plus_FAT/index.html) (mainly so that I could reuse some tests from that environment.)
 
+### Messages
+Sometimes problems arise when attempting to use SD cards. At the [FatFs Application Interface](http://elm-chan.org/fsw/ff/00index_e.html) level, it can be difficult to diagnose problems. You get a [return code](http://elm-chan.org/fsw/ff/doc/rc.html), but it might just tell you `FR_NOT_READY` ("The physical drive cannot work"), for example, without telling you what you need to know in order to fix the problem. The library generates messages that might help. These are classed into Error, Informational, and Debug messages. 
+
+Two compile definitions control how these are handled:
+* `USE_PRINTF` If this is defined and not zero, 
+these message output functions will use the Pico SDK's stdout.
+* `USE_DBG_PRINTF` If this is not defined or is zero or `NDEBUG` is defined, 
+`DBG_PRINTF` statements will be effectively stripped from the code.
+
+Messages are sent using `EMSG_PRINTF`, `IMSG_PRINTF`, and `DBG_PRINTF` macros, which can be redefined (see [my_debug.h](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/blob/main/src/include/my_debug.h)). By default, these call `error_message_printf`, `info_message_printf`, and `debug_message_printf`, which are implemented as [weak](https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html) functions, meaning that they can be overridden by strongly implementing them in user code. If `USE_PRINTF` is defined and not zero, the weak implementations will write to the Pico SDK's stdout. Otherwise, they will format the messages into strings and forward to `put_out_error_message`, `put_out_info_message`, and `put_out_debug_message`. These are implemented as weak functions that do nothing. You can override these to send the output somewhere.
+
+
 ## C++ Wrapper
 At heart, this is a C library, but I have made a (thin) C++ wrapper for it: `include\FatFsSd.h`.
-It uses "Dynamic Configuration", so the configuration is built at run time.
 For details on most of the functions, refer to [FatFs - Generic FAT Filesystem Module, "Application Interface"](http://elm-chan.org/fsw/ff/00index_e.html).
 
 See `examples\PlatformIO\one_SPI.C++\src\main.cpp` for an example of the use of this API.
@@ -542,141 +553,80 @@ The objects can be constructed in the `setup` and added to `FatFs` and the copie
 when control leaves `setup` and goes to `loop`. 
 It automatically provides these functions required internally by the library:
 
-* `size_t spi_get_num()` Returns the number of SPIs to use  
-* `spi_t *spi_get_by_num(size_t num)` Returns a pointer to the SPI "object" at the given (zero origin) index  
 * `size_t sd_get_num()` Returns the number of SD cards  
 * `sd_card_t *sd_get_by_num(size_t num)` Returns a pointer to the SD card "object" at the given (zero origin) index.  
 
 Static Public Member Functions:
-* `static spi_handle_t add_spi(SpiCfg& Spi)` Use this to add an SPI controller configuration. Returns a handle that can be used to construct an `SdCardSpiCfg`.
-* `static SdCard* add_sd_card(SdCard& SdCard)` Use this to add a `SdCardSdioCfg` or `SdCardSpiCfg` to the configuration. Returns a pointer that can be used to access the newly created SDCard object.
-* `static size_t        SdCard_get_num ()`
-* `static SdCard *SdCard_get_by_num (size_t num)`
-* `static SdCard *SdCard_get_by_name (const char *const name)`
-* `static size_t        Spi_get_num ()`
-* `static Spi    *Spi_get_by_num (size_t num)`
-* `static FRESULT       chdrive (const TCHAR *path)`
-* `static FRESULT       setcp (WORD cp)`
-* `static bool  begin ()`
+* `static SdCard* add_sd_card(SdCard& SdCard)` Use this to add an instance of `SdCard`or `sd_card_t` to the configuration. Returns a pointer that can be used to access the newly created SDCard object.
+* `static size_t        SdCard_get_num ()` Get the number of SD cards in the configutation
+* `static SdCard *SdCard_get_by_num (size_t num)` Get pointer to an `SdCard` by (zero-origin) index
+* `static SdCard *SdCard_get_by_name (const char *const name)` Get pointer to an `SdCard` by logical drive identifier
+* `static FRESULT       chdrive (const TCHAR *path)` Change current drive to given logical drive
+* `static FRESULT       setcp (WORD cp)` Set current code page
+* `static bool  begin ()` Initialize driver and all SD cards in configuration
 
 ### class SdCard
 Represents an SD card socket. It is generalized: the SD card can be either SPI or SDIO attached.
 
 Public Member Functions:
-* `const char * get_name ()`
-* `FRESULT      mount ()`
-* `FRESULT      unmount ()`
-* `FRESULT      format ()`
-* `bool         readCID (cid_t *cid)`
-* `FATFS *      fatfs ()`
-* `uint64_t     get_num_sectors ()`
+* `const char * get_name ()` Get the the FatFs [logical drive](http://elm-chan.org/fsw/ff/doc/filename.html#vol) identifier.
+* `FRESULT      mount ()` Mount SD card
+* `FRESULT      unmount ()` Unmount SD card
+* `FRESULT      format ()` Create a FAT volume with defaults
+* `FATFS *      fatfs ()` Get filesystem object structure (FATFS)
+* `uint64_t     get_num_sectors ()` Get number of blocks on the drive
+* `void cidDmp(printer_t printer)` Print information from Card IDendtification register
+* `void csdDmp(printer_t printer)` Print information from Card-Specific Data register
 
 Static Public Member Functions
-* `static FRESULT getfree (const TCHAR *path, DWORD *nclst, FATFS **fatfs)`
-* `static FRESULT getlabel (const TCHAR *path, TCHAR *label, DWORD *vsn)`
-* `static FRESULT setlabel (const TCHAR *label)`
-* `static FRESULT mkfs (const TCHAR *path, const MKFS_PARM *opt, void *work, UINT len)`
-* `static FRESULT fdisk (BYTE pdrv, const LBA_t ptbl[], void *work)`
-
-### class SdCardSdioCfg
-This is a subclass of `SdCard` that is specific to SDIO-attached cards. 
-It only has a constructor. 
-Before an instance can be used, it needs to be added to the file system configuration with `FatFs::add_sd_card`.
-Then, it can be used as a generic `SdCard`.
-
-```
-SdCardSdio::SdCardSdio	(	
-  const char * 	pcName,
-  uint 	CMD_gpio,
-  uint 	D0_gpio,
-  bool 	use_card_detect = false,
-  uint 	card_detect_gpio = 0,
-  uint 	card_detected_true = 0,
-  PIO 	SDIO_PIO = pio0,
-  uint 	DMA_IRQ_num = DMA_IRQ_0 
-)		
-```
-
-### class Spi
-This represents the configuration of one of the RP2040's SPI controllers.
-
-```
-Spi::Spi	(	spi_inst_t * 	hw_inst,
-uint 	miso_gpio,
-uint 	mosi_gpio,
-uint 	sck_gpio,
-uint 	baud_rate = 25 * 1000 * 1000,
-uint 	DMA_IRQ_num = DMA_IRQ_0,
-bool 	set_drive_strength = false,
-enum gpio_drive_strength 	mosi_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
-enum gpio_drive_strength 	sck_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA 
-)	
-```	
-
-### class SdCardSpiCfg
-This is a subclass of `SdCard` that is specific to SPI-attached cards. 
-It only has a constructor. 
-Before an instance can be used, it needs to be added to the file system configuration with `FatFs::add_sd_card`.
-Then, it can be used as a generic `SdCard`.
-
-The constructor requires a handle to an `Spi`, 
-since there may be more than one SPI,
-and multiple SD cards can share one SPI.
-
-```
-SdCardSpi::SdCardSpi	(	
-  spi_handle_t 	spi_p,
-  const char * 	pcName,
-  uint 	ss_gpio,
-  bool 	use_card_detect = false,
-  uint 	card_detect_gpio = 0,
-  uint 	card_detected_true = false,
-  bool 	set_drive_strength = false,
-  enum gpio_drive_strength 	ss_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA 
-)		
-```
+* `static FRESULT mkfs (const TCHAR* path, const MKFS_PARM* opt, void* work, UINT len) Create a FAT volume
+* `static FRESULT fdisk (BYTE pdrv, const LBA_t ptbl[], void* work)` Divide a physical drive into some partitions
+* `static FRESULT getfree (const TCHAR *path, DWORD *nclst, FATFS **fatfs)` Get number of free blocks on the drive
+* `static FRESULT getlabel (const TCHAR *path, TCHAR *label, DWORD *vsn)` Get volume label
+* `static FRESULT setlabel (const TCHAR *label)` Set volume label
 
 ### class File
 
- * `FRESULT      open (const TCHAR *path, BYTE mode)`
- * `FRESULT      close ()`
- * `FRESULT      read (void *buff, UINT btr, UINT *br)`
- * `FRESULT      write (const void *buff, UINT btw, UINT *bw)`
- * `FRESULT      lseek (FSIZE_t ofs)`
- * `FRESULT      truncate ()`
- * `FRESULT      sync ()`
- * `int  putc (TCHAR c)`
- * `int  puts (const TCHAR *str)`
- * `int  printf (const TCHAR *str,...)`
- * `TCHAR *      gets (TCHAR *buff, int len)`
- * `bool         eof ()`
- * `BYTE         error ()`
- * `FSIZE_t      tell ()`
- * `FSIZE_t      size ()`
- * `FRESULT      rewind ()`
- * `FRESULT      forward (UINT(*func)(const BYTE *, UINT), UINT btf, UINT *bf)`
- * `FRESULT      expand (FSIZE_t fsz, BYTE opt)`
+ * `FRESULT      open (const TCHAR *path, BYTE mode)` Open or create a file 
+ * `FRESULT      close ()` Close an open file object
+ * `FRESULT      read (void *buff, UINT btr, UINT *br)` Read data from the file
+ * `FRESULT      write (const void *buff, UINT btw, UINT *bw)` Write data to the file 
+ * `FRESULT      lseek (FSIZE_t ofs)` Move file pointer of the file object
+ * `FRESULT      expand (uint64_t file_size)` Prepare or allocate a contiguous data area to the file with default option
+ * `FRESULT      truncate ()` Truncate the file 
+ * `FRESULT      sync ()` Flush cached data of the writing file
+ * `int  putc (TCHAR c)` Put a character to the file 
+ * `int  puts (const TCHAR *str)` Put a string to the file
+ * `int  printf (const TCHAR *str,...)` Put a formatted string to the file
+ * `TCHAR *      gets (TCHAR *buff, int len)` Get a string from the file
+ * `bool         eof ()` Test for end-of-file
+ * `BYTE         error ()` Test for an error
+ * `FSIZE_t      tell ()` Get current read/write pointer
+ * `FSIZE_t      size ()` Get size in bytes
+ * `FRESULT      rewind ()` Move the file read/write pointer to 0 (beginning of file)
+ * `FRESULT      forward (UINT(*func)(const BYTE *, UINT), UINT btf, UINT *bf)` Forward data to the stream
+ * `FRESULT      expand (FSIZE_t fsz, BYTE opt)` Prepare or allocate a contiguous data area to the file
 
 ### class Dir 
 
 Public Member Functions:
-* `FRESULT      rewinddir ()`
-* `FRESULT      rmdir (const TCHAR *path)`
-* `FRESULT      opendir (const TCHAR *path)`
-* `FRESULT      closedir ()`
-* `FRESULT      readdir (FILINFO *fno)`
-* `FRESULT      findfirst (FILINFO *fno, const TCHAR *path, const TCHAR *pattern)`
-* `FRESULT      findnext (FILINFO *fno)`
+* `FRESULT      rewinddir ()` Rewind the read index of the directory object 
+* `FRESULT      rmdir (const TCHAR *path)` Remove a sub-directory
+* `FRESULT      opendir (const TCHAR *path)` Open a directory
+* `FRESULT      closedir ()` Close an open directory
+* `FRESULT      readdir (FILINFO *fno)` Read a directory item
+* `FRESULT      findfirst (FILINFO *fno, const TCHAR *path, const TCHAR *pattern)` Open a directory and read the first item matched
+* `FRESULT      findnext (FILINFO *fno)` Read a next item matched
 Static Public Member Functions:
-* `static FRESULT       mkdir (const TCHAR *path)`
-* `static FRESULT       unlink (const TCHAR *path)`
-* `static FRESULT       rename (const TCHAR *path_old, const TCHAR *path_new)`
-* `static FRESULT       stat (const TCHAR *path, FILINFO *fno)`
-* `static FRESULT       chmod (const TCHAR *path, BYTE attr, BYTE mask)`
-* `static FRESULT       utime (const TCHAR *path, const FILINFO *fno)`
-* `static FRESULT       chdir (const TCHAR *path)`
-* `static FRESULT       chdrive (const TCHAR *path)`
-* `static FRESULT       getcwd (TCHAR *buff, UINT len)`
+* `static FRESULT       mkdir (const TCHAR *path)` Create a sub-directory
+* `static FRESULT       unlink (const TCHAR *path)` Remove a file or sub-directory
+* `static FRESULT       rename (const TCHAR *path_old, const TCHAR *path_new)` Rename/Move a file or sub-directory
+* `static FRESULT       stat (const TCHAR *path, FILINFO *fno)` Check existance of a file or sub-directory
+* `static FRESULT       chmod (const TCHAR *path, BYTE attr, BYTE mask)` Change attribute of a file or sub-directory
+* `static FRESULT       utime (const TCHAR *path, const FILINFO *fno)` Change timestamp of a file or sub-directory
+* `static FRESULT       chdir (const TCHAR *path)` Change current directory
+* `static FRESULT       chdrive (const TCHAR *path)` Change current drive
+* `static FRESULT       getcwd (TCHAR *buff, UINT len)` Retrieve the current directory and drive
 
 ## PlatformIO Libary
 This library is available at https://registry.platformio.org/libraries/carlk3/no-OS-FatFS-SD-SPI-RPi-Pico.
@@ -703,7 +653,7 @@ Use this as a starting point for your own data logging application!
   git submodule add -b sdio https://github.com/carlk3/no-OS-FatFS-SD-SPI-RPi-Pico.git
   ```
   
-You will need to pick up the library in CMakeLists.txt:
+You might also need to pick up the library in CMakeLists.txt:
 ```
 add_subdirectory(no-OS-FatFS-SD-SPI-RPi-Pico/src build)
 target_link_libraries(_my_app_ src)
@@ -722,6 +672,7 @@ You are welcome to contribute to this project! Just submit a Pull Request. Here 
 * Multiple SDIO buses?
 * ~~PlatformIO library~~ Done: See https://registry.platformio.org/libraries/carlk3/no-OS-FatFS-SD-SPI-RPi-Pico
 * [RP2040: Enable up to 42 MHz SDIO bus speed](https://github.com/ZuluSCSI/ZuluSCSI-firmware/tree/rp2040_highspeed_sdio)
+* SD UHS Double Data Rate (DDR): clock data on both edges of the clock
 
 ![image](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/assets/50121841/8a28782e-84c4-40c8-8757-a063a4b83292)
 
