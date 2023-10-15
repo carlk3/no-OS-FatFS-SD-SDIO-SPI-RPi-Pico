@@ -44,8 +44,8 @@ void __attribute__((weak)) put_out_debug_message(const char *s) {
 
 #if defined(USE_PRINTF) && USE_PRINTF
 
-int __attribute__((weak)) error_message_printf(const char *file, int line, const char *fmt, ...) {
-    printf("%s:%d: ", file, line);
+int __attribute__((weak)) error_message_printf(const char *func, int line, const char *fmt, ...) {
+    printf("%s:%d: ", func, line);
     va_list args;
     va_start(args, fmt);
     int cw = vprintf(fmt, args);
@@ -70,7 +70,7 @@ int __attribute__((weak)) info_message_printf(const char *fmt, ...) {
     va_end(args);
     return cw;
 }
-int __attribute__((weak)) debug_message_printf(const char *file, int line, const char *fmt, ...) {
+int __attribute__((weak)) debug_message_printf(const char *func, int line, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     int cw = vprintf(fmt, args);
@@ -84,7 +84,7 @@ int __attribute__((weak)) debug_message_printf(const char *file, int line, const
 
 /* These will truncate at 256 bytes. You can tell by checking the return code. */
 
-int __attribute__((weak)) error_message_printf(const char *file, int line, const char *fmt, ...) {
+int __attribute__((weak)) error_message_printf(const char *func, int line, const char *fmt, ...) {
     char buf[256] = {0};
     va_list args;
     va_start(args, fmt);
@@ -111,7 +111,7 @@ int __attribute__((weak)) info_message_printf(const char *fmt, ...) {
     va_end(args);
     return cw;
 }
-int __attribute__((weak)) debug_message_printf(const char *file, int line, const char *fmt, ...) {
+int __attribute__((weak)) debug_message_printf(const char *func, int line, const char *fmt, ...) {
     char buf[256] = {0};
     va_list args;
     va_start(args, fmt);

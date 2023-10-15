@@ -38,17 +38,17 @@ void put_out_debug_message(const char *s);
 
 // https://gcc.gnu.org/onlinedocs/gcc-3.2.3/cpp/Variadic-Macros.html
 
-int error_message_printf(const char *file, int line, const char *fmt, ...) __attribute__ ((format (__printf__, 3, 4)));
+int error_message_printf(const char *func, int line, const char *fmt, ...) __attribute__ ((format (__printf__, 3, 4)));
 #ifndef EMSG_PRINTF
-#define EMSG_PRINTF(fmt, ...) error_message_printf(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define EMSG_PRINTF(fmt, ...) error_message_printf(__func__, __LINE__, fmt, ##__VA_ARGS__)
 #endif
 
 int error_message_printf_plain(const char *fmt, ...) __attribute__ ((format (__printf__, 1, 2)));
 
-int debug_message_printf(const char *file, int line, const char *fmt, ...) __attribute__ ((format (__printf__, 3, 4)));
+int debug_message_printf(const char *func, int line, const char *fmt, ...) __attribute__ ((format (__printf__, 3, 4)));
 #ifndef DBG_PRINTF
 #  if defined(USE_DBG_PRINTF) && USE_DBG_PRINTF && !defined(NDEBUG)
-#    define DBG_PRINTF(fmt, ...) debug_message_printf(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#    define DBG_PRINTF(fmt, ...) debug_message_printf(__func__, __LINE__, fmt, ##__VA_ARGS__)
 #  else
 #    define DBG_PRINTF(fmt, ...) (void)0
 #  endif
@@ -64,7 +64,7 @@ typedef int (*printer_t)(const char* format, ...);
 
 void my_assert_func(const char *file, int line, const char *func, const char *pred);
 #define myASSERT(__e) \
-    { ((__e) ? (void)0 : my_assert_func(__FILE__, __LINE__, __func__, #__e)); }
+    { ((__e) ? (void)0 : my_assert_func(__func__, __LINE__, __func__, #__e)); }
 
 #ifdef __cplusplus
 }
