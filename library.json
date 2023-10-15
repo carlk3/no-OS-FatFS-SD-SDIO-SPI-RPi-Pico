@@ -37,7 +37,7 @@
       },
       {
         "name": "Example3_one_SPI_one_SDIO",
-        "base": "examples/PlatformIO/one_SPI_one_SDIO.C++",
+        "base": "examples/PlatformIO/one_SPI_one_SDIO",
         "files": [
             "platformio.ini",
             "src/main.cpp"
