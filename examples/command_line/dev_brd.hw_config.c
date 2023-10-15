@@ -46,7 +46,6 @@ tab "Monster", for pin assignments assumed in this configuration file.
 #include "hw_config.h"
 #include "my_debug.h"
 
-
 // Hardware Configuration of SPI "objects"
 // Note: multiple SD cards can be driven by one SPI if they use different slave
 // selects (or "chip selects").
@@ -97,24 +96,28 @@ static sd_spi_if_t spi_ifs[] = {
         .ss_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
     }
 };
+
 /* SDIO Interfaces */
+/*
+Pins CLK_gpio, D1_gpio, D2_gpio, and D3_gpio are at offsets from pin D0_gpio.
+The offsets are determined by sd_driver\SDIO\rp2040_sdio.pio.
+    CLK_gpio = (D0_gpio + SDIO_CLK_PIN_D0_OFFSET) % 32;
+    As of this writing, SDIO_CLK_PIN_D0_OFFSET is 30,
+        which is -2 in mod32 arithmetic, so:
+    CLK_gpio = D0_gpio -2.
+    D1_gpio = D0_gpio + 1;
+    D2_gpio = D0_gpio + 2;
+    D3_gpio = D0_gpio + 3;
+*/
 static sd_sdio_if_t sdio_ifs[] = {
     {   // sdio_ifs[0]
-        /*
-        Pins CLK_gpio, D1_gpio, D2_gpio, and D3_gpio are at offsets from pin D0_gpio.
-        The offsets are determined by sd_driver\SDIO\rp2040_sdio.pio.
-            CLK_gpio = (D0_gpio + SDIO_CLK_PIN_D0_OFFSET) % 32;
-            As of this writing, SDIO_CLK_PIN_D0_OFFSET is 30,
-              which is -2 in mod32 arithmetic, so:
-            CLK_gpio = D0_gpio -2.
-            D1_gpio = D0_gpio + 1;
-            D2_gpio = D0_gpio + 2;
-            D3_gpio = D0_gpio + 3;
-        */
+        .CMD_gpio = 3,
+        .D0_gpio = 4,
+        .baud_rate = 15 * 1000 * 1000  // 15 MHz
+    },
+    {   // sdio_ifs[1]
         .CMD_gpio = 17,
         .D0_gpio = 18,
-        .SDIO_PIO = pio1,
-        .DMA_IRQ_num = DMA_IRQ_1,
         .baud_rate = 15 * 1000 * 1000  // 15 MHz
     }
 };
@@ -123,6 +126,7 @@ static sd_sdio_if_t sdio_ifs[] = {
     These correspond to SD card sockets
 */
 static sd_card_t sd_cards[] = {  // One for each SD card
+#ifdef SPI_SD0
     {   // sd_cards[0]: Socket sd0
         /* "pcName" is the FatFs "logical drive" identifier.
         (See http://elm-chan.org/fsw/ff/doc/filename.html#vol) */
@@ -137,6 +141,20 @@ static sd_card_t sd_cards[] = {  // One for each SD card
         .card_detect_use_pull = true,
         .card_detect_pull_hi = true                                 
     },
+#else
+    {   // sd_cards[0]: Socket sd0
+        .pcName = "0:",  // Name used to mount device
+        .type = SD_IF_SDIO,
+        .sdio_if_p = &sdio_ifs[0],  // Pointer to the SPI interface driving this card
+        // SD Card detect:
+        .use_card_detect = true,
+        .card_detect_gpio = 9,  
+        .card_detected_true = 0, // What the GPIO read returns when a card is
+                                 // present.
+        .card_detect_use_pull = true,
+        .card_detect_pull_hi = true                                 
+    },
+#endif
     {   // sd_cards[1]: Socket sd1
         /* "pcName" is the FatFs "logical drive" identifier.
         (See http://elm-chan.org/fsw/ff/doc/filename.html#vol) */
@@ -170,7 +188,7 @@ static sd_card_t sd_cards[] = {  // One for each SD card
         (See http://elm-chan.org/fsw/ff/doc/filename.html#vol) */
         .pcName = "3:",
         .type = SD_IF_SDIO,
-        .sdio_if_p = &sdio_ifs[0],
+        .sdio_if_p = &sdio_ifs[1],
         // SD Card detect:
         .use_card_detect = true,
         .card_detect_gpio = 22,  
