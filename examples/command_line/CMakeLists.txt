@@ -17,15 +17,16 @@ add_subdirectory(../../src build)
 
 # Add executable. Default name is the project name, version 0.1
 add_executable(command_line 
-    main.cpp 
-    hw_config.c
+    command.cpp
     data_log_demo.c
-    tests/bench.c
-    tests/simple.c
+    hw_config.c
+    main.cpp 
     tests/app4-IO_module_function_checker.c
+    tests/bench.c
     tests/big_file_test.c
     tests/CreateAndVerifyExampleFiles.c
     tests/ff_stdio_tests_with_cwd.c
+    tests/simple.c
 )
 # Add the standard library to the build
 target_link_libraries(command_line pico_stdlib)
