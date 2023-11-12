@@ -126,10 +126,10 @@ int main() {
     sd_sdio_if_t *sd_sdio_if_p = new sd_sdio_if_t();
     assert(sd_sdio_if_p);
     // sdio_ifs[0]
-    sd_sdio_if_p->CMD_gpio = 17,
-    sd_sdio_if_p->D0_gpio = 18,
-    sd_sdio_if_p->SDIO_PIO = pio1,
-    sd_sdio_if_p->DMA_IRQ_num = DMA_IRQ_1,
+    sd_sdio_if_p->CMD_gpio = 17;
+    sd_sdio_if_p->D0_gpio = 18;
+    sd_sdio_if_p->SDIO_PIO = pio1;
+    sd_sdio_if_p->DMA_IRQ_num = DMA_IRQ_1;
     sd_sdio_if_p->baud_rate = 15 * 1000 * 1000;  // 15 MHz
     sdio_ifs.push_back(sd_sdio_if_p);
 
