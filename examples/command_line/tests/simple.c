@@ -23,7 +23,7 @@ specific language governing permissions and limitations under the License.
 #include "my_debug.h"
 
 // Maximum number of elements in buffer
-#define BUFFER_MAX_LEN 10
+#define BUFFER_MAX_LEN 16
 
 #define TRACE_PRINTF(fmt, args...)
 //#define TRACE_PRINTF printf
@@ -54,7 +54,10 @@ void simple() {
         fflush(stdout);
         fr = f_open(&f, "numbers.txt", FA_CREATE_ALWAYS | FA_WRITE | FA_READ);
         IMSG_PRINTF("%s\n", (FR_OK != fr ? "Fail :(" : "OK"));
-        if (FR_OK != fr) EMSG_PRINTF("f_open error: %s (%d)\n", FRESULT_str(fr), fr);
+        if (FR_OK != fr) {
+            EMSG_PRINTF("f_open error: %s (%d)\n", FRESULT_str(fr), fr);
+            return;
+        }
         fflush(stdout);
         for (int i = 0; i < 10; i++) {
             IMSG_PRINTF("\rWriting numbers (%d/%d)... ", i, 10);
@@ -67,6 +70,7 @@ void simple() {
             if (rc < 0) {
                 EMSG_PRINTF("Fail :(\n");
                 EMSG_PRINTF("f_printf error: %s (%d)\n", FRESULT_str(fr), fr);
+                return;
             }
         }
         IMSG_PRINTF("\rWriting numbers (%d/%d)... OK\n", 10, 10);
@@ -75,8 +79,10 @@ void simple() {
         IMSG_PRINTF("Seeking file... ");
         fr = f_lseek(&f, 0);
         IMSG_PRINTF("%s\n", (FR_OK != fr ? "Fail :(" : "OK"));
-        if (FR_OK != fr)
+        if (FR_OK != fr) {
             EMSG_PRINTF("f_lseek error: %s (%d)\n", FRESULT_str(fr), fr);
+            return;
+        }
         fflush(stdout);
     }
     // Go through and increment the numbers
@@ -90,19 +96,26 @@ void simple() {
         char buf[BUFFER_MAX_LEN];
         if (!f_gets(buf, BUFFER_MAX_LEN, &f)) {
             EMSG_PRINTF("error: f_gets returned NULL\n");
+            return;
         }
         char *endptr;
         int32_t number = strtol(buf, &endptr, 10);
-        if ((endptr == buf) ||            // No character was read
-            (*endptr && *endptr != '\n')  // The whole input was not converted
-        ) {
+        if (endptr == buf) {
+            EMSG_PRINTF("No character was read\n");
+            continue;
+        } 
+        if (*endptr && *endptr != '\n') {
+            EMSG_PRINTF("The whole input was not converted\n");
             continue;
         }
         number += 1;
 
         // Seek to beginning of number
-        f_lseek(&f, pos);
-
+        fr = f_lseek(&f, pos);
+        if (FR_OK != fr) {
+            EMSG_PRINTF("f_lseek error: %s (%d)\n", FRESULT_str(fr), fr);
+            return;
+        }
         // Store number
         f_printf(&f, "    %d\n", (int)number);
 
@@ -116,14 +129,19 @@ void simple() {
     IMSG_PRINTF("Closing \"numbers.txt\"... ");
     fr = f_close(&f);
     IMSG_PRINTF("%s\n", (FR_OK != fr ? "Fail :(" : "OK"));
-    if (FR_OK != fr) EMSG_PRINTF("f_close error: %s (%d)\n", FRESULT_str(fr), fr);
+    if (FR_OK != fr) {
+        EMSG_PRINTF("f_close error: %s (%d)\n", FRESULT_str(fr), fr);
+        return;
+    }
     fflush(stdout);
 
     ls("");
 
     fr = f_chdir("/");
-    if (FR_OK != fr) EMSG_PRINTF("chdir error: %s (%d)\n", FRESULT_str(fr), fr);
-
+    if (FR_OK != fr) {
+        EMSG_PRINTF("chdir error: %s (%d)\n", FRESULT_str(fr), fr);
+        return;
+    }
     ls("");
 
     // Display the numbers file
@@ -132,12 +150,14 @@ void simple() {
     IMSG_PRINTF("Opening \"%s\"... ", pathbuf);
     fr = f_open(&f, pathbuf, FA_READ);
     IMSG_PRINTF("%s\n", (FR_OK != fr ? "Fail :(" : "OK"));
-    if (FR_OK != fr) EMSG_PRINTF("f_open error: %s (%d)\n", FRESULT_str(fr), fr);
+    if (FR_OK != fr) {
+        EMSG_PRINTF("f_open error: %s (%d)\n", FRESULT_str(fr), fr);
+        return;
+    }
     fflush(stdout);
 
     IMSG_PRINTF("numbers:\n");
     while (!f_eof(&f)) {
-        // int c = f_getc(f);
         char c;
         UINT br;
         fr = f_read(&f, &c, sizeof c, &br);
