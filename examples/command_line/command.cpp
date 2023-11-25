@@ -129,6 +129,26 @@ static void run_info(const size_t argc, const char *argv[]) {
     // Card-Specific Data register. 128 bits wide.
     csdDmp(sd_card_p, printf);
 
+    /* Get volume information and free clusters of drive */
+    FATFS *fs_p = sd_get_fs_by_name(arg);
+    if (!fs_p) {
+        printf("Unknown logical drive id: \"%s\"\n", arg);
+        return;
+    }
+    DWORD fre_clust, fre_sect, tot_sect;
+    FRESULT fr = f_getfree(arg, &fre_clust, &fs_p);
+    if (FR_OK != fr) {
+        printf("f_getfree error: %s (%d)\n", FRESULT_str(fr), fr);
+        return;
+    }
+    /* Get total sectors and free sectors */
+    tot_sect = (fs_p->n_fatent - 2) * fs_p->csize;
+    fre_sect = fre_clust * fs_p->csize;
+    /* Print the free space (assuming 512 bytes/sector) */
+    printf("\n%10lu KiB (%lu MiB) total drive space.\n%10lu KiB (%lu MiB) available.\n",
+           tot_sect / 2, tot_sect / 2 / 1024,
+           fre_sect / 2, fre_sect / 2 / 1024);
+
     // Report cluster size ("allocation unit")
     printf("\nFAT Cluster size (\"allocation unit\"): %d sectors (%llu bytes)\n",
            sd_card_p->fatfs.csize,
@@ -148,8 +168,8 @@ static void run_format(const size_t argc, const char *argv[]) {
     if (!arg)
         return;
 
-    FATFS *p_fs = sd_get_fs_by_name(arg);
-    if (!p_fs) {
+    FATFS *fs_p = sd_get_fs_by_name(arg);
+    if (!fs_p) {
         printf("Unknown logical drive id: \"%s\"\n", arg);
         return;
     }
@@ -162,12 +182,12 @@ static void run_mount(const size_t argc, const char *argv[]) {
     if (!arg)
         return;
 
-    FATFS *p_fs = sd_get_fs_by_name(arg);
-    if (!p_fs) {
+    FATFS *fs_p = sd_get_fs_by_name(arg);
+    if (!fs_p) {
         printf("Unknown logical drive id: \"%s\"\n", arg);
         return;
     }
-    FRESULT fr = f_mount(p_fs, arg, 1);
+    FRESULT fr = f_mount(fs_p, arg, 1);
     if (FR_OK != fr) {
         printf("f_mount error: %s (%d)\n", FRESULT_str(fr), fr);
         return;
@@ -181,8 +201,8 @@ static void run_unmount(const size_t argc, const char *argv[]) {
     if (!arg)
         return;
 
-    FATFS *p_fs = sd_get_fs_by_name(arg);
-    if (!p_fs) {
+    FATFS *fs_p = sd_get_fs_by_name(arg);
+    if (!fs_p) {
         printf("Unknown logical drive id: \"%s\"\n", arg);
         return;
     }
@@ -203,31 +223,6 @@ static void run_chdrive(const size_t argc, const char *argv[]) {
 
     FRESULT fr = f_chdrive(arg);
     if (FR_OK != fr) printf("f_chdrive error: %s (%d)\n", FRESULT_str(fr), fr);
-}
-static void run_getfree(const size_t argc, const char *argv[]) {
-    const char *arg = chk_dflt_log_drv(argc, argv);
-    if (!arg)
-        return;    
-
-    /* Get volume information and free clusters of drive */
-    FATFS *p_fs = sd_get_fs_by_name(arg);
-    if (!p_fs) {
-        printf("Unknown logical drive id: \"%s\"\n", arg);
-        return;
-    }
-    DWORD fre_clust, fre_sect, tot_sect;
-    FRESULT fr = f_getfree(arg, &fre_clust, &p_fs);
-    if (FR_OK != fr) {
-        printf("f_getfree error: %s (%d)\n", FRESULT_str(fr), fr);
-        return;
-    }
-    /* Get total sectors and free sectors */
-    tot_sect = (p_fs->n_fatent - 2) * p_fs->csize;
-    fre_sect = fre_clust * p_fs->csize;
-    /* Print the free space (assuming 512 bytes/sector) */
-    printf("%10lu KiB (%lu MiB) total drive space.\n%10lu KiB (%lu MiB) available.\n",
-           tot_sect / 2, tot_sect / 2 / 1024,
-           fre_sect / 2, fre_sect / 2 / 1024);
 }
 static void run_cd(const size_t argc, const char *argv[]) {
     if (!expect_argc(argc, argv, 1)) return;
@@ -580,9 +575,6 @@ static cmd_def_t cmds[] = {
     {"info", run_info, 
     "info [<drive#:>]:\n"
       " Print information about an SD card"},
-    {"getfree", run_getfree,
-     "getfree [<drive#:>]:\n"
-     " Print the free space on drive"},
     {"cd", run_cd,
      "cd <path>:\n"
      " Changes the current directory of the logical drive.\n"
