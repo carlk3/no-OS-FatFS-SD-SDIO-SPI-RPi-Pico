@@ -31,6 +31,11 @@ add_executable(command_line
 # Add the standard library to the build
 target_link_libraries(command_line pico_stdlib)
 
+# https://datasheets.raspberrypi.com/pico/raspberry-pi-pico-c-sdk.pdf
+target_compile_definitions(command_line PRIVATE
+  PICO_STACK_SIZE=0x1000
+)
+
 # target_compile_options(command_line PUBLIC -Wall -Wextra -Wno-unused-function -Wno-unused-parameter)
 target_compile_options(command_line PUBLIC -Wall -Wextra -Wno-unused-parameter -fanalyzer)
 
@@ -49,7 +54,9 @@ add_compile_definitions(USE_PRINTF)
 # target_compile_definitions(<TARGET> PRIVATE PARAM_ASSERTIONS_ENABLE_ALL=1)
 add_compile_definitions(PARAM_ASSERTIONS_ENABLE_ALL=1 PICO_USE_STACK_GUARDS=1)
 
-set_property(TARGET command_line APPEND_STRING PROPERTY LINK_FLAGS "-Wl,--print-memory-usage")
+set_property(TARGET command_line APPEND_STRING PROPERTY LINK_FLAGS 
+  "-Wl,--print-memory-usage -Wstack-usage=256"
+)
 
 pico_set_program_name(command_line "command_line")
 pico_set_program_version(command_line "0.1")

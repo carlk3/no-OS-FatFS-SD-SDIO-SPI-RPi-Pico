@@ -61,6 +61,8 @@ bool sd_init_driver() {
     if (!initialized) {
         for (size_t i = 0; i < sd_get_num(); ++i) {
             sd_card_t *sd_card_p = sd_get_by_num(i);
+            myASSERT(sd_card_p->pcName);
+            
             switch (sd_card_p->type) {
                 case SD_IF_SPI:
                     sd_spi_ctor(sd_card_p);
@@ -165,7 +167,8 @@ void csdDmp(sd_card_t *sd_card_p, printer_t printer) {
             (*printer)("Sectors: %llu\r\n", blocks);
             (*printer)("Capacity: %llu MiB (%llu MB)\r\n", blocks / 2048, blocks * _block_size / 1000000);
             (*printer)("ERASE_BLK_EN: %s\r\n", erase_single_block_enable ? "units of 512 bytes" : "units of SECTOR_SIZE");
-            (*printer)("SECTOR_SIZE (size of an erasable sector): %d\r\n", erase_sector_size);
+            (*printer)("SECTOR_SIZE (size of an erasable sector): %d (%lu bytes)\r\n", 
+                erase_sector_size, (uint32_t)(erase_sector_size ? 512 : 1) * erase_sector_size);
             break;
 
         default:
