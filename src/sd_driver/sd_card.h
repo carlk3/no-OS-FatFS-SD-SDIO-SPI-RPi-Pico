@@ -26,7 +26,7 @@ specific language governing permissions and limitations under the License.
 #include "ff.h"
 //
 #include "SPI/spi.h"
-#include "SPI/sd_card_constants.h"
+#include "sd_card_constants.h"
 #include "SDIO/rp2040_sdio.h"
 #include "util.h"
 //
@@ -89,7 +89,7 @@ typedef struct sd_card_t sd_card_t;
 // "Class" representing SD Cards
 struct sd_card_t {
     const char *pcName;
-    sd_if_t type;
+    sd_if_t type; // Interface type
     union {
         sd_spi_if_t *spi_if_p;
         sd_sdio_if_t *sdio_if_p;
@@ -112,6 +112,8 @@ struct sd_card_t {
     bool mounted;
 
     int (*init)(sd_card_t *sd_card_p);
+    void (*deinit)(sd_card_t *sd_card_p);
+
     int (*write_blocks)(sd_card_t *sd_card_p, const uint8_t *buffer,
                         uint64_t ulSectorNumber, uint32_t blockCnt);
     int (*read_blocks)(sd_card_t *sd_card_p, uint8_t *buffer, uint64_t ulSectorNumber,
@@ -123,10 +125,15 @@ struct sd_card_t {
     bool (*sd_test_com)(sd_card_t *sd_card_p);
 };
 
+void sd_lock(sd_card_t *sd_card_p);
+void sd_unlock(sd_card_t *sd_card_p);
+bool sd_is_locked(sd_card_t *sd_card_p);
+
 bool sd_init_driver();
 bool sd_card_detect(sd_card_t *sd_card_p);
 void cidDmp(sd_card_t *sd_card_p, printer_t printer);
 void csdDmp(sd_card_t *sd_card_p, printer_t printer);
+bool sd_allocation_unit(sd_card_t *sd_card_p, size_t *au_size_bytes_p);
 
 #ifdef __cplusplus
 }

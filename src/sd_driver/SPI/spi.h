@@ -25,6 +25,10 @@ specific language governing permissions and limitations under the License.
 #include "pico/sem.h"
 #include "pico/types.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define SPI_FILL_CHAR (0xFF)
 
 // "Class" representing SPIs
@@ -58,10 +62,6 @@ typedef struct spi_t {
     bool initialized;  
 } spi_t;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // // SPI DMA interrupts
 // void __not_in_flash_func(spi_irq_handler)();
   
@@ -72,10 +72,6 @@ void spi_lock(spi_t *pSPI);
 void spi_unlock(spi_t *pSPI);
 bool my_spi_init(spi_t *pSPI);
 void set_spi_dma_irq_channel(bool useChannel1, bool shared);
-
-#ifdef __cplusplus
-}
-#endif
 
 /* 
 This uses the Pico LED to show SD card activity.
@@ -98,6 +94,10 @@ in CMakeLists.txt, for example.
 #  define LED_ON()
 #  define LED_OFF()
 #  define LED_INIT()
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 /* [] END OF FILE */

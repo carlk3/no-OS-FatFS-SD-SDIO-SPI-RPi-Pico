@@ -62,10 +62,12 @@ int info_message_printf(const char *fmt, ...) __attribute__ ((format (__printf__
 /* For passing an output function as an argument */
 typedef int (*printer_t)(const char* format, ...);
 
-void my_assert_func(const char *file, int line, const char *func, const char *pred);
+void my_assert_func(const char *file, int line, const char *func, const char *pred) __attribute__((noreturn));
 #define myASSERT(__e) \
     { ((__e) ? (void)0 : my_assert_func(__func__, __LINE__, __func__, #__e)); }
 
 #ifdef __cplusplus
 }
 #endif
+
+/* [] END OF FILE */

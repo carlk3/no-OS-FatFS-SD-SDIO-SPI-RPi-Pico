@@ -27,6 +27,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // #include "../common/SysCall.h"
 // Based on the document:
 //
@@ -47,30 +51,30 @@
 // See the SD Specification for command info.
 #define SD_ERROR_CODE_LIST                                            \
     SD_CARD_ERROR(NONE, "No error")                                   \
-    SD_CARD_ERROR(CMD0, "Card reset failed")                          \
-    SD_CARD_ERROR(CMD2, "SDIO read CID")                              \
-    SD_CARD_ERROR(CMD3, "SDIO publish RCA")                           \
-    SD_CARD_ERROR(CMD6, "Switch card function")                       \
-    SD_CARD_ERROR(CMD7, "SDIO card select")                           \
-    SD_CARD_ERROR(CMD8, "Send and check interface settings")          \
-    SD_CARD_ERROR(CMD9, "Read CSD data")                              \
-    SD_CARD_ERROR(CMD10, "Read CID data")                             \
-    SD_CARD_ERROR(CMD12, "Stop multiple block read")                  \
-    SD_CARD_ERROR(CMD13, "Read card status")                          \
-    SD_CARD_ERROR(CMD17, "Read single block")                         \
-    SD_CARD_ERROR(CMD18, "Read multiple blocks")                      \
-    SD_CARD_ERROR(CMD24, "Write single block")                        \
-    SD_CARD_ERROR(CMD25, "Write multiple blocks")                     \
-    SD_CARD_ERROR(CMD32, "Set first erase block")                     \
-    SD_CARD_ERROR(CMD33, "Set last erase block")                      \
-    SD_CARD_ERROR(CMD38, "Erase selected blocks")                     \
-    SD_CARD_ERROR(CMD58, "Read OCR register")                         \
-    SD_CARD_ERROR(CMD59, "Set CRC mode")                              \
-    SD_CARD_ERROR(ACMD6, "Set SDIO bus width")                        \
-    SD_CARD_ERROR(ACMD13, "Read extended status")                     \
-    SD_CARD_ERROR(ACMD23, "Set pre-erased count")                     \
-    SD_CARD_ERROR(ACMD41, "Activate card initialization")             \
-    SD_CARD_ERROR(ACMD51, "Read SCR data")                            \
+    SD_CARD_ERROR(CMD0_GO_IDLE_STATE, "Card reset failed")                          \
+    SD_CARD_ERROR(CMD2_ALL_SEND_CID, "SDIO read CID")                              \
+    SD_CARD_ERROR(CMD3_SEND_RELATIVE_ADDR, "SDIO publish RCA")                           \
+    SD_CARD_ERROR(CMD6_SWITCH_FUNC, "Switch card function")                       \
+    SD_CARD_ERROR(CMD7_SELECT_CARD, "SDIO card select")                           \
+    SD_CARD_ERROR(CMD8_SEND_IF_COND, "Send and check interface settings")          \
+    SD_CARD_ERROR(CMD9_SEND_CSD, "Read CSD data")                              \
+    SD_CARD_ERROR(CMD10_SEND_CID, "Read CID data")                             \
+    SD_CARD_ERROR(CMD12_STOP_TRANSMISSION, "Stop multiple block read")                  \
+    SD_CARD_ERROR(CMD13_SEND_STATUS, "Read card status")                          \
+    SD_CARD_ERROR(CMD17_READ_SINGLE_BLOCK, "Read single block")                         \
+    SD_CARD_ERROR(CMD18_READ_MULTIPLE_BLOCK, "Read multiple blocks")                      \
+    SD_CARD_ERROR(CMD24_WRITE_BLOCK, "Write single block")                        \
+    SD_CARD_ERROR(CMD25_WRITE_MULTIPLE_BLOCK, "Write multiple blocks")                     \
+    SD_CARD_ERROR(CMD32_ERASE_WR_BLK_START_ADDR, "Set first erase block")                     \
+    SD_CARD_ERROR(CMD33_ERASE_WR_BLK_END_ADDR, "Set last erase block")                      \
+    SD_CARD_ERROR(CMD38_ERASE, "Erase selected blocks")                     \
+    SD_CARD_ERROR(CMD58_READ_OCR, "Read OCR register")                         \
+    SD_CARD_ERROR(CMD59_CRC_ON_OFF, "Set CRC mode")                              \
+    SD_CARD_ERROR(ACMD6_SET_BUS_WIDTH, "Set SDIO bus width")                        \
+    SD_CARD_ERROR(ACMD13_SD_STATUS, "Read extended status")                     \
+    SD_CARD_ERROR(ACMD23_SET_WR_BLK_ERASE_COUNT, "Set pre-erased count")                     \
+    SD_CARD_ERROR(ACMD41_SD_SEND_OP_COND, "Activate card initialization")             \
+    SD_CARD_ERROR(ACMD51_SEND_SCR, "Read SCR data")                            \
     SD_CARD_ERROR(READ_TOKEN, "Bad read data token")                  \
     SD_CARD_ERROR(READ_CRC, "Read CRC error")                         \
     SD_CARD_ERROR(READ_FIFO, "SDIO fifo read timeout")                \
@@ -122,63 +126,6 @@ static const uint16_t SD_INIT_TIMEOUT = 2000;
 static const uint16_t SD_READ_TIMEOUT = 300;
 /** write time out ms */
 static const uint16_t SD_WRITE_TIMEOUT = 600;
-//------------------------------------------------------------------------------
-// SD card commands
-/** GO_IDLE_STATE - init card in spi mode if CS low */
-static const uint8_t CMD0 = 0X00;
-/** ALL_SEND_CID - Asks any card to send the CID. */
-static const uint8_t CMD2 = 0X02;
-/** SEND_RELATIVE_ADDR - Ask the card to publish a new RCA. */
-static const uint8_t CMD3 = 0X03;
-/** SWITCH_FUNC - Switch Function Command */
-static const uint8_t CMD6 = 0X06;
-/** SELECT/DESELECT_CARD - toggles between the stand-by and transfer states. */
-static const uint8_t CMD7 = 0X07;
-/** SEND_IF_COND - verify SD Memory Card interface operating condition.*/
-static const uint8_t CMD8 = 0X08;
-/** SEND_CSD - read the Card Specific Data (CSD register) */
-static const uint8_t CMD9 = 0X09;
-/** SEND_CID - read the card identification information (CID register) */
-static const uint8_t CMD10 = 0X0A;
-/** VOLTAGE_SWITCH -Switch to 1.8V bus signaling level. */
-static const uint8_t CMD11 = 0X0B;
-/** STOP_TRANSMISSION - end multiple sector read sequence */
-static const uint8_t CMD12 = 0X0C;
-/** SEND_STATUS - read the card status register */
-static const uint8_t CMD13 = 0X0D;
-/** READ_SINGLE_SECTOR - read a single data sector from the card */
-static const uint8_t CMD17 = 0X11;
-/** READ_MULTIPLE_SECTOR - read multiple data sectors from the card */
-static const uint8_t CMD18 = 0X12;
-/** WRITE_SECTOR - write a single data sector to the card */
-static const uint8_t CMD24 = 0X18;
-/** WRITE_MULTIPLE_SECTOR - write sectors of data until a STOP_TRANSMISSION */
-static const uint8_t CMD25 = 0X19;
-/** ERASE_WR_BLK_START - sets the address of the first sector to be erased */
-static const uint8_t CMD32 = 0X20;
-/** ERASE_WR_BLK_END - sets the address of the last sector of the continuous
-    range to be erased*/
-static const uint8_t CMD33 = 0X21;
-/** ERASE - erase all previously selected sectors */
-static const uint8_t CMD38 = 0X26;
-/** APP_CMD - escape for application specific command */
-static const uint8_t CMD55 = 0X37;
-/** READ_OCR - read the OCR register of a card */
-static const uint8_t CMD58 = 0X3A;
-/** CRC_ON_OFF - enable or disable CRC checking */
-static const uint8_t CMD59 = 0X3B;
-/** SET_BUS_WIDTH - Defines the data bus width for data transfer. */
-static const uint8_t ACMD6 = 0X06;
-/** SD_STATUS - Send the SD Status. */
-static const uint8_t ACMD13 = 0X0D;
-/** SET_WR_BLK_ERASE_COUNT - Set the number of write sectors to be
-     pre-erased before writing */
-static const uint8_t ACMD23 = 0X17;
-/** SD_SEND_OP_COMD - Sends host capacity support information and
-    activates the card's initialization process */
-static const uint8_t ACMD41 = 0X29;
-/** Reads the SD Configuration Register (SCR). */
-static const uint8_t ACMD51 = 0X33;
 //==============================================================================
 // CARD_STATUS
 /** The command's argument was out of the allowed range for this card. */
@@ -449,4 +396,9 @@ typedef struct SdStatus {
     uint8_t reservedManufacturer[40];
 } SdStatus_t;
 #endif  // DOXYGEN_SHOULD_SKIP_THIS
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif  // SdCardInfo_h

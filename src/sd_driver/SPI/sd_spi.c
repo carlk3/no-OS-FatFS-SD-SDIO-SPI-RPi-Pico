@@ -21,6 +21,7 @@ specific language governing permissions and limitations under the License.
 #include "hardware/gpio.h"
 //
 #include "my_debug.h"
+#include "portability.h"
 #include "spi.h"
 //
 #if !defined(USE_DBG_PRINTF) || defined(NDEBUG)
@@ -61,13 +62,11 @@ bool old_ss = gpio_get(sd_card_p->spi_if_p->ss_gpio);
     gpio_put(sd_card_p->spi_if_p->ss_gpio, 1);
     uint8_t ones[10];
     memset(ones, 0xFF, sizeof ones);
-    absolute_time_t timeout_time = make_timeout_time_ms(1);
+    uint32_t start = millis();
     do {
         spi_transfer(sd_card_p->spi_if_p->spi, ones, NULL, sizeof ones);
-    } while (0 < absolute_time_diff_us(get_absolute_time(), timeout_time));
+    } while (millis() - start < 1);
     gpio_put(sd_card_p->spi_if_p->ss_gpio, old_ss);
 }
-
-
 
 /* [] END OF FILE */

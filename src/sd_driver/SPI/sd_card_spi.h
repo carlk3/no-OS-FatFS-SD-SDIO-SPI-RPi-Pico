@@ -14,5 +14,15 @@ specific language governing permissions and limitations under the License.
 
 #pragma once
 
+#include <sd_card.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void sd_spi_ctor(sd_card_t *sd_card_p);  // Constructor for sd_card_t
 bool sd_spi_readCID(sd_card_t *sd_card_p, cid_t* cid);
+
+#ifdef __cplusplus
+}
+#endif

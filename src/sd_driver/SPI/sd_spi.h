@@ -12,11 +12,14 @@ CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 */
 
-#ifndef _SD_SPI_H_
-#define _SD_SPI_H_
+#pragma once
 
 #include <stdint.h>
 #include "sd_card.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Transfer tx to SPI while receiving SPI to rx. 
 tx or rx can be NULL if not important. */
@@ -83,6 +86,8 @@ static inline void sd_spi_release(sd_card_t *sd_card_p) {
     sd_spi_unlock(sd_card_p);
 }
 
+#ifdef __cplusplus
+}
 #endif
 
 /* [] END OF FILE */

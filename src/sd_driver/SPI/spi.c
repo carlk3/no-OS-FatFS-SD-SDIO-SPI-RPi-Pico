@@ -12,7 +12,6 @@ CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 */
 
-#include <assert.h>
 #include <stdbool.h>
 //
 #include "pico/stdlib.h"
@@ -96,7 +95,6 @@ void spi_transfer_start(spi_t *spi_p, const uint8_t *tx, uint8_t *rx, size_t len
         tx = &dummy;
         channel_config_set_read_increment(&spi_p->tx_dma_cfg, false);
     }
-
     // rx read increment is already false
     if (rx) {
         channel_config_set_write_increment(&spi_p->rx_dma_cfg, true);
@@ -121,13 +119,13 @@ void spi_transfer_start(spi_t *spi_p, const uint8_t *tx, uint8_t *rx, size_t len
 
     switch (spi_p->DMA_IRQ_num) {
         case DMA_IRQ_0:
-            assert(!dma_channel_get_irq0_status(spi_p->rx_dma));
+            myASSERT(!dma_channel_get_irq0_status(spi_p->rx_dma));
             break;
         case DMA_IRQ_1:
-            assert(!dma_channel_get_irq1_status(spi_p->rx_dma));
+            myASSERT(!dma_channel_get_irq1_status(spi_p->rx_dma));
             break;
         default:
-            assert(false);
+            myASSERT(false);
     }
     sem_reset(&spi_p->sem, 0);
 
@@ -185,13 +183,32 @@ void spi_unlock(spi_t *spi_p) {
     mutex_exit(&spi_p->mutex);
 }
 
+typedef struct ih_added_rec_t {
+    uint num;
+    bool added;
+} ih_added_rec_t;
+static ih_added_rec_t ih_added_recs[] = {
+    {DMA_IRQ_0, false},
+    {DMA_IRQ_1, false}
+};
+static bool is_handler_added(const uint num) {
+    for (size_t i = 0; i < count_of(ih_added_recs); ++i)
+        if (num == ih_added_recs[i].num)
+            return ih_added_recs[i].added;
+    return false;
+}
+static void mark_handler_added(const uint num) {
+    for (size_t i = 0; i < count_of(ih_added_recs); ++i)
+        if (num == ih_added_recs[i].num) {
+            ih_added_recs[i].added = true;
+            break;
+        }
+}
 bool my_spi_init(spi_t *spi_p) {
     auto_init_mutex(my_spi_init_mutex);
     mutex_enter_blocking(&my_spi_init_mutex);
     if (!spi_p->initialized) {
         //// The SPI may be shared (using multiple SSs); protect it
-        // spi_p->mutex = xSemaphoreCreateRecursiveMutex();
-        // xSemaphoreTakeRecursive(spi_p->mutex, portMAX_DELAY);
         if (!mutex_is_initialized(&spi_p->mutex)) mutex_init(&spi_p->mutex);
         spi_lock(spi_p);
 
@@ -267,6 +284,7 @@ bool my_spi_init(spi_t *spi_p) {
         /* Configure the processor to run dma_handler() when DMA IRQ 0/1 is asserted */
 
         // Tell the DMA to raise IRQ line 0/1 when the channel finishes a block
+        if (!is_handler_added(spi_p->DMA_IRQ_num)) {
         static void (*spi_irq_handler_p)();
         switch (spi_p->DMA_IRQ_num) {
             case DMA_IRQ_0:
@@ -280,7 +298,7 @@ bool my_spi_init(spi_t *spi_p) {
                 dma_channel_set_irq1_enabled(spi_p->tx_dma, false);
                 break;
             default:
-                assert(false);
+                    myASSERT(false);
         }
         if (spi_p->use_exclusive_DMA_IRQ_handler) {
             irq_set_exclusive_handler(spi_p->DMA_IRQ_num, *spi_irq_handler_p);
@@ -288,6 +306,8 @@ bool my_spi_init(spi_t *spi_p) {
             irq_add_shared_handler(
                 spi_p->DMA_IRQ_num, *spi_irq_handler_p,
                 PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
+            }
+            mark_handler_added(spi_p->DMA_IRQ_num);
         }
         irq_set_enabled(spi_p->DMA_IRQ_num, true);
         LED_INIT();

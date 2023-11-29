@@ -120,14 +120,27 @@ static void run_info(const size_t argc, const char *argv[]) {
         printf("Unknown logical drive id: \"%s\"\n", arg);
         return;
     }
-    if (!sd_card_p->mounted) {
-        printf("Drive \"%s\" is not mounted\n", arg);
+    int ds = sd_card_p->init(sd_card_p);
+    if (STA_NODISK & ds || STA_NOINIT & ds) {
+        printf("SD card initialization failed\n");
         return;
     }
     // Card IDendtification register. 128 buts wide.
     cidDmp(sd_card_p, printf);
     // Card-Specific Data register. 128 bits wide.
     csdDmp(sd_card_p, printf);
+    
+    // SD Status
+    size_t au_size_bytes;
+    bool ok = sd_allocation_unit(sd_card_p, &au_size_bytes);
+    if (ok)
+        printf("\nSD card Allocation Unit (AU_SIZE) or \"segment\": %zu bytes (%lu sectors)\n", 
+            au_size_bytes, au_size_bytes / _block_size);
+    
+    if (!sd_card_p->mounted) {
+        printf("Drive \"%s\" is not mounted\n", argv[0]);
+        return;
+    }
 
     /* Get volume information and free clusters of drive */
     FATFS *fs_p = sd_get_fs_by_name(arg);
@@ -149,9 +162,14 @@ static void run_info(const size_t argc, const char *argv[]) {
            tot_sect / 2, tot_sect / 2 / 1024,
            fre_sect / 2, fre_sect / 2 / 1024);
 
+    // Report Partition Starting Offset
+    uint64_t offs = fs_p->volbase;
+    printf("\nPartition Starting Offset: %llu sectors (%llu bytes)\n",
+            offs, offs * _block_size);
+
     // Report cluster size ("allocation unit")
-    printf("\nFAT Cluster size (\"allocation unit\"): %d sectors (%llu bytes)\n",
-           sd_card_p->fatfs.csize,
+    printf("FAT Cluster size (\"allocation unit\"): %d sectors (%llu bytes)\n",
+           fs_p->csize,
            (uint64_t)sd_card_p->fatfs.csize * FF_MAX_SS);
 }
 static void run_lliot(const size_t argc, const char *argv[]) {
@@ -606,7 +624,8 @@ static cmd_def_t cmds[] = {
     {"pwd", run_pwd,
      "pwd:\n"
      " Print Working Directory"},
-    {"ls", run_ls, "ls [pathname]:\n  List directory"},
+    {"ls", run_ls, "ls [pathname]:\n List directory"},
+    // {"dir", run_ls, "dir:\n List directory"},
     {"cat", run_cat, "cat <filename>:\n Type file contents"},
     {"simple", run_simple, "simple:\n Run simple FS tests"},
     {"lliot", run_lliot,
@@ -653,7 +672,6 @@ static cmd_def_t cmds[] = {
     //  " Count the RP2040 clock frequencies and report."},
     // {"clr", clr, "clr <gpio #>: clear a GPIO"},
     // {"set", set, "set <gpio #>: set a GPIO"},
-
     {"help", run_help,
      "help:\n"
      " Shows this command help."}
@@ -669,16 +687,17 @@ static void run_help(const size_t argc, const char *argv[]) {
 static void process_cmd(char *cmd) {
     char *cmdn = strtok_r(cmd, " ", &saveptr);
     if (cmdn) {
+
         /* Breaking with Unix tradition of arg[0] being command name,
         arg[0] is first argument after command name */
 
         size_t argc = 0;
-        const char *args[10] = {0};  // Arbitrary limit of 10 arguments
+        const char *args[10] = {0}; // Arbitrary limit of 10 arguments
         const char *argp;
         do {
             argp = strtok_r(NULL, " ", &saveptr);
             if (argp) {
-                if (argc >= count_of(args) - 1) {
+                if (argc >= count_of(args)) {
                     extra_argument_msg(argp);
                     return;
                 }
@@ -744,3 +763,4 @@ void process_stdio(int cRxedChar) {
         }
     }
 }
+

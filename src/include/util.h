@@ -11,14 +11,19 @@ under the License is distributed on an AS IS BASIS, WITHOUT WARRANTIES OR
 CONDITIONS OF ANY KIND, either express or implied. See the License for the 
 specific language governing permissions and limitations under the License.
 */
-#ifndef _UTIL_H_
-#define _UTIL_H_
 
+#pragma once
+
+#include <RP2040.h>
 #include <stddef.h>    
 #include <stdint.h>
 // #include "hardware/structs/scb.h"
 // #include "RP2040.h"
 #include "my_debug.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // works with negative index
 static inline int wrap_ix(int index, int n)
@@ -68,18 +73,24 @@ static inline void dump_bytes(size_t num, uint8_t bytes[]) {
 
 char const* uint_binary_str(unsigned int number);
 
-static inline uint32_t ext_bits(unsigned char const *data, int msb, int lsb) {
+static inline uint32_t ext_bits(size_t src_bytes, unsigned char const *data, int msb, int lsb) {
     uint32_t bits = 0;
     uint32_t size = 1 + msb - lsb;
     for (uint32_t i = 0; i < size; i++) {
         uint32_t position = lsb + i;
-        uint32_t byte = 15 - (position >> 3);
+        uint32_t byte = (src_bytes - 1) - (position >> 3);
         uint32_t bit = position & 0x7;
         uint32_t value = (data[byte] >> bit) & 1;
         bits |= value << i;
     }
     return bits;
 }
+static inline uint32_t ext_bits16(unsigned char const *data, int msb, int lsb) {
+    return ext_bits(16, data, msb, lsb);
+}
 
+
+#ifdef __cplusplus
+}
 #endif
 /* [] END OF FILE */
