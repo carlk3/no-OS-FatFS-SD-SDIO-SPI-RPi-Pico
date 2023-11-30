@@ -1,15 +1,18 @@
+
 // SD card access using SDIO for RP2040 platform.
 // This module contains the low-level SDIO bus implementation using
 // the PIO peripheral. The high-level commands are in sd_card_sdio.cpp.
 
 #pragma once
 #include <stdint.h>
-//
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#include "sd_card.h"
+
+//FIXME: why?
 typedef struct sd_card_t sd_card_t;
 
 typedef
@@ -26,7 +29,7 @@ enum sdio_status_t {
 } sdio_status_t;
 
 #define SDIO_BLOCK_SIZE 512
-#define SDIO_WORDS_PER_BLOCK 128
+#define SDIO_WORDS_PER_BLOCK (SDIO_BLOCK_SIZE / 4) // 128
 
 // Maximum number of 512 byte blocks to transfer in one request
 #define SDIO_MAX_BLOCKS 256
@@ -54,7 +57,7 @@ typedef struct sd_sdio_state_t {
     pio_sm_config pio_cfg_data_tx;
 
     sdio_transfer_state_t transfer_state;
-    absolute_time_t transfer_timeout_time;
+    uint32_t transfer_start_time;
     uint32_t *data_buf;
     uint32_t blocks_done; // Number of blocks transferred so far
     uint32_t total_blocks; // Total number of blocks to transfer
@@ -91,12 +94,11 @@ sdio_status_t rp2040_sdio_command_R2(const sd_card_t *sd_card_p, uint8_t command
 sdio_status_t rp2040_sdio_command_R3(sd_card_t *sd_card_p, uint8_t command, uint32_t arg, uint32_t *response);
 
 // Start transferring data from SD card to memory buffer
-// Transfer block size is always 512 bytes.
-sdio_status_t rp2040_sdio_rx_start(sd_card_t *sd_card_p, uint8_t *buffer, uint32_t num_blocks);
+sdio_status_t rp2040_sdio_rx_start(sd_card_t *sd_card_p, uint8_t *buffer, uint32_t num_blocks, size_t block_size);
 
 // Check if reception is complete
 // Returns SDIO_BUSY while transferring, SDIO_OK when done and error on failure.
-sdio_status_t rp2040_sdio_rx_poll(sd_card_t *sd_card_p, uint32_t *bytes_complete /* = nullptr */);
+sdio_status_t rp2040_sdio_rx_poll(sd_card_t *sd_card_p, size_t block_size_words);
 
 // Start transferring data from memory to SD card
 sdio_status_t rp2040_sdio_tx_start(sd_card_t *sd_card_p, const uint8_t *buffer, uint32_t num_blocks);

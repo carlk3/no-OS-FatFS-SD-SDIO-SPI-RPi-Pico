@@ -1,66 +1,29 @@
 # no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
+# v1.2.0
 
 ## C/C++ Library for SD Cards on the Pico
 
 At the heart of this library is ChaN's [FatFs - Generic FAT Filesystem Module](http://elm-chan.org/fsw/ff/00index_e.html).
 It also contains a Serial Peripheral Interface (SPI) SD Card block driver for the [Raspberry Pi Pico](https://www.raspberrypi.org/products/raspberry-pi-pico/)
 derived from [SDBlockDevice from Mbed OS 5](https://os.mbed.com/docs/mbed-os/v5.15/apis/sdblockdevice.html),
-and a 4-bit Secure Digital Input Output (SDIO) driver derived from 
+and a 4-bit wide Secure Digital Input Output (SDIO) driver derived from 
 [ZuluSCSI-firmware](https://github.com/ZuluSCSI/ZuluSCSI-firmware). 
 It is wrapped up in a complete runnable project, with a little command line interface, some self tests, and an example data logging application.
 
-## Migration
-### Migrating from no-OS-FatFS-SD-SPI-RPi-Pico [master](https://github.com/carlk3/no-OS-FatFS-SD-SPI-RPi-Pico/tree/master) branch
-The object model for hardware configuration has changed.
-If you are migrating a project from [no-OS-FatFS-SD-SPI-RPi-Pico](https://github.com/carlk3/no-OS-FatFS-SD-SPI-RPi-Pico), you will have to change the hardware configuration customization. The `sd_card_t` now contains a new object that specifies the configuration of either an SPI interface or an SDIO interface. See the [Customizing for the Hardware Configuration](#customizing-for-the-hardware-configuration) section below.
+## What's new
+### v1.2.0
+* Implement `ACMD42`: *SET_CLR_CARD_DETECT*: 
+At power up the CS/DAT3 line has a 50KOhm pull up enabled in the SD card. 
+This resistor serves two functions: Card detection and Mode Selection. 
+This pull-up should be disconnected by the user, during regular data transfer, 
+with SET_CLR_CARD_DETECT (ACMD42) command.
+* `command_line` example enhancements:
+  * `info` enhanced to report SD card Allocation Unit (AU_SIZE) or "segment" (available only on SDIO-attached cards)
+  * `format` now attempts to align the volume data area on an SD card segment.
 
-For example, if you were using a `hw_config.c` containing 
-```
-static sd_card_t sd_cards[] = {  // One for each SD card
-    {
-        .pcName = "0:",   // Name used to mount device
-        .spi = &spis[0],  // Pointer to the SPI driving this card
-        .ss_gpio = 17,    // The SPI slave select GPIO for this SD card//...
-```        
-that would now become
-```
-static sd_spi_if_t spi_ifs[] = {
-    { 
-        .spi = &spis[0],          // Pointer to the SPI driving this card
-        .ss_gpio = 17,             // The SPI slave select GPIO for this SD card
-//...
-static sd_card_t sd_cards[] = {  // One for each SD card
-    {
-        .pcName = "0:",           // Name used to mount device
-        .type = SD_IF_SPI,
-        .spi_if_p = &spi_ifs[0],  // Pointer to the SPI interface driving this card
-```
-### Migrating from no-OS-FatFS-SD-SPI-RPi-Pico [sdio](https://github.com/carlk3/no-OS-FatFS-SD-SPI-RPi-Pico/tree/sdio) branch
-Instances of the interface classes `sd_spi_t` and `sd_sdio_t` are no longer embedded in `sd_card_t` as `spi_if` and `sdio_if`. They are moved to the top level as instances of `sd_spi_if_t` and `sd_sdio_if_t` and pointed to by instances of `sd_card_t`. For example, if you were using a `hw_config.c` containing:
-```
-static sd_card_t sd_cards[] = {  // One for each SD card
-    {
-        .pcName = "0:",  // Name used to mount device
-        .type = SD_IF_SPI,
-        .spi_if.spi = &spis[0],  // Pointer to the SPI driving this card
-        .spi_if.ss_gpio = 7,     // The SPI slave select GPIO for this SD card
-//...        
-```
-that would become:
-```
-static sd_spi_if_t spi_ifs[] = {
-    {
-        .spi = &spis[0],  // Pointer to the SPI driving this card
-        .ss_gpio = 7,     // The SPI slave select GPIO for this SD card
-//...
-static sd_card_t sd_cards[] = {  // One for each SD card
-    {
-        .pcName = "0:",  // Name used to mount device
-        .type = SD_IF_SPI,
-        .spi_if_p = &spi_ifs[0],  // Pointer to the SPI interface driving this card     
-//...           
-```
-For details, see the [Customizing for the Hardware Configuration](#customizing-for-the-hardware-configuration) section below. 
+For required migration actions, see [Appendix A: Migration actions](#appendix-a-migration-actions).
+
+*Note:* v1.1.2 remains available on the [v1.1.2 branch](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/tree/v1.1.2).
 
 ## Features:
 * Supports multiple SD cards, all in a common file system
@@ -73,6 +36,8 @@ For details, see the [Customizing for the Hardware Configuration](#customizing-f
 * Supports Cyclic Redundancy Check (CRC) for data integrity
 * Compatible with Pico W
 * Plus all the neat features provided by [FatFS](http://elm-chan.org/fsw/ff/00index_e.html)
+## Limitation:
+* This library currently does not support multiple partitions on an SD card. Neither does Windows.
 
 ## Resources Used
 * SPI attached cards:
@@ -81,7 +46,7 @@ For details, see the [Customizing for the Hardware Configuration](#customizing-f
   * A configurable DMA IRQ is hooked with `irq_add_shared_handler` or `irq_set_exclusive_handler` (configurable) and enabled.
   * For each SPI controller used, one GPIO is needed for each of RX, TX, and SCK. Note: each SPI controller can only use a limited set of GPIOs for these functions.
   * For each SD card attached to an SPI controller, a GPIO is needed for slave (or "chip") select (SS or "CS"), and, optionally, another for Card Detect (CD or "DET").
-* SDIO attached card:
+* SDIO attached cards:
   * A PIO block
   * Two DMA channels claimed with `dma_claim_unused_channel`
   * A configurable DMA IRQ is hooked with `irq_add_shared_handler` or `irq_set_exclusive_handler` (configurable) and enabled.
@@ -227,6 +192,12 @@ There are a variety of RP2040 boards on the market that provide an integrated µ
 Prerequisites:
 * Raspberry Pi Pico or some other kind of RP2040 board
 * Something like the [Adafruit Micro SD SPI or SDIO Card Breakout Board](https://www.adafruit.com/product/4682)[^3] or [SparkFun microSD Transflash Breakout](https://www.sparkfun.com/products/544)
+
+  ***Warning***: Avoid Aduino breakout boards like these: [Micro SD Storage Board Micro SD Card Modules](https://smile.amazon.com/gp/product/B07XF4Q1TT/). 
+  They are designed for 5 V Arduino signals. 
+  Many use simple resistor dividers to drop the signal voltage, and will not work properly with the 3.3 V Raspberry Pi Pico. 
+  However, see [The 5V Arduino SD modules might work with a simple trick](https://github.com/carlk3/no-OS-FatFS-SD-SPI-RPi-Pico/issues/83).
+  
 * Breadboard and wires
 * Raspberry Pi Pico C/C++ SDK
 * (Optional) A couple of ~10 kΩ - 50 kΩ resistors for pull-ups
@@ -249,6 +220,9 @@ Prerequisites:
 Please see [here](https://docs.google.com/spreadsheets/d/1BrzLWTyifongf_VQCc2IpJqXWtsrjmG7KnIbSBy-CPU/edit?usp=sharing) for an example wiring table for an SPI attached card and an SDIO attached card on the same Pico. 
 SPI and SDIO at 31.5 MHz are pretty demanding electrically. You need good, solid wiring, especially for grounds. A printed circuit board with a ground plane would be nice!
 
+<!--
+![image](https://github.com/carlk3/FreeRTOS-FAT-CLI-for-RPi-Pico/blob/master/images/IMG_1473.JPG "Prototype")
+-->
 ![image](https://github.com/carlk3/FreeRTOS-FAT-CLI-for-RPi-Pico/blob/master/images/PXL_20230201_232043568.jpg "Protoboard, top")
 ![image](https://github.com/carlk3/FreeRTOS-FAT-CLI-for-RPi-Pico/blob/master/images/PXL_20230201_232026240_3.jpg "Protoboard, bottom")
 
@@ -266,8 +240,12 @@ Furthermore, the CMD signal must be on GPIO D0 GPIO number - 2, modulo 32. (This
 * Wires should be kept short and direct. SPI operates at HF radio frequencies.
 
 ### Pull Up Resistors and other electrical considerations
-* The SPI MISO (**DO** on SD card, **SPI**x **RX** on Pico) is open collector (or tristate). In the old MMC days, it was imperative to pull this up. The Pico internal gpio_pull_up is weak: around 56uA or 60kΩ. It's best to add an external pull up resistor of around 5-50 kΩ to 3.3v. However, modern SD cards use strong push pull tristateable outputs and don't seem to need this pull up. The internal gpio_pull_up can be disabled in the hardware configuration by setting the `no_miso_gpio_pull_up` attribute of the `spi_t` object.
+* The SPI MISO (**DO** on SD card, **SPI**x **RX** on Pico) is open collector (or tristate). For [MMC](https://en.wikipedia.org/wiki/MultiMediaCard) cards, it is imperative to pull this up.
+However, modern SD cards use strong push pull tristateable outputs and don't seem to need this pull up.
 On some SD cards, you can even configure the card's output drivers using the Driver Stage Register (DSR).[^4]).
+The Pico internal `gpio_pull_up` is weak: around 56uA or 60kΩ.
+If a pull up is needed, it's best to add an external pull up resistor of around 5-50 kΩ to 3.3v.
+The internal `gpio_pull_up` can be disabled in the hardware configuration by setting the `no_miso_gpio_pull_up` attribute of the `spi_t` object.
 * The SPI Slave Select (SS), or Chip Select (CS) line enables one SPI slave of possibly multiple slaves on the bus. This is what enables the tristate buffer for Data Out (DO), among other things. It's best to pull CS up so that it doesn't float before the Pico GPIO is initialized. It is imperative to pull it up for any devices on the bus that aren't initialized. For example, if you have two SD cards on one bus but the firmware is aware of only one card (see hw_config); you shouldn't let the CS float on the unused one. 
 * Driving the SD card directly with the GPIOs is not ideal. Take a look at the CM1624 (https://www.onsemi.com/pdf/datasheet/cm1624-d.pdf). Unfortunately, it's a tiny little surface mount part -- not so easy to work with, but the schematic in the data sheet is still instructive. Besides the pull up resistors, it's a good idea to have 25 - 100 Ω series source termination resistors in each of the signal lines. This gives a cleaner signal, allowing higher baud rates. Even if you don't care about speed, it also helps to control the slew rate and current, which can reduce EMI and noise in general. (This can be important in audio applications, for example.) Ideally, the resistor should be as close as possible to the driving end of the line. That would be the Pico end for CS, SCK, MOSI, and the SD card end for MISO. For SDIO, the data lines are bidirectional, so, ideally, you'd have a source termination resistor at each end. Practically speaking, the clock is by far the most important to terminate, because each edge is significant. The other lines probably have time to bounce around before being clocked. 
 * It can be helpful to add a decoupling capacitor or three (e.g., 100 nF, 1 µF, and 10 µF) between 3.3 V and GND on the SD card. ChaN also [recommends](http://elm-chan.org/docs/mmc/mmc_e.html#hotplug) putting a 22 µH inductor in series with the Vcc (or "Vdd") line to the SD card.
@@ -282,6 +260,7 @@ On some SD cards, you can even configure the card's output drivers using the Dri
   * Some other form of polling: if the card is periodically accessed at rate faster than the user can swap cards, then the temporary absence of a card will be noticed, so a swap will be detected. For example, if a data logging application writes a log record to the card once per second, it is unlikely that the user could swap cards between accesses.
 
 ## Firmware:
+### Procedure
 * Follow instructions in [Getting started with Raspberry Pi Pico](https://datasheets.raspberrypi.org/pico/getting-started-with-pico.pdf) to set up the development environment.
 * Install source code:
   `git clone -b sdio --recurse-submodules git@github.com:carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico.git no-OS-FatFS`
@@ -301,6 +280,9 @@ On some SD cards, you can even configure the card's output drivers using the Dri
 ```   
   * Program the device
   * See [Appendix B: Operation of `command_line` example](#appendix-b-operation-of-command_line-example) for operation.
+<!--
+![image](https://github.com/carlk3/FreeRTOS-FAT-CLI-for-RPi-Pico/blob/master/images/IMG_1481.JPG "Prototype")
+-->
 
 ## Customizing for the Hardware Configuration 
 This library can support many different hardware configurations. 
@@ -316,8 +298,9 @@ and points to it with `spi_if_p` or `sdio_if_p`[^5].
 * Instances of `spi_t` describe the configuration of the RP2040 SPI hardware components used.
 There can be multiple objects (or "instances") of all three types.
 Attributes (or "fields", or "members") of these objects specify which pins to use for what, baud rates, features like Card Detect, etc.
-* Generally, anything not specified will default to `0` or `false`. (This is the user's responsibility if using Dynamic Configuration, but in a Static Configuration [see [Static vs. Dynamic Configuration](#static-vs-dynamic-configuration)], 
-below, the C runtime initializes static memory to 0.)
+* Generally, anything not specified will default to `0` or `false`. (This is the user's responsibility if using Dynamic Configuration, but in a Static Configuration 
+[see [Static vs. Dynamic Configuration](#static-vs-dynamic-configuration)], 
+the C runtime initializes static memory to 0.)
 
 ![Illustration of the configuration dev_brd.hw_config.c](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/assets/50121841/0eedadea-f6cf-44cb-9b76-544ec74287d2)
 
@@ -402,7 +385,9 @@ As of this writing, `SDIO_CLK_PIN_D0_OFFSET` is 30, which is -2 in mod32 arithme
 * `D1_gpio` RP2040 GPIO to use for Data Line [Bit 1]. Implicitly set to D0_gpio + 1.
 * `D2_gpio` RP2040 GPIO to use for Data Line [Bit 2]. Implicitly set to D0_gpio + 2.
 * `D3_gpio` RP2040 GPIO to use for Card Detect/Data Line [Bit 3]. Implicitly set to D0_gpio + 3.
-* `SDIO_PIO` Which PIO block to use. Defaults to `pio0`. Can be changed to avoid conflicts.
+* `SDIO_PIO` Which PIO block to use. Defaults to `pio0`. Can be changed to avoid conflicts. 
+If you try to use multiple SDIO-attached SD cards simultaneously on the same PIO block,
+contention might lead to timeouts.
 * `DMA_IRQ_num` Which IRQ to use for DMA. Defaults to DMA_IRQ_0. Set this to avoid conflicts with any exclusive DMA IRQ handlers that might be elsewhere in the system.
 * `use_exclusive_DMA_IRQ_handler` If true, the IRQ handler is added with the SDK's `irq_set_exclusive_handler`. The default is to add the handler with `irq_add_shared_handler`, so it's not exclusive. 
 * `baud_rate` The frequency of the SDIO clock in Hertz. This may be no higher than the system clock frequency divided by `CLKDIV` in `sd_driver\SDIO\rp2040_sdio.pio`, which is currently four. For example, if the system clock frequency is 125 MHz, `baud_rate` cannot exceed 31250000 (31.25 MHz). The default is 10 MHz.
@@ -537,7 +522,10 @@ you may call `sd_init_driver()` to initialize the block device driver. `sd_init_
 * There is also POSIX-like API wrapper layer in `ff_stdio.h` and `ff_stdio.c`, written for compatibility with [FreeRTOS+FAT API](https://www.freertos.org/FreeRTOS-Plus/FreeRTOS_Plus_FAT/index.html) (mainly so that I could reuse some tests from that environment.)
 
 ### Messages
-Sometimes problems arise when attempting to use SD cards. At the [FatFs Application Interface](http://elm-chan.org/fsw/ff/00index_e.html) level, it can be difficult to diagnose problems. You get a [return code](http://elm-chan.org/fsw/ff/doc/rc.html), but it might just tell you `FR_NOT_READY` ("The physical drive cannot work"), for example, without telling you what you need to know in order to fix the problem. The library generates messages that might help. These are classed into Error, Informational, and Debug messages. 
+Sometimes problems arise when attempting to use SD cards. At the [FatFs Application Interface](http://elm-chan.org/fsw/ff/00index_e.html) level, it can be difficult to diagnose problems. You get a [return code](http://elm-chan.org/fsw/ff/doc/rc.html), but it might just tell you `FR_NOT_READY` ("The physical drive cannot work"), 
+for example, without telling you what you need to know in order to fix the problem.
+The library generates messages that might help. 
+These are classed into Error, Informational, and Debug messages. 
 
 Two compile definitions control how these are handled:
 * `USE_PRINTF` If this is defined and not zero, 
@@ -548,7 +536,8 @@ these message output functions will use the Pico SDK's Standard Output (`stdout`
 Messages are sent using `EMSG_PRINTF`, `IMSG_PRINTF`, and `DBG_PRINTF` macros, which can be redefined (see 
 [my_debug.h](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/blob/main/src/include/my_debug.h)). 
 By default, these call `error_message_printf`, `info_message_printf`, and `debug_message_printf`, 
-which are implemented as [weak](https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html) functions, 
+which are implemented as
+[weak](https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html) functions, 
 meaning that they can be overridden by strongly implementing them in user code. 
 If `USE_PRINTF` is defined and not zero, the weak implementations will write to the Pico SDK's stdout. Otherwise, they will format the messages into strings and forward to `put_out_error_message`, `put_out_info_message`, and `put_out_debug_message`. These are implemented as weak functions that do nothing. You can override these to send the output somewhere.
 
@@ -679,16 +668,181 @@ and `#include "ff.h"`.
 Happy hacking!
 
 ## Future Directions
-You are welcome to contribute to this project! Just submit a Pull Request. Here are some ideas for future enhancements:
+You are welcome to contribute to this project! Just submit a Pull Request in GitHub. Here are some ideas for future enhancements:
 * Battery saving: at least stop the SDIO clock when it is not needed
 * Support 1-bit SDIO
 * Try multiple cards on a single SDIO bus
 * [RP2040: Enable up to 42 MHz SDIO bus speed](https://github.com/ZuluSCSI/ZuluSCSI-firmware/tree/rp2040_highspeed_sdio)
 * SD UHS Double Data Rate (DDR): clock data on both edges of the clock
-
+<!--
 ![image](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/assets/50121841/8a28782e-84c4-40c8-8757-a063a4b83292)
+-->
+## Appendix A: Migration actions
+### Migrating from no-OS-FatFS-SD-SPI-RPi-Pico [master](https://github.com/carlk3/no-OS-FatFS-SD-SPI-RPi-Pico/tree/master) branch
+The object model for hardware configuration has changed.
+If you are migrating a project from [no-OS-FatFS-SD-SPI-RPi-Pico](https://github.com/carlk3/no-OS-FatFS-SD-SPI-RPi-Pico), you will have to change the hardware configuration customization. The `sd_card_t` now contains a new object that specifies the configuration of either an SPI interface or an SDIO interface. See the [Customizing for the Hardware Configuration](#customizing-for-the-hardware-configuration) section below.
 
-## Appendix A: Adding Additional Cards
+For example, if you were using a `hw_config.c` containing 
+```
+static sd_card_t sd_cards[] = {  // One for each SD card
+    {
+        .pcName = "0:",   // Name used to mount device
+        .spi = &spis[0],  // Pointer to the SPI driving this card
+        .ss_gpio = 17,    // The SPI slave select GPIO for this SD card//...
+```        
+that would now become
+```
+static sd_spi_if_t spi_ifs[] = {
+    { 
+        .spi = &spis[0],          // Pointer to the SPI driving this card
+        .ss_gpio = 17,             // The SPI slave select GPIO for this SD card
+//...
+static sd_card_t sd_cards[] = {  // One for each SD card
+    {
+        .pcName = "0:",           // Name used to mount device
+        .type = SD_IF_SPI,
+        .spi_if_p = &spi_ifs[0],  // Pointer to the SPI interface driving this card
+```
+### Migrating from no-OS-FatFS-SD-SPI-RPi-Pico [sdio](https://github.com/carlk3/no-OS-FatFS-SD-SPI-RPi-Pico/tree/sdio) branch
+Instances of the interface classes `sd_spi_t` and `sd_sdio_t` are no longer embedded in `sd_card_t` as `spi_if` and `sdio_if`. They are moved to the top level as instances of `sd_spi_if_t` and `sd_sdio_if_t` and pointed to by instances of `sd_card_t`. For example, if you were using a `hw_config.c` containing:
+```
+static sd_card_t sd_cards[] = {  // One for each SD card
+    {
+        .pcName = "0:",  // Name used to mount device
+        .type = SD_IF_SPI,
+        .spi_if.spi = &spis[0],  // Pointer to the SPI driving this card
+        .spi_if.ss_gpio = 7,     // The SPI slave select GPIO for this SD card
+//...        
+```
+that would become:
+```
+static sd_spi_if_t spi_ifs[] = {
+    {
+        .spi = &spis[0],  // Pointer to the SPI driving this card
+        .ss_gpio = 7,     // The SPI slave select GPIO for this SD card
+//...
+static sd_card_t sd_cards[] = {  // One for each SD card
+    {
+        .pcName = "0:",  // Name used to mount device
+        .type = SD_IF_SPI,
+        .spi_if_p = &spi_ifs[0],  // Pointer to the SPI interface driving this card     
+//...           
+```
+For details, see the [Customizing for the Hardware Configuration](#customizing-for-the-hardware-configuration) section below. 
+
+## Appendix B: Operation of `command_line` example:
+* Connect a terminal. [PuTTY](https://www.putty.org/) or `tio` work OK. For example:
+  * `tio -m ODELBS /dev/ttyACM0`
+* Press Enter to start the CLI. You should see a prompt like:
+```
+    > 
+```    
+* The `help` command describes the available commands:
+```    
+setrtc <DD> <MM> <YY> <hh> <mm> <ss>:
+ Set Real Time Clock
+ Parameters: new date (DD MM YY) new time in 24-hour format (hh mm ss)
+        e.g.:setrtc 16 3 21 0 4 0
+
+date:
+ Print current date and time
+
+format [<drive#:>]:
+ Creates an FAT/exFAT volume on the logical drive.
+        e.g.: format 0:
+
+mount [<drive#:>]:
+ Register the work area of the volume
+        e.g.: mount 0:
+
+unmount <drive#:>:
+ Unregister the work area of the volume
+
+chdrive <drive#:>:
+ Changes the current directory of the logical drive.
+ <path> Specifies the directory to be set as current directory.
+        e.g.: chdrive 1:
+
+info [<drive#:>]:
+ Print information about an SD card
+
+cd <path>:
+ Changes the current directory of the logical drive.
+ <path> Specifies the directory to be set as current directory.
+        e.g.: cd /dir1
+
+mkdir <path>:
+ Make a new directory.
+ <path> Specifies the name of the directory to be created.
+        e.g.: mkdir /dir1
+
+rm [options] <pathname>:
+ Removes (deletes) a file or directory
+ <pathname> Specifies the path to the file or directory to be removed
+ Options:
+ -d Remove an empty directory
+ -r Recursively remove a directory and its contents
+
+cp <source file> <dest file>:
+ Copies <source file> to <dest file>
+
+mv <source file> <dest file>:
+ Moves (renames) <source file> to <dest file>
+
+pwd:
+ Print Working Directory
+
+ls [pathname]:
+ List directory
+
+cat <filename>:
+ Type file contents
+
+simple:
+ Run simple FS tests
+
+lliot <physical drive#>:
+ !DESTRUCTIVE! Low Level I/O Driver Test
+The SD card will need to be reformatted after this test.
+        e.g.: lliot 1
+
+bench <drive#:>:
+ A simple binary write/read benchmark
+
+big_file_test <pathname> <size in MiB> <seed>:
+ Writes random data to file <pathname>.
+ Specify <size in MiB> in units of mebibytes (2^20, or 1024*1024 bytes)
+        e.g.: big_file_test 0:/bf 1 1
+        or: big_file_test 1:big3G-3 3072 3
+
+cdef:
+ Create Disk and Example Files
+ Expects card to be already formatted and mounted
+
+swcwdt:
+ Stdio With CWD Test
+Expects card to be already formatted and mounted.
+Note: run cdef first!
+
+loop_swcwdt:
+ Run Create Disk and Example Files and Stdio With CWD Test in a loop.
+Expects card to be already formatted and mounted.
+Note: Type any key to quit.
+
+start_logger:
+ Start Data Log Demo
+
+stop_logger:
+ Stop Data Log Demo
+
+mem-stats:
+ Print memory statistics
+
+help:
+ Shows this command help.
+```
+
+## Appendix C: Adding Additional Cards
 When you're dealing with information storage, it's always nice to have redundancy. There are many possible combinations of SPIs and SD cards. One of these is putting multiple SD cards on the same SPI bus, at a cost of one (or two) additional Pico I/O pins (depending on whether or you care about Card Detect). I will illustrate that example here. 
 
 To add a second SD card on the same SPI, connect it in parallel, except that it will need a unique GPIO for the Card Select/Slave Select (CSn) and another for Card Detect (CD) (optional).
@@ -715,131 +869,52 @@ As you can see from the table above, the only new signals are CD1 and CS1. Other
 #define FF_VOLUMES		2
 ```
 
-## Appendix B: Operation of `command_line` example:
-* Connect a terminal. [PuTTY](https://www.putty.org/) or `tio` work OK. For example:
-  * `tio -m ODELBS /dev/ttyACM0`
-* Press Enter to start the CLI. You should see a prompt like:
-```
-    > 
-```    
-* The `help` command describes the available commands:
-```    
-setrtc <DD> <MM> <YY> <hh> <mm> <ss>:
-  Set Real Time Clock
-  Parameters: new date (DD MM YY) new time in 24-hour format (hh mm ss)
-        e.g.:setrtc 16 3 21 0 4 0
 
-date:
- Print current date and time
-
-lliot <drive#>:
- !DESTRUCTIVE! Low Level I/O Driver Test
-        e.g.: lliot 1
-
-format [<drive#:>]:
-  Creates an FAT/exFAT volume on the logical drive.
-        e.g.: format 0:
-
-mount [<drive#:>]:
-  Register the work area of the volume
-        e.g.: mount 0:
-
-unmount <drive#:>:
-  Unregister the work area of the volume
-
-chdrive <drive#:>:
-  Changes the current directory of the logical drive.
-  <path> Specifies the directory to be set as current directory.
-        e.g.: chdrive 1:
-
-getfree [<drive#:>]:
-  Print the free space on drive
-
-cd <path>:
-  Changes the current directory of the logical drive.
-  <path> Specifies the directory to be set as current directory.
-        e.g.: cd /dir1
-
-mkdir <path>:
-  Make a new directory.
-  <path> Specifies the name of the directory to be created.
-        e.g.: mkdir /dir1
-
-del_node <path>:
-  Remove directory and all of its contents.
-  <path> Specifies the name of the directory to be deleted.
-        e.g.: del_node /dir1
-
-ls:
-  List directory
-
-cat <filename>:
-  Type file contents
-
-simple:
-  Run simple FS tests
-
-bench [<drive#:>]:
-  A simple binary write/read benchmark
-
-big_file_test <pathname> <size in MiB> <seed>:
- Writes random data to file <pathname>.
- Specify <size in MiB> in units of mebibytes (2^20, or 1024*1024 bytes)
-        e.g.: big_file_test bf 1 1
-        or: big_file_test big3G-3 3072 3
-
-cdef:
-  Create Disk and Example Files
-  Expects card to be already formatted and mounted
-
-swcwdt:
- Stdio With CWD Test
-Expects card to be already formatted and mounted.
-Note: run cdef first!
-
-loop_swcwdt:
- Run Create Disk and Example Files and Stdio With CWD Test in a loop.
-Expects card to be already formatted and mounted.
-Note: Type any key to quit.
-
-start_logger:
-  Start Data Log Demo
-
-stop_logger:
-  Stop Data Log Demo
-
-help:
-  Shows this command help.
-
-```
-## Appendix C: Performance Tuning Tips
+## Appendix D: Performance Tuning Tips
 Obviously, set the baud rate as high as you can.
 
-In general, it is much faster to transfer a given number of bytes in one large write (or read) 
+TL;DR: In general, it is much faster to transfer a given number of bytes in one large write (or read) 
 than to transfer the same number of bytes in multiple smaller writes (or reads). 
 
 The modern SD card is a block device, meaning that the smallest addressable unit is a a block (or "sector") of 512 bytes. So, it helps performance if your write size is a multiple of 512. If it isn't, partial block writes involve reading the existing block, modifying it in memory, and writing it back out. With all the space in SD cards these days, it can be well worth it to pad a record length to a multiple of 512.
 
-There is a controller in each SD card running all kinds of internal processes. Generally, flash memory has to be erased before it can be written, and the minimum erase size is the "erase block" or "segment". The size of an erase block varies between devices, but as of this writing it is typically around 64 kB. Back when SD cards were smaller, it tended to be 32 kB. When a smaller amount of data is to be written the whole erase block is read, modified in memory, and then written again. SD cards use various strategies to speed this up. Most implement a "translation layer". For any I/O operation, a translation from virtual to physical address is carried out by the controller. If data inside a segment is to be overwritten, the translation layer remaps the virtual address of the segment to another erased physical address. The old physical segment is marked dirty and queued for an erase. Later, when it is erased, it can be reused. Usually, SD cards have a cache of one or more segments for increasing the performance of read and write operations. It might be helpful to have your write size be some factor or multiple of the erase block size. 
+Generally, flash memory has to be erased before it can be written, and the minimum erase size is the "erase block". The size of an erase block varies between devices, but as of this writing it is typically around 64 kB for a 16 or 32 GB card. It might be helpful to have your write size be some factor or multiple of the erase block size. 
 The `info` command in 
 [examples/command_line](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/tree/main/examples/command_line) 
-reports the erase block size. It gets it from the Card-Specific Data register (CSR) in the SD card.
+reports the erase block size. It gets it from the Card-Specific Data register (CSD) in the SD card.
 
-The SD card is a "black box": most of this is invisible to the user, except for performance. So, the write times are far from deterministic. 
+Beyond that, an SD card has an "allocation unit" or "segment":
 
-There are more variables at the file system level. The "allocation unit", also known as "cluster", is a unit of "disk" space allocation for files. When the size of the allocation unit is 32768 bytes, a file with 100 bytes in size occupies 32768 bytes of disk space. The space efficiency of disk usage gets worse with increasing size of allocation unit, but, on the other hand, the read/write performance increases. Therefore the size of allocation unit is a trade-off between space efficiency and performance. This is something you can change by formatting the SD card. See 
+> AU (Allocation Unit): is a physical boundary of the card and consists of one or more blocks and its
+size depends on each card. The maximum AU size is defined for memory capacity. Furthermore AU
+is the minimal unit in which the card guarantees its performance for devices which complies with
+Speed Class Specification. The information about the size and the Speed Class are stored in the
+SD Status.
+
+> -- SD Card Association; Physical Layer Specification Version 3.01
+
+This is typically 4 MiB for a 16 or 32 GB card, for example. Of course, nobody is going to be using 4 MiB write buffers on a Pico, but the AU is still important. For good performance and wear tolerance, it is recommended that the "disk partition" be aligned to an AU boundary. [SD Memory Card Formatter](https://www.sdcard.org/downloads/formatter/) makes this happen. For my 16 GB card, it set "Partition Starting Offset	4,194,304 bytes". This accomplished by inserting "hidden sectors" between the actual start of the physical media and the start of the volume. Also, it might be helpful to have your write size be some factor or multiple of the segment size.
+
+There is a controller in each SD card running all kinds of internal processes. When an amount of data to be written is smaller than a segment, the segment is read, modified in memory, and then written again. SD cards use various strategies to speed this up. Most implement a "translation layer". For any I/O operation, a translation from virtual to physical address is carried out by the controller. If data inside a segment is to be overwritten, the translation layer remaps the virtual address of the segment to another erased physical address. The old physical segment is marked dirty and queued for an erase. Later, when it is erased, it can be reused. Usually, SD cards have a cache of one or more segments for increasing the performance of read and write operations. The SD card is a "black box": much of this is invisible to the user, except as revealed in the Card-Specific Data register (CSD), SD_STATUS, and the observable performance characteristics. So, the write times are far from deterministic.
+
+There are more variables at the file system level. The FAT "allocation unit" (not to be confused with the SD card "allocation unit"), also known as "cluster", is a unit of "disk" space allocation for files. These are identically sized small blocks of contiguous space that are indexed by the File Allocation Table. When the size of the allocation unit is 32768 bytes, a file with 100 bytes in size occupies 32768 bytes of disk space. The space efficiency of disk usage gets worse with increasing size of allocation unit, but, on the other hand, the read/write performance increases. Therefore the size of allocation unit is a trade-off between space efficiency and performance. This is something you can change by formatting the SD card. See 
 [f_mkfs](http://elm-chan.org/fsw/ff/doc/mkfs.html)
 and 
 [Description of Default Cluster Sizes for FAT32 File System](https://support.microsoft.com/en-us/topic/description-of-default-cluster-sizes-for-fat32-file-system-905ea1b1-5c4e-a03f-3863-e4846a878d31). 
-Again, there might be some advantage to making your write size be some factor or multiple of the allocation unit.
+Again, there might be some advantage to making your write size be some factor or multiple of the FAT allocation unit.
 The `info` command in [examples/command_line](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/tree/main/examples/command_line) reports the allocation unit.
 
-File fragmentation can lead to long access times. 
+[File fragmentation](https://en.wikipedia.org/wiki/Design_of_the_FAT_file_system#Fragmentation) can lead to long access times. 
 Fragmented files can result from multiple files being incrementally extended in an interleaved fashion. 
 One commonly used trick is to use [f_lseek](http://elm-chan.org/fsw/ff/doc/lseek.html) to pre-allocate a file to its ultimate size before beginning to write to it. Even better, you can pre-allocate a contiguous file using [f_expand](http://elm-chan.org/fsw/ff/doc/expand.html).
 
-## Appendix D: Troubleshooting
+## Appendix E: Troubleshooting
 * **Check your grounds!** Maybe add some more if you were skimpy with them. The Pico has six of them.
+* Turn on `DBG_PRINTF`. (See #messages-from-the-sd-card-driver.) For example, in `CMakeLists.txt`, 
+  ```
+  add_compile_definitions(USE_PRINTF USE_DBG_PRINTF)
+  ```
+  You might see a clue in the messages.
 * Try lowering the SPI or SDIO baud rate (e.g., in `hw_config.c`). This will also make it easier to use things like logic analyzers.
   * For SPI, this is in the
   [spi_t](#an-instance-of-spi_t-describes-the-configuration-of-one-rp2040-spi-controller) instance.

@@ -91,6 +91,8 @@ bool sd_sdio_readSector(sd_card_t *sd_card_p, uint32_t sector, uint8_t *dst);
  * \return true for success or false for failure.
  */
 bool sd_sdio_readSectors(sd_card_t *sd_card_p, uint32_t sector, uint8_t *dst, size_t ns);
+// Read 512-bit SD status
+bool rp2040_sdio_get_sd_status(sd_card_t *sd_card_p, uint8_t response[64]);
 /** Read one data sector in a multiple sector read sequence
  *
  * \param[out] dst Pointer to the location for the data to be read.

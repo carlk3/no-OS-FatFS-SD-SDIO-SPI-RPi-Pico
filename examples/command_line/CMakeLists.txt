@@ -52,7 +52,7 @@ add_compile_definitions(USE_PRINTF)
 # add_compile_definitions(USE_LED=1)
 
 # target_compile_definitions(<TARGET> PRIVATE PARAM_ASSERTIONS_ENABLE_ALL=1)
-add_compile_definitions(PARAM_ASSERTIONS_ENABLE_ALL=1 PICO_USE_STACK_GUARDS=1)
+# add_compile_definitions(PARAM_ASSERTIONS_ENABLE_ALL=1 PICO_USE_STACK_GUARDS=1)
 
 set_property(TARGET command_line APPEND_STRING PROPERTY LINK_FLAGS 
   "-Wl,--print-memory-usage -Wstack-usage=256"
