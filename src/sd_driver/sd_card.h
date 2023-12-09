@@ -27,10 +27,9 @@ specific language governing permissions and limitations under the License.
 //
 #include "SPI/spi.h"
 #include "sd_card_constants.h"
+#include "sd_regs.h"
 #include "SDIO/rp2040_sdio.h"
 #include "util.h"
-//
-#include "SdCardInfo.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -103,8 +102,8 @@ struct sd_card_t {
     /* The following fields are state variables and not part of the configuration. 
     They are dynamically assigned. */
     int m_Status;      // Card status
-    csd_t csd;         // Card-Specific Data register.
-    cid_t cid;         // Card IDentification register
+    CSD_t CSD;         // Card-Specific Data register.
+    CID_t CID;         // Card IDentification register
     uint64_t sectors;  // Assigned dynamically
     int card_type;     // Assigned dynamically
     mutex_t mutex;

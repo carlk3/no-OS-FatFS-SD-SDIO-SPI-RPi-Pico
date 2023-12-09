@@ -5,6 +5,7 @@
 #include <string.h>
 #include <time.h>
 //
+#include "hardware/adc.h"
 #include "hardware/clocks.h" 
 #include "hardware/rtc.h"
 #include "pico/stdlib.h"
@@ -111,7 +112,7 @@ static void run_date(const size_t argc, const char *argv[]) {
                     // 001 to 366).
     printf("Day of year: %s\n", buf);
 }
-static char const *const fs_type_string(int fs_type) {
+static char const *fs_type_string(int fs_type) {
     switch (fs_type) {
         case FS_FAT12:
             return "FAT12";
@@ -175,6 +176,19 @@ static void run_info(const size_t argc, const char *argv[]) {
     printf("\n%10lu KiB (%lu MiB) total drive space.\n%10lu KiB (%lu MiB) available.\n",
            tot_sect / 2, tot_sect / 2 / 1024,
            fre_sect / 2, fre_sect / 2 / 1024);
+
+#if FF_USE_LABEL
+    // Report label:
+    TCHAR buf[34] = {};/* [OUT] Volume label */
+    DWORD vsn;         /* [OUT] Volume serial number */
+    fr = f_getlabel(arg, buf, &vsn);
+    if (FR_OK != fr) {
+        printf("f_getlabel error: %s (%d)\n", FRESULT_str(fr), fr);
+        return;
+    } else {
+        printf("\nVolume label: %s\nVolume serial number: %lu\n", buf, vsn);
+    }
+#endif
 
     // Report format
     printf("\nFilesystem type: %s\n", fs_type_string(fs_p->fs_type));
@@ -253,6 +267,13 @@ static void run_format(const size_t argc, const char *argv[]) {
     /* Format the drive */
     FRESULT fr = f_mkfs(arg, &opt, 0, FF_MAX_SS * 2);
     if (FR_OK != fr) printf("f_mkfs error: %s (%d)\n", FRESULT_str(fr), fr);
+
+    /* This only works if the drive is mounted: */
+#if FF_USE_LABEL
+    TCHAR label[32];
+    snprintf(label, sizeof(label), "%sFatFS", arg);
+    fr = f_setlabel(label);
+#endif
 }
 static void run_mount(const size_t argc, const char *argv[]) {
     const char *arg = chk_dflt_log_drv(argc, argv);
@@ -521,7 +542,8 @@ static void run_loop_swcwdt(const size_t argc, const char *argv[]) {
 }
 static void run_start_logger(const size_t argc, const char *argv[]) {
     if (!expect_argc(argc, argv, 0)) return;
-
+    adc_init();
+    adc_set_temp_sensor_enabled(true);
     logger_enabled = true;
     next_log_time = delayed_by_ms(get_absolute_time(), period);
 }
@@ -743,31 +765,35 @@ static void run_help(const size_t argc, const char *argv[]) {
     }
 }
 
-static void process_cmd(char *cmd) {
+static void process_cmd(size_t cmd_sz, char *cmd) {
+    assert(cmd);
+    assert(cmd[0]);
     char *cmdn = strtok_r(cmd, " ", &saveptr);
     if (cmdn) {
+        assert(cmdn < cmd + cmd_sz);
 
-        /* Breaking with Unix tradition of arg[0] being command name,
-        arg[0] is first argument after command name */
+        /* Breaking with Unix tradition of argv[0] being command name,
+        argv[0] is first argument after command name */
 
         size_t argc = 0;
-        const char *args[10] = {0}; // Arbitrary limit of 10 arguments
-        const char *argp;
+        const char *argv[10] = {0}; // Arbitrary limit of 10 arguments
+        const char *arg_p;
         do {
-            argp = strtok_r(NULL, " ", &saveptr);
-            if (argp) {
-                if (argc >= count_of(args)) {
-                    extra_argument_msg(argp);
+            arg_p = strtok_r(NULL, " ", &saveptr);
+            if (arg_p) {
+                assert(arg_p < cmd + cmd_sz);
+                if (argc >= count_of(argv)) {
+                    extra_argument_msg(arg_p);
                     return;
                 }
-                args[argc++] = argp;
+                argv[argc++] = arg_p;
             }
-        } while (argp);
+        } while (arg_p);
 
         size_t i;
         for (i = 0; i < count_of(cmds); ++i) {
             if (0 == strcmp(cmds[i].command, cmdn)) {
-                (*cmds[i].function)(argc, args);
+                (*cmds[i].function)(argc, argv);
                 break;
             }
         }
@@ -779,8 +805,10 @@ void process_stdio(int cRxedChar) {
     static char cmd[256];
     static size_t ix;
 
+    if (!(0 < cRxedChar &&  cRxedChar <= 0x7F))
+        return; // Not dealing with multibyte characters
     if (!isprint(cRxedChar) && !isspace(cRxedChar) && '\r' != cRxedChar &&
-        '\b' != cRxedChar && cRxedChar != (char)127)
+        '\b' != cRxedChar && cRxedChar != 127)
         return;
     printf("%c", cRxedChar);  // echo
     stdio_flush();
@@ -796,7 +824,7 @@ void process_stdio(int cRxedChar) {
         }
 
         /* Process the input string received prior to the newline. */
-        process_cmd(cmd);
+        process_cmd(sizeof cmd, cmd);
 
         /* Reset everything for next cmd */
         ix = 0;

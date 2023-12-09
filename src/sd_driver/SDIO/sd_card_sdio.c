@@ -104,7 +104,7 @@ bool sd_sdio_begin(sd_card_t *sd_card_p)
     // CMD2 is valid only in "ready" state;
     // Transitions to "ident" state
     // Note: CMD10 is valid only in "stby" state
-    if (!checkReturnOk(rp2040_sdio_command_R2(sd_card_p, CMD2_ALL_SEND_CID, 0, (uint8_t *)&sd_card_p->cid)))
+    if (!checkReturnOk(rp2040_sdio_command_R2(sd_card_p, CMD2_ALL_SEND_CID, 0, (uint8_t *)&sd_card_p->CID)))
     {
         azdbg("SDIO failed to read CID");
         return false;
@@ -121,12 +121,12 @@ bool sd_sdio_begin(sd_card_t *sd_card_p)
 
     // Get CSD
     // Valid in "stby" state; stays in "stby" state
-    if (!checkReturnOk(rp2040_sdio_command_R2(sd_card_p, CMD9_SEND_CSD, STATE.rca, sd_card_p->csd.csd)))
+    if (!checkReturnOk(rp2040_sdio_command_R2(sd_card_p, CMD9_SEND_CSD, STATE.rca, sd_card_p->CSD)))
     {
         azdbg("SDIO failed to read CSD");
         return false;
     }
-    sd_card_p->sectors = CSD_capacity(&sd_card_p->csd);
+    sd_card_p->sectors = CSD_sectors(sd_card_p->CSD);
 
     // Select card
     // Valid in "stby" state; 
@@ -253,9 +253,9 @@ bool sd_sdio_syncDevice(sd_card_t *sd_card_p)
 uint8_t sd_sdio_type(sd_card_t *sd_card_p) // const
 {
     if (STATE.ocr & (1 << 30))
-        return SD_CARD_TYPE_SDHC;
+        return SDCARD_V2HC;
     else
-        return SD_CARD_TYPE_SD2;
+        return SDCARD_V2;
 }
 
 
@@ -533,7 +533,7 @@ static void sd_sdio_deinit(sd_card_t *sd_card_p) {
 uint64_t sd_sdio_sectorCount(sd_card_t *sd_card_p) {
     sd_card_p->init(sd_card_p);
     // return g_sdio_csd.capacity();
-    return CSD_capacity(&sd_card_p->csd);
+    return CSD_sectors(sd_card_p->CSD);
 }
 
 static int sd_sdio_write_blocks(sd_card_t *sd_card_p, const uint8_t *buffer,

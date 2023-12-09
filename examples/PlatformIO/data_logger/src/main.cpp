@@ -170,6 +170,8 @@ void setup() {
         ;  // Serial is via USB; wait for enumeration
     cout << "Hello, world!" << endl;
 
+    adc_init(); // Reading voltage on A0
+
     time_init();
     // You might want to ask the user for the time,
     //   but it is hardcoded here for simplicity:

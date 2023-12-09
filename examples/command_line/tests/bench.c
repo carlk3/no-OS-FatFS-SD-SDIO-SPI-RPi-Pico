@@ -5,7 +5,6 @@
 #include <my_debug.h>
 #include <string.h>
 
-#include "SdCardInfo.h"
 #include "SDIO/SdioCard.h"
 #include "f_util.h"
 #include "ff.h"

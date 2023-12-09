@@ -111,7 +111,7 @@ bool sd_sdio_readOCR(sd_card_t *sd_card_p, uint32_t *ocr);
  * \param[out] scr Value of SCR register.
  * \return true for success or false for failure.
  */
-bool sd_sdio_readSCR(sd_card_t *sd_card_p, scr_t *scr);
+// bool sd_sdio_readSCR(sd_card_t *sd_card_p, scr_t *scr);
 /** Start a read multiple sectors sequence.
  *
  * \param[in] sector Address of first sector in sequence.

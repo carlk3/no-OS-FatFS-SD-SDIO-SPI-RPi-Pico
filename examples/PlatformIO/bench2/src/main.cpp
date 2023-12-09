@@ -37,7 +37,7 @@ void put_out_info_message(const char *s) {
 /* ********************************************************************** */
 
 // Whether or not to format the card(s) in setup():
-static const bool FORMAT = true;
+static const bool FORMAT = false;
 
 // Set PRE_ALLOCATE true to pre-allocate file clusters.
 static const bool PRE_ALLOCATE = true;
