@@ -578,18 +578,18 @@ static uint64_t in_sd_spi_sectors(sd_card_t *sd_card_p) {
         DBG_PRINTF("Didn't get a response from the disk\n");
         return 0;
     }
-    if (sd_read_bytes(sd_card_p, sd_card_p->csd.csd, 16) != 0) {
+    if (sd_read_bytes(sd_card_p, sd_card_p->CSD, 16) != 0) {
         DBG_PRINTF("Couldn't read CSD response from disk\n");
         return 0;
     }
-    // csd_structure : csd[127:126]
-    int csd_structure = ext_bits16(sd_card_p->csd.csd, 127, 126);
+    // csd_structure : CSD[127:126]
+    int csd_structure = ext_bits16(sd_card_p->CSD, 127, 126);
     switch (csd_structure) {
         case 0:
-            c_size = ext_bits16(sd_card_p->csd.csd, 73, 62);       // c_size        : csd[73:62]
-            c_size_mult = ext_bits16(sd_card_p->csd.csd, 49, 47);  // c_size_mult   : csd[49:47]
+            c_size = ext_bits16(sd_card_p->CSD, 73, 62);       // c_size        : CSD[73:62]
+            c_size_mult = ext_bits16(sd_card_p->CSD, 49, 47);  // c_size_mult   : CSD[49:47]
             read_bl_len =
-                ext_bits16(sd_card_p->csd.csd, 83, 80);     // read_bl_len   : csd[83:80] - the
+                ext_bits16(sd_card_p->CSD, 83, 80);     // read_bl_len   : CSD[83:80] - the
                                            // *maximum* read block length
             block_len = 1 << read_bl_len;  // BLOCK_LEN = 2^READ_BL_LEN
             mult = 1 << (c_size_mult +
@@ -602,7 +602,7 @@ static uint64_t in_sd_spi_sectors(sd_card_t *sd_card_p) {
 
         case 1:
             hc_c_size =
-                ext_bits16(sd_card_p->csd.csd, 69, 48);       // device size : C_SIZE : [69:48]
+                ext_bits16(sd_card_p->CSD, 69, 48);       // device size : C_SIZE : [69:48]
             blocks = (hc_c_size + 1) << 10;  // block count = C_SIZE+1) * 1K
                                              // byte (512B is block size)
             break;
@@ -1135,13 +1135,6 @@ int sd_init(sd_card_t *sd_card_p) {
     // Initialize the member variables
     sd_card_p->card_type = SDCARD_NONE;
 
-    // Chip select is active-low, so we'll initialise it to a
-    // driven-high state.
-    gpio_init(sd_card_p->spi_if_p->ss_gpio);
-    gpio_put(sd_card_p->spi_if_p->ss_gpio, 1);  // Avoid any glitches when enabling output
-    gpio_set_dir(sd_card_p->spi_if_p->ss_gpio, GPIO_OUT);
-    gpio_put(sd_card_p->spi_if_p->ss_gpio, 1);  // In case set_dir does anything
-
     sd_spi_acquire(sd_card_p);
 
     int err = sd_init_medium(sd_card_p);
@@ -1165,7 +1158,7 @@ int sd_init(sd_card_t *sd_card_p) {
         sd_release(sd_card_p);
         return sd_card_p->m_Status;
     }
-    if (sd_read_bytes(sd_card_p, (uint8_t *)&sd_card_p->cid, sizeof(cid_t)) != 0) {
+    if (sd_read_bytes(sd_card_p, (uint8_t *)&sd_card_p->CID, sizeof(CID_t)) != 0) {
         DBG_PRINTF("Couldn't read CID response from disk\n");
         sd_release(sd_card_p);
         return sd_card_p->m_Status;
@@ -1214,6 +1207,14 @@ void sd_spi_ctor(sd_card_t *sd_card_p) {
     sd_card_p->get_num_sectors = sd_spi_sectors;
     sd_card_p->sd_test_com = sd_spi_test_com;
 
+    // Initialize ss_gpio here to avoid conflicts 
+    // when multiple SD cards share an SPI bus
+    // Chip select is active-low, so we'll initialise it to a
+    // driven-high state.
+    gpio_init(sd_card_p->spi_if_p->ss_gpio);
+    gpio_put(sd_card_p->spi_if_p->ss_gpio, 1);  // Avoid any glitches when enabling output
+    gpio_set_dir(sd_card_p->spi_if_p->ss_gpio, GPIO_OUT);
+    gpio_put(sd_card_p->spi_if_p->ss_gpio, 1);  // In case set_dir does anything
     if (sd_card_p->spi_if_p->set_drive_strength) {
         gpio_set_drive_strength(sd_card_p->spi_if_p->ss_gpio, sd_card_p->spi_if_p->ss_gpio_drive_strength);
     }

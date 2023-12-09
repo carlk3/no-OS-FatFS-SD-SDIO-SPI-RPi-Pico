@@ -1,14 +1,14 @@
 /* sd_card_constants.h
 Copyright 2021 Carl John Kugler III
 
-Licensed under the Apache License, Version 2.0 (the License); you may not use 
-this file except in compliance with the License. You may obtain a copy of the 
+Licensed under the Apache License, Version 2.0 (the License); you may not use
+this file except in compliance with the License. You may obtain a copy of the
 License at
 
-   http://www.apache.org/licenses/LICENSE-2.0 
-Unless required by applicable law or agreed to in writing, software distributed 
-under the License is distributed on an AS IS BASIS, WITHOUT WARRANTIES OR 
-CONDITIONS OF ANY KIND, either express or implied. See the License for the 
+   http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an AS IS BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 */
 
@@ -18,7 +18,6 @@ specific language governing permissions and limitations under the License.
 extern "C" {
 #endif
 
-
 // Only HC block size is supported. Making this a static constant reduces code
 // size.
 #define BLOCK_SIZE_HC 512 /*!< Block size supported for SD card is 512 bytes */
@@ -26,26 +25,27 @@ static const uint32_t _block_size = BLOCK_SIZE_HC;
 
 typedef enum {
     SD_BLOCK_DEVICE_ERROR_NONE = 0,
-    SD_BLOCK_DEVICE_ERROR_WOULD_BLOCK 		= 1 << 0, /*!< operation would block */
-    SD_BLOCK_DEVICE_ERROR_UNSUPPORTED 		= 1 << 1, /*!< unsupported operation */
-    SD_BLOCK_DEVICE_ERROR_PARAMETER 		= 1 << 2, /*!< invalid parameter */
-    SD_BLOCK_DEVICE_ERROR_NO_INIT 			= 1 << 3, /*!< uninitialized */
-    SD_BLOCK_DEVICE_ERROR_NO_DEVICE 		= 1 << 4, /*!< device is missing or not connected */
-    SD_BLOCK_DEVICE_ERROR_WRITE_PROTECTED 	= 1 << 5, /*!< write protected */
-    SD_BLOCK_DEVICE_ERROR_UNUSABLE 			= 1 << 6, /*!< unusable card */
-    SD_BLOCK_DEVICE_ERROR_NO_RESPONSE 		= 1 << 7, /*!< No response from device */
-    SD_BLOCK_DEVICE_ERROR_CRC 				= 1 << 8, /*!< CRC error */
-    SD_BLOCK_DEVICE_ERROR_ERASE 			= 1 << 9, /*!< Erase error: reset/sequence */
-    SD_BLOCK_DEVICE_ERROR_WRITE 			= 1 << 10 /*!< SPI Write error: !SPI_DATA_ACCEPTED */
+    SD_BLOCK_DEVICE_ERROR_WOULD_BLOCK = 1 << 0,     /*!< operation would block */
+    SD_BLOCK_DEVICE_ERROR_UNSUPPORTED = 1 << 1,     /*!< unsupported operation */
+    SD_BLOCK_DEVICE_ERROR_PARAMETER = 1 << 2,       /*!< invalid parameter */
+    SD_BLOCK_DEVICE_ERROR_NO_INIT = 1 << 3,         /*!< uninitialized */
+    SD_BLOCK_DEVICE_ERROR_NO_DEVICE = 1 << 4,       /*!< device is missing or not connected */
+    SD_BLOCK_DEVICE_ERROR_WRITE_PROTECTED = 1 << 5, /*!< write protected */
+    SD_BLOCK_DEVICE_ERROR_UNUSABLE = 1 << 6,        /*!< unusable card */
+    SD_BLOCK_DEVICE_ERROR_NO_RESPONSE = 1 << 7,     /*!< No response from device */
+    SD_BLOCK_DEVICE_ERROR_CRC = 1 << 8,             /*!< CRC error */
+    SD_BLOCK_DEVICE_ERROR_ERASE = 1 << 9,           /*!< Erase error: reset/sequence */
+    SD_BLOCK_DEVICE_ERROR_WRITE = 1 << 10           /*!< SPI Write error: !SPI_DATA_ACCEPTED */
 } block_dev_err_t;
 
 /** Represents the different SD/MMC card types  */
-// Types
-#define SDCARD_NONE 0  /**< No card is present */
-#define SDCARD_V1 1    /**< v1.x Standard Capacity */
-#define SDCARD_V2 2    /**< v2.x Standard capacity SD card */
-#define SDCARD_V2HC 3  /**< v2.x High capacity SD card */
-#define CARD_UNKNOWN 4 /**< Unknown or unsupported card */
+typedef enum {
+    SDCARD_NONE = 0, /**< No card is present */
+    SDCARD_V1 = 1,   /**< v1.x Standard Capacity */
+    SDCARD_V2 = 2,   /**< v2.x Standard capacity SD card */
+    SDCARD_V2HC = 3, /**< v2.x High capacity SD card */
+    CARD_UNKNOWN = 4 /**< Unknown or unsupported card */
+} card_type_t;
 
 // Supported SD Card Commands
 typedef enum {
@@ -54,7 +54,7 @@ typedef enum {
     CMD1_SEND_OP_COND = 1,              /* Sends host capacity support */
     CMD2_ALL_SEND_CID = 2,              /* Asks any card to send the CID. */
     CMD3_SEND_RELATIVE_ADDR = 3,        /* Ask the card to publish a new RCA. */
-    CMD6_SWITCH_FUNC = 6,               /* Check and Switches card function */    
+    CMD6_SWITCH_FUNC = 6,               /* Check and Switches card function */
     CMD7_SELECT_CARD = 7,               /* SELECT/DESELECT_CARD - toggles between the stand-by and transfer states. */
     CMD8_SEND_IF_COND = 8,              /* Supply voltage info */
     CMD9_SEND_CSD = 9,                  /* Provides Card Specific data */
@@ -91,7 +91,7 @@ typedef enum {
 
 ///* Disk Status Bits (DSTATUS) */
 // See diskio.h.
-//enum {
+// enum {
 //    STA_NOINIT = 0x01, /* Drive not initialized */
 //    STA_NODISK = 0x02, /* No medium in the drive */
 //    STA_PROTECT = 0x04 /* Write protected */

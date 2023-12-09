@@ -1,5 +1,5 @@
 # no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
-# v1.2.0
+# v1.2.1
 
 ## C/C++ Library for SD Cards on the Pico
 
@@ -11,6 +11,8 @@ and a 4-bit wide Secure Digital Input Output (SDIO) driver derived from
 It is wrapped up in a complete runnable project, with a little command line interface, some self tests, and an example data logging application.
 
 ## What's new
+### v1.2.1
+`command_line` example: Power on the onboard temperature sensor
 ### v1.2.0
 * Implement `ACMD42`: *SET_CLR_CARD_DETECT*: 
 At power up the CS/DAT3 line has a 50KOhm pull up enabled in the SD card. 

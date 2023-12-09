@@ -1,6 +1,5 @@
 #include <stdio.h>
 //
-#include "hardware/adc.h"
 #include "hardware/clocks.h" 
 #include "pico/stdlib.h"
 //
@@ -44,7 +43,6 @@ int main() {
     stdio_init_all();
     setvbuf(stdout, NULL, _IONBF, 1); // specify that the stream should be unbuffered
     time_init();
-    adc_init();
 
     printf("\033[2J\033[H");  // Clear Screen
     printf("\n> ");

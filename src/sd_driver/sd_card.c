@@ -23,6 +23,7 @@ specific language governing permissions and limitations under the License.
 #include "hw_config.h"  // Hardware Configuration of the SPI and SD Card "objects"
 #include "my_debug.h"
 #include "sd_card_constants.h"
+#include "sd_regs.h"
 //
 #include "sd_card.h"
 //
@@ -78,7 +79,7 @@ bool sd_init_driver() {
         for (size_t i = 0; i < sd_get_num(); ++i) {
             sd_card_t *sd_card_p = sd_get_by_num(i);
             myASSERT(sd_card_p->pcName);
-            if (!mutex_is_initialized(&sd_card_p->mutex)) 
+            if (!mutex_is_initialized(&sd_card_p->mutex))
                 mutex_init(&sd_card_p->mutex);
             switch (sd_card_p->type) {
                 case SD_IF_SPI:
@@ -109,23 +110,45 @@ bool sd_init_driver() {
     mutex_exit(&initialized_mutex);
     return true;
 }
-
 void cidDmp(sd_card_t *sd_card_p, printer_t printer) {
+    // +-----------------------+-------+-------+-----------+
+    // | Name                  | Field | Width | CID-slice |
+    // +-----------------------+-------+-------+-----------+
+    // | Manufacturer ID       | MID   | 8     | [127:120] | 15
     (*printer)("\nManufacturer ID: ");
-    (*printer)("0x%x\n", sd_card_p->cid.mid);
+    (*printer)("0x%x\n", ext_bits16(sd_card_p->CID, 127, 120));
+    // | OEM/Application ID    | OID   | 16    | [119:104] | 14
     (*printer)("OEM ID: ");
-    (*printer)("%c%c\n", sd_card_p->cid.oid[0], sd_card_p->cid.oid[1]);
-    (*printer)("Product: ");
-    for (uint8_t i = 0; i < 5; i++) {
-        (*printer)("%c", sd_card_p->cid.pnm[i]);
+    {
+        char buf[3];
+        ext_str(16, sd_card_p->CID, 119, 104, sizeof buf, buf);
+        (*printer)("%s", buf);
     }
+    // | Product name          | PNM   | 40    | [103:64]  | 12
+    (*printer)("Product: ");
+    {
+        char buf[6];
+        ext_str(16, sd_card_p->CID, 103, 64, sizeof buf, buf);
+        (*printer)("%s", buf);
+    }
+    // | Product revision      | PRV   | 8     | [63:56]   | 7
     (*printer)("\nRevision: ");
-    (*printer)("%d.%d\n", CID_prvN(&sd_card_p->cid), CID_prvM(&sd_card_p->cid));
+    (*printer)("%d.%d\n", ext_bits16(sd_card_p->CID, 63, 60),
+               ext_bits16(sd_card_p->CID, 59, 56));
+    // | Product serial number | PSN   | 32    | [55:24]   | 6
     (*printer)("Serial number: ");
-    (*printer)("0x%lx\n", CID_psn(&sd_card_p->cid));
+    (*printer)("0x%lx\n", __builtin_bswap32(ext_bits16(sd_card_p->CID, 55, 24)));
+    // | reserved              | --    | 4     | [23:20]   | 2
+    // | Manufacturing date    | MDT   | 12    | [19:8]    |
+    // The "m" field [11:8] is the month code. 1 = January.
+    // The "y" field [19:12] is the year code. 0 = 2000.
     (*printer)("Manufacturing date: ");
-    (*printer)("%d/%d\n", CID_mdtMonth(&sd_card_p->cid), CID_mdtYear(&sd_card_p->cid));
+    (*printer)("%d/%d\n", ext_bits16(sd_card_p->CID, 11, 8),
+               ext_bits16(sd_card_p->CID, 19, 12) + 2000);
     (*printer)("\n");
+    // | CRC7 checksum         | CRC   | 7     | [7:1]     | 0
+    // | not used, always 1-   | 1     | [0:0] |           |
+    // +-----------------------+-------+-------+-----------+
 }
 void csdDmp(sd_card_t *sd_card_p, printer_t printer) {
     uint32_t c_size, c_size_mult, read_bl_len;
@@ -135,16 +158,16 @@ void csdDmp(sd_card_t *sd_card_p, printer_t printer) {
     bool erase_single_block_enable = 0;
     uint8_t erase_sector_size = 0;
 
-    // csd_structure : csd[127:126]
-    int csd_structure = ext_bits16(sd_card_p->csd.csd, 127, 126);
+    // csd_structure : CSD[127:126]
+    int csd_structure = ext_bits16(sd_card_p->CSD, 127, 126);
     switch (csd_structure) {
         case 0:
-            c_size = ext_bits16(sd_card_p->csd.csd, 73, 62);       // c_size        : csd[73:62]
-            c_size_mult = ext_bits16(sd_card_p->csd.csd, 49, 47);  // c_size_mult   : csd[49:47]
+            c_size = ext_bits16(sd_card_p->CSD, 73, 62);       // c_size        : CSD[73:62]
+            c_size_mult = ext_bits16(sd_card_p->CSD, 49, 47);  // c_size_mult   : CSD[49:47]
             read_bl_len =
-                ext_bits16(sd_card_p->csd.csd, 83, 80);  // read_bl_len   : csd[83:80] - the
-                                                       // *maximum* read block length
-            block_len = 1 << read_bl_len;              // BLOCK_LEN = 2^READ_BL_LEN
+                ext_bits16(sd_card_p->CSD, 83, 80);  // read_bl_len   : CSD[83:80] - the
+                                                     // *maximum* read block length
+            block_len = 1 << read_bl_len;            // BLOCK_LEN = 2^READ_BL_LEN
             mult = 1 << (c_size_mult +
                          2);                // MULT = 2^C_SIZE_MULT+2 (C_SIZE_MULT < 8)
             blocknr = (c_size + 1) * mult;  // BLOCKNR = (C_SIZE+1) * MULT
@@ -155,14 +178,14 @@ void csdDmp(sd_card_t *sd_card_p, printer_t printer) {
             (*printer)("Standard Capacity: c_size: %" PRIu32 "\r\n", c_size);
             (*printer)("Sectors: 0x%llx : %llu\r\n", blocks, blocks);
             (*printer)("Capacity: 0x%llx : %llu MiB\r\n", capacity,
-                   (capacity / (1024U * 1024U)));
+                       (capacity / (1024U * 1024U)));
             break;
 
         case 1:
             hc_c_size =
-                ext_bits16(sd_card_p->csd.csd, 69, 48);  // device size : C_SIZE : [69:48]
-            blocks = (hc_c_size + 1) << 10;            // block count = C_SIZE+1) * 1K
-                                                       // byte (512B is block size)
+                ext_bits16(sd_card_p->CSD, 69, 48);  // device size : C_SIZE : [69:48]
+            blocks = (hc_c_size + 1) << 10;          // block count = C_SIZE+1) * 1K
+                                                     // byte (512B is block size)
 
             /* ERASE_BLK_EN
             The ERASE_BLK_EN defines the granularity of the unit size of the data to be erased. The erase
@@ -170,21 +193,21 @@ void csdDmp(sd_card_t *sd_card_p, printer_t printer) {
             SECTOR_SIZE. If ERASE_BLK_EN=0, the host can erase one or multiple units of SECTOR_SIZE.
             If ERASE_BLK_EN=1 the host can erase one or multiple units of 512 bytes.
             */
-            erase_single_block_enable = ext_bits16(sd_card_p->csd.csd, 46, 46);
+            erase_single_block_enable = ext_bits16(sd_card_p->CSD, 46, 46);
 
             /* SECTOR_SIZE
             The size of an erasable sector. The content of this register is a 7-bit binary coded value, defining the
             number of write blocks. The actual size is computed by increasing this number
             by one. A value of zero means one write block, 127 means 128 write blocks.
             */
-            erase_sector_size = ext_bits16(sd_card_p->csd.csd, 45, 39) + 1;
+            erase_sector_size = ext_bits16(sd_card_p->CSD, 45, 39) + 1;
 
             (*printer)("SDHC/SDXC Card: hc_c_size: %" PRIu32 "\r\n", hc_c_size);
             (*printer)("Sectors: %llu\r\n", blocks);
             (*printer)("Capacity: %llu MiB (%llu MB)\r\n", blocks / 2048, blocks * _block_size / 1000000);
             (*printer)("ERASE_BLK_EN: %s\r\n", erase_single_block_enable ? "units of 512 bytes" : "units of SECTOR_SIZE");
-            (*printer)("SECTOR_SIZE (size of an erasable sector): %d (%lu bytes)\r\n", 
-                erase_sector_size, (uint32_t)(erase_sector_size ? 512 : 1) * erase_sector_size);
+            (*printer)("SECTOR_SIZE (size of an erasable sector): %d (%lu bytes)\r\n",
+                       erase_sector_size, (uint32_t)(erase_sector_size ? 512 : 1) * erase_sector_size);
             break;
 
         default:
