@@ -3,11 +3,12 @@
 #include "hardware/clocks.h" 
 #include "pico/stdlib.h"
 //
-#include "hw_config.h"
 #include "command.h"
+#include "crash.h"
 #include "f_util.h"
+#include "hw_config.h"
 #include "rtc.h"
-#include "tests/tests.h"
+#include "tests.h"
 //
 #include "diskio.h" /* Declarations of disk functions */
 
@@ -40,11 +41,24 @@ static void card_detect_callback(uint gpio, uint32_t events) {
 }
 
 int main() {
+    crash_handler_init();
     stdio_init_all();
     setvbuf(stdout, NULL, _IONBF, 1); // specify that the stream should be unbuffered
     time_init();
 
     printf("\033[2J\033[H");  // Clear Screen
+
+    // Check fault capture from RAM:
+    crash_info_t const *const pCrashInfo = crash_handler_get_info();
+    if (pCrashInfo) {
+        printf("*** Fault Capture Analysis (RAM): ***\n");
+        int n = 0;
+        do {
+            char buf[256] = {0};
+            n = dump_crash_info(pCrashInfo, n, buf, sizeof(buf));
+            if (buf[0]) printf("\t%s", buf);
+        } while (n != 0);
+    }
     printf("\n> ");
     stdio_flush();
 
