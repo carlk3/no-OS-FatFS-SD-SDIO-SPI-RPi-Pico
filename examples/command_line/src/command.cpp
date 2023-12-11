@@ -771,7 +771,8 @@ static cmd_def_t cmds[] = {
     //  " Count the RP2040 clock frequencies and report."},
     // {"clr", clr, "clr <gpio #>: clear a GPIO"},
     // {"set", set, "set <gpio #>: set a GPIO"},
-    {"test", run_test, "Development test"},
+    // {"test", run_test, "test:\n"
+    //  " Development test"},
     {"help", run_help,
      "help:\n"
      " Shows this command help."}
