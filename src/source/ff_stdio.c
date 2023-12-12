@@ -17,6 +17,7 @@ specific language governing permissions and limitations under the License.
 #include <limits.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "my_debug.h"
@@ -197,7 +198,10 @@ char *ff_getcwd(char *pcBuffer, size_t xBufferLength) {
     //);
     char buf[ffconfigMAX_FILENAME] = {0};
     FRESULT fr = f_getcwd(buf, sizeof buf);
-    myASSERT(!buf[sizeof buf - 1]);
+    // f_getcwd uses buf as a work area, 
+    // so even though the string is null-terminated,
+    // bytes near the end might not be nulls.
+    myASSERT(strlen(buf) < sizeof buf);
     if (FR_OK != fr)
         TRACE_PRINTF("%s error: %s (%d)\n", __func__, FRESULT_str(fr), fr);
     errno = fresult2errno(fr);
@@ -211,7 +215,11 @@ char *ff_getcwd(char *pcBuffer, size_t xBufferLength) {
                 ++p;
             else
                 p = buf;
-            strncpy(pcBuffer, p, xBufferLength);
+            int rc = snprintf(pcBuffer, xBufferLength, "%s", p);
+            // only when this returned value is non-negative and less than n, 
+            // the string has been completely written
+            if (!(0 <= rc && (size_t)rc < xBufferLength))
+                return NULL;
         }
         return pcBuffer;
     } else {
