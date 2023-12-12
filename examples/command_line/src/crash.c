@@ -188,9 +188,6 @@ void Hardfault_HandlerC(uint32_t const *faultStackAddr) {
                            offsetof(crash_info_t, xor_checksum));
     __DSB();  // make sure all data is really written into the memory before
               // doing a reset
-
-    __BKPT(0);
-    // sleep_ms(5 * 1000);
     
     NVIC_SystemReset();
 }
