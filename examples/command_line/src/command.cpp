@@ -23,6 +23,7 @@
 #include "command.h"
 
 static char *saveptr;  // For strtok_r
+static volatile bool die;
 
 bool logger_enabled;
 const uint32_t period = 1000;
@@ -541,14 +542,14 @@ static void run_swcwdt(const size_t argc, const char *argv[]) {
 static void run_loop_swcwdt(const size_t argc, const char *argv[]) {
     if (!expect_argc(argc, argv, 0)) return;
 
-    int cRxedChar = 0;
+    die = false;
     do {
+        f_chdir("/");
         del_node("/cdef");
         f_mkdir("/cdef");  // fake mountpoint
         vCreateAndVerifyExampleFiles("/cdef");
         vStdioWithCWDTest("/cdef");
-        cRxedChar = getchar_timeout_us(0);
-    } while (PICO_ERROR_TIMEOUT == cRxedChar);
+    } while (!die);
 }
 static void run_start_logger(const size_t argc, const char *argv[]) {
     if (!expect_argc(argc, argv, 0)) return;
@@ -749,7 +750,7 @@ static cmd_def_t cmds[] = {
      "loop_swcwdt:\n Run Create Disk and Example Files and Stdio With CWD "
      "Test in a loop.\n"
      "Expects card to be already formatted and mounted.\n"
-     "Note: Type any key to quit."},
+     "Note: Hit Enter key to quit."},
     {"start_logger", run_start_logger,
      "start_logger:\n"
      " Start Data Log Demo"},
@@ -796,6 +797,8 @@ static void chars_available_callback(void *ptr) {
     case 27: // Esc
         __BKPT();
         break;
+    case '\r':
+        die = true;
     }
 }
 
