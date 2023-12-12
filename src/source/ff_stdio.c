@@ -195,8 +195,9 @@ char *ff_getcwd(char *pcBuffer, size_t xBufferLength) {
     //  TCHAR* buff, /* [OUT] Buffer to return path name */
     //  UINT len     /* [IN] The length of the buffer */
     //);
-    char buf[xBufferLength];
-    FRESULT fr = f_getcwd(buf, xBufferLength);
+    char buf[ffconfigMAX_FILENAME] = {0};
+    FRESULT fr = f_getcwd(buf, sizeof buf);
+    myASSERT(!buf[sizeof buf - 1]);
     if (FR_OK != fr)
         TRACE_PRINTF("%s error: %s (%d)\n", __func__, FRESULT_str(fr), fr);
     errno = fresult2errno(fr);
