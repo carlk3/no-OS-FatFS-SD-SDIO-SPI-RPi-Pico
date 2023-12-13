@@ -1,5 +1,5 @@
 # no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
-# v1.2.1
+# v1.2.2
 
 ## C/C++ Library for SD Cards on the Pico
 
@@ -11,8 +11,16 @@ and a 4-bit wide Secure Digital Input Output (SDIO) driver derived from
 It is wrapped up in a complete runnable project, with a little command line interface, some self tests, and an example data logging application.
 
 ## What's new
+### v1.2.2
+`command_line` example changes:
+* Move core 0 stack to bottom of RAM so that any stack overflow triggers a HardFault
+* Add `isr_hardfault` handler to print out Program Counter (PC) and Link register (LR) of failing instruction.
+These can be useful in conjunction with `build\command_line.dis` to find the failing line of code.
+* Fix a couple of stack overflows
+* Added a *break* feature that can interrupt long-running commands. 
+Typing **Ctrl-C** will trigger a reset; **Esc** will trigger a breakpoint.
 ### v1.2.1
-`command_line` example: Power on the onboard temperature sensor
+`command_line` example: Power on the onboard temperature sensor for Data Log Demo
 ### v1.2.0
 * Implement `ACMD42`: *SET_CLR_CARD_DETECT*: 
 At power up the CS/DAT3 line has a 50KOhm pull up enabled in the SD card. 

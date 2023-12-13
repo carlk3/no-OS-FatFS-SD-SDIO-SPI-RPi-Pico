@@ -231,6 +231,7 @@ bool my_spi_init(spi_t *spi_p) {
         gpio_set_function(spi_p->miso_gpio, GPIO_FUNC_SPI);
         gpio_set_function(spi_p->mosi_gpio, GPIO_FUNC_SPI);
         gpio_set_function(spi_p->sck_gpio, GPIO_FUNC_SPI);
+        // ss_gpio is initialized in sd_spi_ctor()
 
         // Slew rate limiting levels for GPIO outputs.
         // enum gpio_slew_rate { GPIO_SLEW_RATE_SLOW = 0, GPIO_SLEW_RATE_FAST = 1 }

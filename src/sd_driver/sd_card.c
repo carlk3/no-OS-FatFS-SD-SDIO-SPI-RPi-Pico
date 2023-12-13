@@ -93,6 +93,7 @@ bool sd_init_driver() {
                     sd_sdio_ctor(sd_card_p);
                     break;
             }  // switch (sd_card_p->type)
+
             if (sd_card_p->use_card_detect) {
                 if (sd_card_p->card_detect_use_pull) {
                     if (sd_card_p->card_detect_pull_hi) {
@@ -110,6 +111,7 @@ bool sd_init_driver() {
     mutex_exit(&initialized_mutex);
     return true;
 }
+
 void cidDmp(sd_card_t *sd_card_p, printer_t printer) {
     // +-----------------------+-------+-------+-----------+
     // | Name                  | Field | Width | CID-slice |

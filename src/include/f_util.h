@@ -25,6 +25,8 @@ extern "C" {
         FILINFO* fno    /* Name read buffer */
     );
 
+    void ls(const char *dir);
+    
 #ifdef __cplusplus
 }
 #endif

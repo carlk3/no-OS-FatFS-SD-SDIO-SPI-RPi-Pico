@@ -23,7 +23,7 @@ specific language governing permissions and limitations under the License.
 //
 #include "rtc.h"
 
-static time_t epochtime;
+time_t epochtime;
 
 // Make an attempt to save a recent time stamp across reset:
 typedef struct rtc_save {

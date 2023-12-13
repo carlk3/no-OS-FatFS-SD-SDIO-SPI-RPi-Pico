@@ -17,6 +17,7 @@ specific language governing permissions and limitations under the License.
 extern "C" {
 #endif
 
+extern time_t epochtime;
 void time_init();
 
 #ifdef __cplusplus
