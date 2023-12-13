@@ -148,7 +148,6 @@ __attribute__((used)) extern void DebugMon_HandlerC(
     __DSB();  // make sure all data is really written into the memory before
               // doing a reset
 
-    __BKPT(1);
     NVIC_SystemReset();
 }
 

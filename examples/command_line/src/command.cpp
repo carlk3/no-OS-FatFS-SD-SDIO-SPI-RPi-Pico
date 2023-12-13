@@ -209,15 +209,6 @@ static void run_info(const size_t argc, const char *argv[]) {
            fs_p->csize,
            (uint64_t)sd_card_p->fatfs.csize * FF_MAX_SS);
 }
-static void run_lliot(const size_t argc, const char *argv[]) {
-    const char *arg = chk_dflt_log_drv(argc, argv);
-    if (!arg)
-        return;
-
-    size_t pnum = 0;
-    pnum = strtoul(arg, NULL, 0);
-    lliot(pnum);
-}
 static void run_format(const size_t argc, const char *argv[]) {
     const char *arg = chk_dflt_log_drv(argc, argv);
     if (!arg)
@@ -336,52 +327,6 @@ static void run_mkdir(const size_t argc, const char *argv[]) {
     FRESULT fr = f_mkdir(argv[0]);
     if (FR_OK != fr) printf("f_mkdir error: %s (%d)\n", FRESULT_str(fr), fr);
 }
-void ls(const char *dir) {
-    char cwdbuf[FF_LFN_BUF] = {0};
-    FRESULT fr; /* Return value */
-    char const *p_dir;
-    if (dir[0]) {
-        p_dir = dir;
-    } else {
-        fr = f_getcwd(cwdbuf, sizeof cwdbuf);
-        if (FR_OK != fr) {
-            printf("f_getcwd error: %s (%d)\n", FRESULT_str(fr), fr);
-            return;
-        }
-        p_dir = cwdbuf;
-    }
-    printf("Directory Listing: %s\n", p_dir);
-    DIR dj = {};      /* Directory object */
-    FILINFO fno = {}; /* File information */
-    assert(p_dir);
-    fr = f_findfirst(&dj, &fno, p_dir, "*");
-    if (FR_OK != fr) {
-        printf("f_findfirst error: %s (%d)\n", FRESULT_str(fr), fr);
-        return;
-    }
-    while (fr == FR_OK && fno.fname[0]) { /* Repeat while an item is found */
-        /* Create a string that includes the file name, the file size and the
-         attributes string. */
-        const char *pcWritableFile = "writable file",
-                   *pcReadOnlyFile = "read only file",
-                   *pcDirectory = "directory";
-        const char *pcAttrib;
-        /* Point pcAttrib to a string that describes the file. */
-        if (fno.fattrib & AM_DIR) {
-            pcAttrib = pcDirectory;
-        } else if (fno.fattrib & AM_RDO) {
-            pcAttrib = pcReadOnlyFile;
-        } else {
-            pcAttrib = pcWritableFile;
-        }
-        /* Create a string that includes the file name, the file size and the
-         attributes string. */
-        printf("%s [%s] [size=%llu]\n", fno.fname, pcAttrib, fno.fsize);
-
-        fr = f_findnext(&dj, &fno); /* Search for next item */
-    }
-    f_closedir(&dj);
-}
 static void run_ls(const size_t argc, const char *argv[]) {
     if (argc > 1) {
         extra_argument_msg(argv[1]);
@@ -435,6 +380,7 @@ static void run_cp(const size_t argc, const char *argv[]) {
     fr = f_open(&fdst, argv[1], FA_WRITE | FA_CREATE_ALWAYS);
     if (FR_OK != fr) {
         printf("f_open error: %s (%d)\n", FRESULT_str(fr), fr);
+        f_close(&fsrc);        
         return;
     }
     /* Copy source to destination */
@@ -445,6 +391,8 @@ static void run_cp(const size_t argc, const char *argv[]) {
     BYTE *buffer = (BYTE *)malloc(buffer_sz);
     if (!buffer) {
         printf("malloc(%llu) failed\n", buffer_sz);
+        f_close(&fdst);
+        f_close(&fsrc);
         return;
     }
     for (;;) {
@@ -467,6 +415,15 @@ static void run_mv(const size_t argc, const char *argv[]) {
 
     FRESULT fr = f_rename(argv[0], argv[1]);
     if (FR_OK != fr) printf("f_rename error: %s (%d)\n", FRESULT_str(fr), fr);
+}
+static void run_lliot(const size_t argc, const char *argv[]) {
+    const char *arg = chk_dflt_log_drv(argc, argv);
+    if (!arg)
+        return;
+
+    size_t pnum = 0;
+    pnum = strtoul(arg, NULL, 0);
+    lliot(pnum);
 }
 static void run_big_file_test(const size_t argc, const char *argv[]) {
     if (!expect_argc(argc, argv, 3)) return;
@@ -629,16 +586,6 @@ static void run_set_sys_clock_khz(const size_t argc, const char *argv[]) {
 
     setup_default_uart();
 }
-
-static void clr(const size_t argc, const char *argv[]) {
-    if (!expect_argc(argc, argv, 1)) return;
-
-    int gp = atoi(argv[0]);
-
-    gpio_init(gp);
-    gpio_set_dir(gp, GPIO_OUT);
-    gpio_put(gp, 0);
-}
 static void set(const size_t argc, const char *argv[]) {
     if (!expect_argc(argc, argv, 1)) return;
 
@@ -648,7 +595,15 @@ static void set(const size_t argc, const char *argv[]) {
     gpio_set_dir(gp, GPIO_OUT);
     gpio_put(gp, 1);
 }
+static void clr(const size_t argc, const char *argv[]) {
+    if (!expect_argc(argc, argv, 1)) return;
 
+    int gp = atoi(argv[0]);
+
+    gpio_init(gp);
+    gpio_set_dir(gp, GPIO_OUT);
+    gpio_put(gp, 0);
+}
 static void run_test(const size_t argc, const char *argv[]) {    
     if (!expect_argc(argc, argv, 0)) return;
 
