@@ -1,6 +1,6 @@
 #include <stdio.h>
 //
-#include "hardware/clocks.h" 
+#include "hardware/clocks.h"
 #include "pico/stdlib.h"
 //
 #include "command.h"
@@ -16,14 +16,14 @@
 #error This program is useless without standard input and output.
 #endif
 
-// If the card is physically removed, unmount the filesystem:
-static void card_detect_callback(uint gpio, uint32_t events) {
-    static bool busy;
-    if (busy) return; // Avoid switch bounce
-    busy = true;
+static volatile bool card_det_int_pend;
+static volatile uint card_det_int_gpio;
+
+static void process_card_detect_int() {
+    card_det_int_pend = false;
     for (size_t i = 0; i < sd_get_num(); ++i) {
         sd_card_t *pSD = sd_get_by_num(i);
-        if (pSD->card_detect_gpio == gpio) {
+        if (pSD->card_detect_gpio == card_det_int_gpio) {
             if (pSD->mounted) {
                 DBG_PRINTF("(Card Detect Interrupt: unmounting %s)\n", pSD->pcName);
                 FRESULT fr = f_unmount(pSD->pcName);
@@ -33,17 +33,23 @@ static void card_detect_callback(uint gpio, uint32_t events) {
                     printf("f_unmount error: %s (%d)\n", FRESULT_str(fr), fr);
                 }
             }
-            pSD->m_Status |= STA_NOINIT; // in case medium is removed
+            pSD->m_Status |= STA_NOINIT;  // in case medium is removed
             sd_card_detect(pSD);
         }
     }
-    busy = false;
+}
+
+// If the card is physically removed, unmount the filesystem:
+static void card_detect_callback(uint gpio, uint32_t events) {
+    // This is actually an interrupt service routine!
+    card_det_int_gpio = gpio;
+    card_det_int_pend = true;
 }
 
 int main() {
     crash_handler_init();
     stdio_init_all();
-    setvbuf(stdout, NULL, _IONBF, 1); // specify that the stream should be unbuffered
+    setvbuf(stdout, NULL, _IONBF, 1);  // specify that the stream should be unbuffered
     time_init();
 
     printf("\033[2J\033[H");  // Clear Screen
@@ -62,8 +68,8 @@ int main() {
     printf("\n> ");
     stdio_flush();
 
-    // Implicitly called by disk_initialize, 
-    // but called here to set up the GPIOs 
+    // Implicitly called by disk_initialize,
+    // but called here to set up the GPIOs
     // before enabling the card detect interrupt:
     sd_init_driver();
 
@@ -84,9 +90,12 @@ int main() {
             if (!process_logger()) logger_enabled = false;
             next_log_time = delayed_by_ms(next_log_time, period);
         }
+        if (card_det_int_pend)
+            process_card_detect_int();
         int cRxedChar = getchar_timeout_us(0);
         /* Get the character from terminal */
-        if (PICO_ERROR_TIMEOUT != cRxedChar) process_stdio(cRxedChar);
+        if (PICO_ERROR_TIMEOUT != cRxedChar)
+            process_stdio(cRxedChar);
     }
     return 0;
 }
