@@ -11,6 +11,9 @@ under the License is distributed on an AS IS BASIS, WITHOUT WARRANTIES OR
 CONDITIONS OF ANY KIND, either express or implied. See the License for the 
 specific language governing permissions and limitations under the License.
 */
+#include <assert.h>
+#include <stdio.h>
+//
 #include "ff.h"
 
 const char *FRESULT_str(FRESULT i) {
@@ -102,4 +105,51 @@ FRESULT delete_node (
 
     if (fr == FR_OK) fr = f_unlink(path);  /* Delete the empty sub-directory */
     return fr;
+}
+
+void ls(const char *dir) {
+    char cwdbuf[FF_LFN_BUF] = {0};
+    FRESULT fr; /* Return value */
+    char const *p_dir;
+    if (dir[0]) {
+        p_dir = dir;
+    } else {
+        fr = f_getcwd(cwdbuf, sizeof cwdbuf);
+        if (FR_OK != fr) {
+            printf("f_getcwd error: %s (%d)\n", FRESULT_str(fr), fr);
+            return;
+        }
+        p_dir = cwdbuf;
+    }
+    printf("Directory Listing: %s\n", p_dir);
+    DIR dj = {};      /* Directory object */
+    FILINFO fno = {}; /* File information */
+    assert(p_dir);
+    fr = f_findfirst(&dj, &fno, p_dir, "*");
+    if (FR_OK != fr) {
+        printf("f_findfirst error: %s (%d)\n", FRESULT_str(fr), fr);
+        return;
+    }
+    while (fr == FR_OK && fno.fname[0]) { /* Repeat while an item is found */
+        /* Create a string that includes the file name, the file size and the
+         attributes string. */
+        const char *pcWritableFile = "writable file",
+                   *pcReadOnlyFile = "read only file",
+                   *pcDirectory = "directory";
+        const char *pcAttrib;
+        /* Point pcAttrib to a string that describes the file. */
+        if (fno.fattrib & AM_DIR) {
+            pcAttrib = pcDirectory;
+        } else if (fno.fattrib & AM_RDO) {
+            pcAttrib = pcReadOnlyFile;
+        } else {
+            pcAttrib = pcWritableFile;
+        }
+        /* Create a string that includes the file name, the file size and the
+         attributes string. */
+        printf("%s [%s] [size=%llu]\n", fno.fname, pcAttrib, fno.fsize);
+
+        fr = f_findnext(&dj, &fno); /* Search for next item */
+    }
+    f_closedir(&dj);
 }
