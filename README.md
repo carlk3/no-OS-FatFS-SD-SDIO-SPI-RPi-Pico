@@ -250,14 +250,17 @@ Furthermore, the CMD signal must be on GPIO D0 GPIO number - 2, modulo 32. (This
 * Wires should be kept short and direct. SPI operates at HF radio frequencies.
 
 ### Pull Up Resistors and other electrical considerations
-* The SPI MISO (**DO** on SD card, **SPI**x **RX** on Pico) is open collector (or tristate). For [MMC](https://en.wikipedia.org/wiki/MultiMediaCard) cards, it is imperative to pull this up.
-However, modern SD cards use strong push pull tristateable outputs and don't seem to need this pull up.
-On some SD cards, you can even configure the card's output drivers using the Driver Stage Register (DSR).[^4]).
+* The SPI MISO (**DO** on SD card, **SPI**x **RX** on Pico) is open collector or tristateable push-pull, depending on the type of card.
+[MMC](https://en.wikipedia.org/wiki/MultiMediaCard)s use an open collector bus, so it is imperative to pull this up if you want compatibility with MMCs.
+However, modern SD cards use strong push-pull tristateable outputs and shouldn't need this pull up.
+On some SD cards, you can configure the card's output drivers using the Driver Stage Register (DSR).[^4]).
 The Pico internal `gpio_pull_up` is weak: around 56uA or 60kΩ.
 If a pull up is needed, it's best to add an external pull up resistor of around 5-50 kΩ to 3.3v.
 The internal `gpio_pull_up` can be disabled in the hardware configuration by setting the `no_miso_gpio_pull_up` attribute of the `spi_t` object.
-* The SPI Slave Select (SS), or Chip Select (CS) line enables one SPI slave of possibly multiple slaves on the bus. This is what enables the tristate buffer for Data Out (DO), among other things. It's best to pull CS up so that it doesn't float before the Pico GPIO is initialized. It is imperative to pull it up for any devices on the bus that aren't initialized. For example, if you have two SD cards on one bus but the firmware is aware of only one card (see hw_config); you shouldn't let the CS float on the unused one. 
-* Driving the SD card directly with the GPIOs is not ideal. Take a look at the CM1624 (https://www.onsemi.com/pdf/datasheet/cm1624-d.pdf). Unfortunately, it's a tiny little surface mount part -- not so easy to work with, but the schematic in the data sheet is still instructive. Besides the pull up resistors, it's a good idea to have 25 - 100 Ω series source termination resistors in each of the signal lines. This gives a cleaner signal, allowing higher baud rates. Even if you don't care about speed, it also helps to control the slew rate and current, which can reduce EMI and noise in general. (This can be important in audio applications, for example.) Ideally, the resistor should be as close as possible to the driving end of the line. That would be the Pico end for CS, SCK, MOSI, and the SD card end for MISO. For SDIO, the data lines are bidirectional, so, ideally, you'd have a source termination resistor at each end. Practically speaking, the clock is by far the most important to terminate, because each edge is significant. The other lines probably have time to bounce around before being clocked. 
+* The SPI Slave Select (SS), or Chip Select (CS) line enables one SPI slave of possibly multiple slaves on the bus. This is what enables the tristate buffer for Data Out (DO), among other things. It's best to pull CS up so that it doesn't float before the Pico GPIO is initialized. It is imperative to pull it up for any devices on the bus that aren't initialized. For example, if you have two SD cards on one bus but the firmware is aware of only one card (see hw_config), don't let the CS float on the unused one. At power up the CS/DAT3 line has a 50 kΩ pull up enabled in the SD card, but I wouldn't necessarily count on that. It will be disabled if the card is initialized,
+and it won't be enabled again until the card is power cycled.
+* Driving the SD card directly with the GPIOs is not ideal. Take a look at the CM1624 (https://www.onsemi.com/pdf/datasheet/cm1624-d.pdf). Unfortunately, it's a tiny little surface mount part -- not so easy to work with, but the schematic in the data sheet is still instructive. Besides the pull up resistors, it's a good idea to have 25 - 100 Ω series source termination resistors in each of the signal lines. 
+This gives a cleaner signal, allowing higher baud rates. Even if you don't care about speed, it also helps to control the slew rate and current, which can reduce EMI and noise in general. (This can be important in audio applications, for example.) Ideally, the resistor should be as close as possible to the driving end of the line. That would be the Pico end for CS, SCK, MOSI, and the SD card end for MISO. For SDIO, the data lines are bidirectional, so, ideally, you'd have a source termination resistor at each end. Practically speaking, the clock is by far the most important to terminate, because each edge is significant. The other lines probably have time to bounce around before being clocked. Ideally, the resistance should be towards the low end for fat PCB traces, and towards the high end for flying wires, but if you have a drawer full of 47 Ω resistors they'll probably work well enough.
 * It can be helpful to add a decoupling capacitor or three (e.g., 100 nF, 1 µF, and 10 µF) between 3.3 V and GND on the SD card. ChaN also [recommends](http://elm-chan.org/docs/mmc/mmc_e.html#hotplug) putting a 22 µH inductor in series with the Vcc (or "Vdd") line to the SD card.
 * Note: the [Adafruit Breakout Board](https://learn.adafruit.com/assets/93596) takes care of the pull ups and decoupling caps, but the Sparkfun one doesn't. And, you can never have too many decoupling caps.
 
@@ -916,7 +919,13 @@ The `info` command in [examples/command_line](https://github.com/carlk3/no-OS-Fa
 
 [File fragmentation](https://en.wikipedia.org/wiki/Design_of_the_FAT_file_system#Fragmentation) can lead to long access times. 
 Fragmented files can result from multiple files being incrementally extended in an interleaved fashion. 
-One commonly used trick is to use [f_lseek](http://elm-chan.org/fsw/ff/doc/lseek.html) to pre-allocate a file to its ultimate size before beginning to write to it. Even better, you can pre-allocate a contiguous file using [f_expand](http://elm-chan.org/fsw/ff/doc/expand.html).
+One commonly used trick is to use [f_lseek](http://elm-chan.org/fsw/ff/doc/lseek.html) to pre-allocate a file to its ultimate size before beginning to write to it. Even better, you can pre-allocate a contiguous file using [f_expand](http://elm-chan.org/fsw/ff/doc/expand.html). 
+Obviously, you will need some way to indicate how much valid data is in the file. 
+You could use a file header.
+Alternatively, if the file contains text, you could write an End-Of-File (EOF) character. 
+In DOS, this is the character 26, which is the Control-Z character.
+Alternatively, if the file contains records, each record could contain a magic number or checksum, so you can easily tell when you've reached the end of the valid records.
+(This might be an obvious choice if you're padding the record length to a multiple of 512 bytes.)
 
 ## Appendix E: Troubleshooting
 * **Check your grounds!** Maybe add some more if you were skimpy with them. The Pico has six of them.
@@ -925,6 +934,9 @@ One commonly used trick is to use [f_lseek](http://elm-chan.org/fsw/ff/doc/lseek
   add_compile_definitions(USE_PRINTF USE_DBG_PRINTF)
   ```
   You might see a clue in the messages.
+* Power cycle the SD card. Once an SD card is in SPI mode, the only way to get it back to SD mode is to power cycle it.
+At power up, an SD card's CS/DAT3 line has a 50 kΩ pull up enabled in the card, but it will be disabled if the card is initialized,
+and it won't be enabled again until the card is power cycled.
 * Try lowering the SPI or SDIO baud rate (e.g., in `hw_config.c`). This will also make it easier to use things like logic analyzers.
   * For SPI, this is in the
   [spi_t](#an-instance-of-spi_t-describes-the-configuration-of-one-rp2040-spi-controller) instance.
