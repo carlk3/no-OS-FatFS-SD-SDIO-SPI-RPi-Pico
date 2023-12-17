@@ -1,5 +1,5 @@
 # no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
-# v1.2.2
+# v1.2.3
 
 ## C/C++ Library for SD Cards on the Pico
 
@@ -11,6 +11,13 @@ and a 4-bit wide Secure Digital Input Output (SDIO) driver derived from
 It is wrapped up in a complete runnable project, with a little command line interface, some self tests, and an example data logging application.
 
 ## What's new
+### v1.2.3 
+`command_line` example changes:
+* Defer processing for card detect interrupt: 
+the `gpio_set_irq_enabled_with_callback` callback is actually an interrupt service routine.
+This callback might need to unmount the SD card, which is too much to do in an interrupt handler.
+This change defers the interrupt processing to the superloop.
+* Fix compiler warning in run_mount, run_unmount
 ### v1.2.2
 `command_line` example changes:
 * Move core 0 stack to bottom of RAM so that any stack overflow triggers a HardFault
@@ -259,7 +266,7 @@ If a pull up is needed, it's best to add an external pull up resistor of around 
 The internal `gpio_pull_up` can be disabled in the hardware configuration by setting the `no_miso_gpio_pull_up` attribute of the `spi_t` object.
 * The SPI Slave Select (SS), or Chip Select (CS) line enables one SPI slave of possibly multiple slaves on the bus. This is what enables the tristate buffer for Data Out (DO), among other things. It's best to pull CS up so that it doesn't float before the Pico GPIO is initialized. It is imperative to pull it up for any devices on the bus that aren't initialized. For example, if you have two SD cards on one bus but the firmware is aware of only one card (see hw_config), don't let the CS float on the unused one. At power up the CS/DAT3 line has a 50 kΩ pull up enabled in the SD card, but I wouldn't necessarily count on that. It will be disabled if the card is initialized,
 and it won't be enabled again until the card is power cycled. Also, the RP2040 defaults GPIO pins to pull down, which might well override the SD card's pull up.
-* Driving the SD card directly with the GPIOs is not ideal. Take a look at the CM1624 (https://www.onsemi.com/pdf/datasheet/cm1624-d.pdf). Unfortunately, it's a tiny little surface mount part -- not so easy to work with, but the schematic in the data sheet is still instructive. Besides the pull up resistors, it's a good idea to have 25 - 100 Ω series source termination resistors in each of the signal lines. 
+* Driving the SD card directly with the GPIOs is not ideal. Take a look at the [CM1624](https://www.onsemi.com/pdf/datasheet/cm1624-d.pdf). Unfortunately, it's a tiny little surface mount part -- not so easy to work with, but the schematic in the data sheet is still instructive. Besides the pull up resistors, it's a good idea to have 25 - 100 Ω series source termination resistors in each of the signal lines. 
 This gives a cleaner signal, allowing higher baud rates. Even if you don't care about speed, it also helps to control the slew rate and current, which can reduce EMI and noise in general. (This can be important in audio applications, for example.) Ideally, the resistor should be as close as possible to the driving end of the line. That would be the Pico end for CS, SCK, MOSI, and the SD card end for MISO. For SDIO, the data lines are bidirectional, so, ideally, you'd have a source termination resistor at each end. Practically speaking, the clock is by far the most important to terminate, because each edge is significant. The other lines probably have time to bounce around before being clocked. Ideally, the resistance should be towards the low end for fat PCB traces, and towards the high end for flying wires, but if you have a drawer full of 47 Ω resistors they'll probably work well enough.
 * It can be helpful to add a decoupling capacitor or three (e.g., 100 nF, 1 µF, and 10 µF) between 3.3 V and GND on the SD card. ChaN also [recommends](http://elm-chan.org/docs/mmc/mmc_e.html#hotplug) putting a 22 µH inductor in series with the Vcc (or "Vdd") line to the SD card.
 * Note: the [Adafruit Breakout Board](https://learn.adafruit.com/assets/93596) takes care of the pull ups and decoupling caps, but the Sparkfun one doesn't. And, you can never have too many decoupling caps.
