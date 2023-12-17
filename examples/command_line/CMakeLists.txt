@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.13)
 
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 17)
-
 # Pull in Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
 
 project(command_line C CXX ASM)
+
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 # add_compile_options(-Os) # Optimize for size (place before pico_sdk_init)
 
@@ -44,7 +44,6 @@ target_compile_options(command_line PUBLIC
   -Wno-unused-parameter 
   -Wstack-usage=2048 
   -fanalyzer 
-  -fstack-protector-strong
 )
 
 # This program is useless without standard standard input and output.

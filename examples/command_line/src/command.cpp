@@ -272,19 +272,17 @@ static void run_mount(const size_t argc, const char *argv[]) {
     const char *arg = chk_dflt_log_drv(argc, argv);
     if (!arg)
         return;
-
-    FATFS *fs_p = sd_get_fs_by_name(arg);
-    if (!fs_p) {
+    sd_card_t *sd_card_p = sd_get_by_name(arg);
+    if (!sd_card_p) {
         printf("Unknown logical drive id: \"%s\"\n", arg);
         return;
-    }
+    }    
+    FATFS *fs_p = &sd_card_p->fatfs;
     FRESULT fr = f_mount(fs_p, arg, 1);
     if (FR_OK != fr) {
         printf("f_mount error: %s (%d)\n", FRESULT_str(fr), fr);
         return;
     }
-    sd_card_t *sd_card_p = sd_get_by_name(arg);
-    assert(sd_card_p);
     sd_card_p->mounted = true;
 }
 static void run_unmount(const size_t argc, const char *argv[]) {
@@ -292,18 +290,16 @@ static void run_unmount(const size_t argc, const char *argv[]) {
     if (!arg)
         return;
 
-    FATFS *fs_p = sd_get_fs_by_name(arg);
-    if (!fs_p) {
+    sd_card_t *sd_card_p = sd_get_by_name(arg);
+    if (!sd_card_p) {
         printf("Unknown logical drive id: \"%s\"\n", arg);
         return;
-    }
+    }    
     FRESULT fr = f_unmount(arg);
     if (FR_OK != fr) {
         printf("f_unmount error: %s (%d)\n", FRESULT_str(fr), fr);
         return;
     }
-    sd_card_t *sd_card_p = sd_get_by_name(arg);
-    assert(sd_card_p);
     sd_card_p->mounted = false;
     sd_card_p->m_Status |= STA_NOINIT;  // in case medium is removed
 }
