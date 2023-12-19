@@ -15,12 +15,14 @@ specific language governing permissions and limitations under the License.
 #include <stdbool.h>
 //
 #include "pico/stdlib.h"
+//
 #include "pico/mutex.h"
 #include "pico/sem.h"
 //
-#include "util.h"
-#include "my_debug.h"
+#include "dma_interrupts.h"
 #include "hw_config.h"
+#include "my_debug.h"
+#include "util.h"
 //
 #include "spi.h"
 
@@ -28,31 +30,11 @@ specific language governing permissions and limitations under the License.
 #  pragma GCC diagnostic ignored "-Wunused-variable"
 #endif
 
-// The RP2040 has two built in hardware SPI instances
-static spi_t *spi_ps[2];
-
-static void in_spi_irq_handler(const uint DMA_IRQ_num, io_rw_32 *dma_hw_ints_p) {
-    for (size_t i = 0; i < count_of(spi_ps); ++i) {
-        spi_t *spi_p = spi_ps[i];
-        if (spi_p) {
-            if (DMA_IRQ_num == spi_p->DMA_IRQ_num)  {
-                // Is the SPI's channel requesting interrupt?
-                if (*dma_hw_ints_p & (1 << spi_p->rx_dma)) {
-                    *dma_hw_ints_p = 1 << spi_p->rx_dma;  // Clear it.
-                    assert(!dma_channel_is_busy(spi_p->rx_dma));
-                    assert(!sem_available(&spi_p->sem));
-                    bool ok = sem_release(&spi_p->sem);
-                    assert(ok);
-                }
-            }
-        }
-    }
-}
-static void __not_in_flash_func(spi_irq_handler_0)() {
-    in_spi_irq_handler(DMA_IRQ_0, &dma_hw->ints0);
-}
-static void __not_in_flash_func(spi_irq_handler_1)() {
-    in_spi_irq_handler(DMA_IRQ_1, &dma_hw->ints1);
+void spi_irq_handler(spi_t *spi_p) {
+    assert(!dma_channel_is_busy(spi_p->rx_dma));
+    assert(!sem_available(&spi_p->sem));
+    bool ok = sem_release(&spi_p->sem);
+    assert(ok);
 }
 
 static bool chk_spi(spi_inst_t *spi) {
@@ -81,7 +63,6 @@ static bool chk_spi(spi_inst_t *spi) {
     return rc;
 }
 
-
 void spi_transfer_start(spi_t *spi_p, const uint8_t *tx, uint8_t *rx, size_t length) {
     // assert(512 == length || 1 == length);
     assert(tx || rx);
@@ -106,16 +87,16 @@ void spi_transfer_start(spi_t *spi_p, const uint8_t *tx, uint8_t *rx, size_t len
 
     dma_channel_configure(spi_p->tx_dma, &spi_p->tx_dma_cfg,
                           &spi_get_hw(spi_p->hw_inst)->dr,  // write address
-                          tx,                              // read address
-                          length,  // element count (each element is of
-                                   // size transfer_data_size)
-                          false);  // start
+                          tx,                               // read address
+                          length,                           // element count (each element is of
+                                                            // size transfer_data_size)
+                          false);                           // start
     dma_channel_configure(spi_p->rx_dma, &spi_p->rx_dma_cfg,
-                          rx,                              // write address
+                          rx,                               // write address
                           &spi_get_hw(spi_p->hw_inst)->dr,  // read address
-                          length,  // element count (each element is of
-                                   // size transfer_data_size)
-                          false);  // start
+                          length,                           // element count (each element is of
+                                                            // size transfer_data_size)
+                          false);                           // start
 
     switch (spi_p->DMA_IRQ_num) {
         case DMA_IRQ_0:
@@ -127,6 +108,8 @@ void spi_transfer_start(spi_t *spi_p, const uint8_t *tx, uint8_t *rx, size_t len
         default:
             myASSERT(false);
     }
+    
+    // Ensure that there is not already a notification pending
     sem_reset(&spi_p->sem, 0);
 
     // start them exactly simultaneously to avoid races (in extreme cases
@@ -183,27 +166,6 @@ void spi_unlock(spi_t *spi_p) {
     mutex_exit(&spi_p->mutex);
 }
 
-typedef struct ih_added_rec_t {
-    uint num;
-    bool added;
-} ih_added_rec_t;
-static ih_added_rec_t ih_added_recs[] = {
-    {DMA_IRQ_0, false},
-    {DMA_IRQ_1, false}
-};
-static bool is_handler_added(const uint num) {
-    for (size_t i = 0; i < count_of(ih_added_recs); ++i)
-        if (num == ih_added_recs[i].num)
-            return ih_added_recs[i].added;
-    return false;
-}
-static void mark_handler_added(const uint num) {
-    for (size_t i = 0; i < count_of(ih_added_recs); ++i)
-        if (num == ih_added_recs[i].num) {
-            ih_added_recs[i].added = true;
-            break;
-        }
-}
 bool my_spi_init(spi_t *spi_p) {
     auto_init_mutex(my_spi_init_mutex);
     mutex_enter_blocking(&my_spi_init_mutex);
@@ -281,43 +243,30 @@ bool my_spi_init(spi_t *spi_p) {
         /* Theory: we only need an interrupt on rx complete,
         since if rx is complete, tx must also be complete. */
 
-        /* Configure the processor to run dma_handler() when DMA IRQ 0/1 is asserted */
-
         // Tell the DMA to raise IRQ line 0/1 when the channel finishes a block
-        if (!is_handler_added(spi_p->DMA_IRQ_num)) {
-        static void (*spi_irq_handler_p)();
-        switch (spi_p->DMA_IRQ_num) {
+                switch (spi_p->DMA_IRQ_num) {
             case DMA_IRQ_0:
-                spi_irq_handler_p = spi_irq_handler_0;
+                // Clear any pending interrupts:
+                dma_hw->ints0 = 1 << spi_p->rx_dma;
+                dma_hw->ints0 = 1 << spi_p->tx_dma;
                 dma_channel_set_irq0_enabled(spi_p->rx_dma, true);
                 dma_channel_set_irq0_enabled(spi_p->tx_dma, false);
                 break;
             case DMA_IRQ_1:
-                spi_irq_handler_p = spi_irq_handler_1;
+                // Clear any pending interrupts:
+                dma_hw->ints1 = 1 << spi_p->rx_dma;
+                dma_hw->ints1 = 1 << spi_p->tx_dma;
                 dma_channel_set_irq1_enabled(spi_p->rx_dma, true);
                 dma_channel_set_irq1_enabled(spi_p->tx_dma, false);
                 break;
             default:
                     myASSERT(false);
         }
-        if (spi_p->use_exclusive_DMA_IRQ_handler) {
-            irq_set_exclusive_handler(spi_p->DMA_IRQ_num, *spi_irq_handler_p);
-        } else {
-            irq_add_shared_handler(
-                spi_p->DMA_IRQ_num, *spi_irq_handler_p,
-                PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
-            }
-            mark_handler_added(spi_p->DMA_IRQ_num);
-        }
-        irq_set_enabled(spi_p->DMA_IRQ_num, true);
+        dma_irq_add_handler(spi_p->DMA_IRQ_num, spi_p->use_exclusive_DMA_IRQ_handler);
+        
         LED_INIT();
 
-        if (spi0 == spi_p->hw_inst)
-            spi_ps[0] = spi_p;
-        else
-            spi_ps[1] = spi_p;
-
-        spi_p->initialized = true;
+                spi_p->initialized = true;
         spi_unlock(spi_p);
     }
     mutex_exit(&my_spi_init_mutex);

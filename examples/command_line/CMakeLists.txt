@@ -20,7 +20,6 @@ add_executable(command_line
     config/hw_config.c
     main.cpp 
     src/command.cpp
-    src/crash.c
     src/data_log_demo.c
     tests/app4-IO_module_function_checker.c
     tests/bench.c

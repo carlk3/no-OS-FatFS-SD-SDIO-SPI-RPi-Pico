@@ -24,10 +24,9 @@ specific language governing permissions and limitations under the License.
 #include "my_debug.h"
 #include "sd_card_constants.h"
 #include "sd_regs.h"
+#include "util.h"
 //
 #include "sd_card.h"
-//
-// #include "ff.h" /* Obtains integer types */
 //
 #include "diskio.h" /* Declarations of disk functions */  // Needed for STA_NOINIT, ...
 

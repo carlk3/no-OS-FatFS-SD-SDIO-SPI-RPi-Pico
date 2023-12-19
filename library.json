@@ -74,6 +74,7 @@
           "+<ff15/source/ff.c>",
           "+<ff15/source/ffsystem.c>",
           "+<ff15/source/ffunicode.c>",
+          "+<sd_driver/dma_interrupts.c>",
           "+<sd_driver/sd_card.c>",
           "+<sd_driver/SDIO/rp2040_sdio.c>",
           "+<sd_driver/SDIO/sd_card_sdio.c>",
@@ -81,13 +82,13 @@
           "+<sd_driver/SPI/sd_card_spi.c>",
           "+<sd_driver/SPI/sd_spi.c>",
           "+<sd_driver/SPI/spi.c>",
-          "+<source/f_util.c>",
-          "+<source/FatFsSd.cpp>",
-          "+<source/glue.c>",
-          "+<source/my_debug.c>",
-          "+<source/rtc.c>",
-          "+<source/rtc.c>",
-          "+<source/util.c>"
+          "+<src/f_util.c>",
+          "+<src/FatFsSd.cpp>",
+          "+<src/glue.c>",
+          "+<src/my_debug.c>",
+          "+<src/rtc.c>",
+          "+<src/rtc.c>",
+          "+<src/util.c>"
       ],
       "flags": [
         "-I include",

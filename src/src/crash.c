@@ -99,9 +99,6 @@ void capture_assert(const char *file, int line, const char *func,
         calculate_checksum((uint32_t *)&p_crash_info_ram->crash_info,
                            offsetof(crash_info_t, xor_checksum));
     __DSB();
-
-    // sleep_ms(5 * 1000);
-    
     NVIC_SystemReset();
 }
 
@@ -113,7 +110,6 @@ __attribute__((noreturn)) void system_request_bootloader_entry(void) {
         calculate_checksum((uint32_t *)&p_crash_info_ram->crash_info,
                            offsetof(crash_info_t, xor_checksum));
     __DSB();
-
     NVIC_SystemReset();
     __builtin_unreachable();
 }
@@ -147,7 +143,9 @@ __attribute__((used)) extern void DebugMon_HandlerC(
                            offsetof(crash_info_t, xor_checksum));
     __DSB();  // make sure all data is really written into the memory before
               // doing a reset
-
+    // if (DBG_Connected()) {
+    //     __BKPT(1);
+    // }
     NVIC_SystemReset();
 }
 
@@ -266,13 +264,13 @@ int dump_crash_info(crash_info_t const *const pCrashInfo, int next,
             break;
         case crash_info_hf_lr:
             nwrit += snprintf(buf + nwrit, buf_sz - nwrit,
-                              "\tLink Register (LR): 0x%p\n",
+                              "\tLink Register (LR): %p\n",
                               (void *)pCrashInfo->cy_faultFrame.lr);
             next = crash_info_hf_pc;
             break;
         case crash_info_hf_pc:
             nwrit += snprintf(buf + nwrit, buf_sz - nwrit,
-                              "\tProgram Counter (PC): 0x%p\n",
+                              "\tProgram Counter (PC): %p\n",
                               (void *)pCrashInfo->cy_faultFrame.pc);
             next = 0;
             break;

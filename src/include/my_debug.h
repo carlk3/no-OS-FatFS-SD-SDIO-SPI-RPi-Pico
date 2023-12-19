@@ -13,8 +13,18 @@ specific language governing permissions and limitations under the License.
 */
 #pragma once
 
+#include <stddef.h>
+#include <stdint.h>
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#ifdef ANALYZER
+#  define TRIG() gpio_put(15, 1)  // DEBUG
+#else 
+#  define TRIG()
 #endif
 
 /* USE_PRINTF
