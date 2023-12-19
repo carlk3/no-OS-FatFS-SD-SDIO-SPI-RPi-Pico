@@ -1,5 +1,5 @@
 # no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
-# v1.2.3
+# v1.2.4
 
 ## C/C++ Library for SD Cards on the Pico
 
@@ -11,6 +11,9 @@ and a 4-bit wide Secure Digital Input Output (SDIO) driver derived from
 It is wrapped up in a complete runnable project, with a little command line interface, some self tests, and an example data logging application.
 
 ## What's new
+### v1.2.4
+Unified DMA interrupt request handling. Interrupts from SPI and SDIO are now handled by the same handler.
+An interrupt service routine is added only once.
 ### v1.2.3 
 `command_line` example changes:
 * Defer processing for card detect interrupt: 
