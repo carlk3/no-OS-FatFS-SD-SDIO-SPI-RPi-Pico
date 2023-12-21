@@ -106,13 +106,10 @@ sdio_status_t rp2040_sdio_tx_start(sd_card_t *sd_card_p, const uint8_t *buffer, 
 // Check if transmission is complete
 sdio_status_t rp2040_sdio_tx_poll(sd_card_t *sd_card_p, uint32_t *bytes_complete /* = nullptr */);
 
-// Force everything to idle state
-sdio_status_t rp2040_sdio_stop();
-
 // (Re)initialize the SDIO interface
-// void rp2040_sdio_init(sd_card_t *sd_card_p, int clock_divider /* = 1 */);
-// void rp2040_sdio_init(sd_card_t *sd_card_p, uint16_t clock_divider, uint8_t clock_div_256ths);
 bool rp2040_sdio_init(sd_card_t *sd_card_p, float clk_div);
+
+void __not_in_flash_func(sdio_irq_handler)(sd_card_t *sd_card_p);
 
 #ifdef __cplusplus
 }

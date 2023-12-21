@@ -139,7 +139,7 @@ void setup() {
         for (;;) __breakpoint();                                 \
     }
 
-void ls(const char *dir) {
+void local_ls(const char *dir) {
     char cwdbuf[FF_LFN_BUF] = {0};
     FRESULT fr; /* Return value */
     char const *dir_str;
@@ -189,7 +189,7 @@ static void test(FatFsNs::SdCard *SdCard_p) {
     CHK_FRESULT("mount", fr);
     fr = FatFsNs::FatFs::chdrive(SdCard_p->get_name());
     CHK_FRESULT("chdrive", fr);
-    ls(NULL);
+    local_ls(NULL);
 
     FatFsNs::File file;
     fr = file.open("filename.txt", FA_OPEN_APPEND | FA_WRITE);
@@ -205,7 +205,7 @@ static void test(FatFsNs::SdCard *SdCard_p) {
     fr = file.close();
     CHK_FRESULT("close", fr);
 
-    ls("/");
+    local_ls("/");
 
     fr = FatFsNs::Dir::mkdir("subdir");
     if (FR_OK != fr && FR_EXIST != fr) {
@@ -230,12 +230,12 @@ static void test(FatFsNs::SdCard *SdCard_p) {
     fr = file.close();
     CHK_FRESULT("close", fr);
 
-    ls(NULL);
+    local_ls(NULL);
 
     fr = FatFsNs::Dir::chdir("/");
     CHK_FRESULT("chdir", fr);
 
-    ls(NULL);
+    local_ls(NULL);
 
     fr = SdCard_p->unmount();
     CHK_FRESULT("unmount", fr);

@@ -16,6 +16,7 @@
 #include <hardware/gpio.h>
 #include <hardware/pio.h>
 //
+#include "dma_interrupts.h"
 #include "hw_config.h"
 #include "rp2040_sdio.h"
 #include "rp2040_sdio.pio.h"
@@ -24,6 +25,8 @@
 #include "sd_card.h"
 #include "my_debug.h"
 #include "util.h"
+//
+#include "rp2040_sdio.h"
 
 #define azdbg(arg1, ...) {\
     DBG_PRINTF("%s,%s:%d %s\n", __func__, __FILE__, __LINE__, arg1); \
@@ -43,7 +46,9 @@
 #define SDIO_D2 sd_card_p->sdio_if_p->D2_gpio
 #define SDIO_D3 sd_card_p->sdio_if_p->D3_gpio
 
-// void rp2040_sdio_dma_irq();
+
+// Force everything to idle state
+static sdio_status_t rp2040_sdio_stop();
 
 /*******************************************************
  * Checksum algorithms
@@ -509,12 +514,14 @@ static void sdio_start_next_block_tx(sd_card_t *sd_card_p)
     // Enable IRQ to trigger when block is done
     switch (sd_card_p->sdio_if_p->DMA_IRQ_num) {
         case DMA_IRQ_0:
+            // Clear any pending interrupt service request:
             dma_hw->ints0 = 1 << SDIO_DMA_CHB;
-            dma_set_irq0_channel_mask_enabled(1 << SDIO_DMA_CHB, 1);
+            dma_channel_set_irq0_enabled(SDIO_DMA_CHB, true);
             break;
         case DMA_IRQ_1:
+            // Clear any pending interrupt service request:
             dma_hw->ints1 = 1 << SDIO_DMA_CHB;
-            dma_set_irq1_channel_mask_enabled(1 << SDIO_DMA_CHB, 1);
+            dma_channel_set_irq1_enabled(SDIO_DMA_CHB, true);
             break;
         default:
             assert(false);
@@ -575,7 +582,7 @@ sdio_status_t rp2040_sdio_tx_start(sd_card_t *sd_card_p, const uint8_t *buffer, 
     return SDIO_OK;
 }
 
-sdio_status_t check_sdio_write_response(uint32_t card_response)
+static sdio_status_t check_sdio_write_response(uint32_t card_response)
 {
     // Shift card response until top bit is 0 (the start bit)
     // The format of response is poorly documented in SDIO spec but refer to e.g.
@@ -595,23 +602,23 @@ sdio_status_t check_sdio_write_response(uint32_t card_response)
     }
     else if (wr_status == 5)
     {
-        EMSG_PRINTF("SDIO card reports write CRC error, status %lu\n", card_response);
+        EMSG_PRINTF("SDIO card reports write CRC error, status %lx\n", card_response);
         return SDIO_ERR_WRITE_CRC;    
     }
     else if (wr_status == 6)
     {
-        EMSG_PRINTF("SDIO card reports write failure, status %lu\n", card_response);
+        EMSG_PRINTF("SDIO card reports write failure, status %lx\n", card_response);
         return SDIO_ERR_WRITE_FAIL;    
     }
     else
     {
-        EMSG_PRINTF("SDIO card reports unknown write status %lu\n", card_response);
+        EMSG_PRINTF("SDIO card reports unknown write status %lx\n", card_response);
         return SDIO_ERR_WRITE_FAIL;    
     }
 }
 
 // When a block finishes, this IRQ handler starts the next one
-static void sub_rp2040_sdio_tx_irq(sd_card_t *sd_card_p) {
+void sdio_irq_handler(sd_card_t *sd_card_p) {
     if (STATE.transfer_state == SDIO_TX)
     {
         if (!dma_channel_is_busy(SDIO_DMA_CH) && !dma_channel_is_busy(SDIO_DMA_CHB))
@@ -670,25 +677,6 @@ static void sub_rp2040_sdio_tx_irq(sd_card_t *sd_card_p) {
         }    
     }
 }
-static void match_and_clear_irq(const uint DMA_IRQ_num, io_rw_32 *dma_hw_ints_p) {
-    for (size_t i = 0; i < sd_get_num(); ++i) {
-        sd_card_t *sd_card_p = sd_get_by_num(i);
-        // Is this channel requesting interrupt?
-        if (SD_IF_SDIO == sd_card_p->type
-                && DMA_IRQ_num == sd_card_p->sdio_if_p->DMA_IRQ_num 
-                && (*dma_hw_ints_p & (1 << SDIO_DMA_CHB))) {
-            // Ours
-            *dma_hw_ints_p = 1 << SDIO_DMA_CHB;  // Clear it.
-            sub_rp2040_sdio_tx_irq(sd_card_p);
-        }
-    }
-}
-static void rp2040_sdio_tx_irq_0() {
-    match_and_clear_irq(DMA_IRQ_0, &dma_hw->ints0);
-}
-static void rp2040_sdio_tx_irq_1() {
-    match_and_clear_irq(DMA_IRQ_1, &dma_hw->ints1);
-}
 
 // Check if transmission is complete
 sdio_status_t rp2040_sdio_tx_poll(sd_card_t *sd_card_p, uint32_t *bytes_complete)
@@ -696,7 +684,7 @@ sdio_status_t rp2040_sdio_tx_poll(sd_card_t *sd_card_p, uint32_t *bytes_complete
     if (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk)
     {
         // Verify that IRQ handler gets called even if we are in hardfault handler
-        sub_rp2040_sdio_tx_irq(sd_card_p);
+        sdio_irq_handler(sd_card_p);
     }
 
     if (bytes_complete)
@@ -730,38 +718,27 @@ sdio_status_t rp2040_sdio_tx_poll(sd_card_t *sd_card_p, uint32_t *bytes_complete
 }
 
 // Force everything to idle state
-sdio_status_t rp2040_sdio_stop(sd_card_t *sd_card_p)
+static sdio_status_t rp2040_sdio_stop(sd_card_t *sd_card_p)
 {
     dma_channel_abort(SDIO_DMA_CH);
     dma_channel_abort(SDIO_DMA_CHB);
-    dma_set_irq1_channel_mask_enabled(1 << SDIO_DMA_CHB, 0);
+    switch (sd_card_p->sdio_if_p->DMA_IRQ_num) {
+    case DMA_IRQ_0:
+            dma_channel_set_irq0_enabled(SDIO_DMA_CHB, false);
+        break;
+    case DMA_IRQ_1:
+            dma_channel_set_irq1_enabled(SDIO_DMA_CHB, false);
+        break;
+    default:
+        myASSERT(false);
+    }
+
     pio_sm_set_enabled(SDIO_PIO, SDIO_DATA_SM, false);
     pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_DATA_SM, SDIO_D0, 4, false);    
     STATE.transfer_state = SDIO_IDLE;
     return SDIO_OK;
 }
 
-typedef struct ih_added_rec_t {
-    uint num;
-    bool added;
-} ih_added_rec_t;
-static ih_added_rec_t ih_added_recs[] = {
-    {DMA_IRQ_0, false},
-    {DMA_IRQ_1, false}
-};
-static bool is_handler_added(const uint num) {
-    for (size_t i = 0; i < count_of(ih_added_recs); ++i)
-        if (num == ih_added_recs[i].num)
-            return ih_added_recs[i].added;
-    return false;
-}
-static void mark_handler_added(const uint num) {
-    for (size_t i = 0; i < count_of(ih_added_recs); ++i)
-        if (num == ih_added_recs[i].num) {
-            ih_added_recs[i].added = true;
-            break;
-        }
-}
 bool rp2040_sdio_init(sd_card_t *sd_card_p, float clk_div) {
     // Mark resources as being in use, unless it has been done already.
     if (!STATE.resources_claimed) {
@@ -782,22 +759,9 @@ bool rp2040_sdio_init(sd_card_t *sd_card_p, float clk_div) {
         SDIO_DMA_CHB = dma_claim_unused_channel(true);
 
         /* Set up IRQ handler for when DMA completes. */        
-        if (!is_handler_added(sd_card_p->sdio_if_p->DMA_IRQ_num)) {
-        void (*sdio_irq_handler_p)();
-        if (DMA_IRQ_1 == sd_card_p->sdio_if_p->DMA_IRQ_num)
-            sdio_irq_handler_p = rp2040_sdio_tx_irq_1;
-        else 
-            sdio_irq_handler_p = rp2040_sdio_tx_irq_0;
+        dma_irq_add_handler(sd_card_p->sdio_if_p->DMA_IRQ_num,
+                            sd_card_p->sdio_if_p->use_exclusive_DMA_IRQ_handler);
 
-        if (sd_card_p->sdio_if_p->use_exclusive_DMA_IRQ_handler) {
-            irq_set_exclusive_handler(sd_card_p->sdio_if_p->DMA_IRQ_num, sdio_irq_handler_p);
-        } else {
-            irq_add_shared_handler(
-                sd_card_p->sdio_if_p->DMA_IRQ_num, sdio_irq_handler_p,
-                PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
-            }
-            mark_handler_added(sd_card_p->sdio_if_p->DMA_IRQ_num);
-        }
         STATE.resources_claimed = true;
     }
 
@@ -878,8 +842,6 @@ bool rp2040_sdio_init(sd_card_t *sd_card_p, float clk_div) {
         gpio_set_drive_strength(SDIO_D2, sd_card_p->sdio_if_p->D2_gpio_drive_strength);
         gpio_set_drive_strength(SDIO_D3, sd_card_p->sdio_if_p->D3_gpio_drive_strength);
     }
-
-    irq_set_enabled(sd_card_p->sdio_if_p->DMA_IRQ_num, true);
 
     return true;
 }

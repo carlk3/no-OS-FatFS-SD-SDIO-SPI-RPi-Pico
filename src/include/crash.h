@@ -19,6 +19,7 @@ specific language governing permissions and limitations under the License.
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <time.h>
 
 //
 #include "pico/stdlib.h"

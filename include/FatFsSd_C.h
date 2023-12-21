@@ -26,4 +26,4 @@ specific language governing permissions and limitations under the License.
 #include "../src/sd_driver/sd_card.h"
 #include "../src/sd_driver/SDIO/rp2040_sdio.h"
 #include "../src/sd_driver/SPI/spi.h"
-#include "../src/sd_driver/hw_config.h"
+#include "../src/include/hw_config.h"
