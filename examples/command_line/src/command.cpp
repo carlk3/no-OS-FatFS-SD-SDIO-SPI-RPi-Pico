@@ -9,9 +9,6 @@
 #include "hardware/clocks.h" 
 #include "hardware/rtc.h"
 #include "pico/stdlib.h"
-// Keep these in order:
-#include "ff.h" /* Obtains integer types */
-#include "diskio.h" /* Declarations of disk functions */
 //
 #include "crash.h"
 #include "f_util.h"
@@ -19,6 +16,8 @@
 #include "my_debug.h"
 #include "sd_card.h"
 #include "tests.h"
+//
+#include "diskio.h" /* Declarations of disk functions */
 //
 #include "command.h"
 
@@ -33,19 +32,6 @@ absolute_time_t next_log_time;
 #ifdef NDEBUG 
 #  pragma GCC diagnostic ignored "-Wunused-variable"
 #endif
-
-static sd_card_t *sd_get_by_name(const char *const name) {
-    for (size_t i = 0; i < sd_get_num(); ++i)
-        if (0 == strcmp(sd_get_by_num(i)->pcName, name)) return sd_get_by_num(i);
-    printf("%s: unknown name %s\n", __func__, name);
-    return NULL;
-}
-static FATFS *sd_get_fs_by_name(const char *name) {
-    for (size_t i = 0; i < sd_get_num(); ++i)
-        if (0 == strcmp(sd_get_by_num(i)->pcName, name)) return &sd_get_by_num(i)->fatfs;
-    printf("%s: unknown name %s\n", __func__, name);
-    return NULL;
-}
 
 static void missing_argument_msg() {
     printf("Missing argument\n");
@@ -71,14 +57,13 @@ const char *chk_dflt_log_drv(const size_t argc, const char *argv[]) {
     }
     if (!argc) {
         if (1 == sd_get_num()) {
-            return sd_get_by_num(0)->pcName;
+            return sd_get_drive_prefix(sd_get_by_num(0));
         } else {
             printf("Missing argument: Specify logical drive\n");
             return NULL;
-        }
-    } else {
-        return argv[0];
+        }        
     }
+    return argv[0];
 }
 
 static void run_setrtc(const size_t argc, const char *argv[]) {
@@ -132,7 +117,7 @@ static void run_info(const size_t argc, const char *argv[]) {
     const char *arg = chk_dflt_log_drv(argc, argv);
     if (!arg)
         return;
-    sd_card_t *sd_card_p = sd_get_by_name(arg);
+    sd_card_t *sd_card_p = sd_get_by_drive_prefix(arg);
     if (!sd_card_p) {
         printf("Unknown logical drive id: \"%s\"\n", arg);
         return;
@@ -154,13 +139,13 @@ static void run_info(const size_t argc, const char *argv[]) {
         printf("\nSD card Allocation Unit (AU_SIZE) or \"segment\": %zu bytes (%lu sectors)\n", 
             au_size_bytes, au_size_bytes / _block_size);
     
-    if (!sd_card_p->mounted) {
+    if (!sd_card_p->state.mounted) {
         printf("Drive \"%s\" is not mounted\n", argv[0]);
         return;
     }
 
     /* Get volume information and free clusters of drive */
-    FATFS *fs_p = sd_get_fs_by_name(arg);
+    FATFS *fs_p = &sd_card_p->state.fatfs;
     if (!fs_p) {
         printf("Unknown logical drive id: \"%s\"\n", arg);
         return;
@@ -207,13 +192,13 @@ static void run_info(const size_t argc, const char *argv[]) {
     // Report cluster size ("allocation unit")
     printf("FAT Cluster size (\"allocation unit\"): %d sectors (%llu bytes)\n",
            fs_p->csize,
-           (uint64_t)sd_card_p->fatfs.csize * FF_MAX_SS);
+           (uint64_t)sd_card_p->state.fatfs.csize * FF_MAX_SS);
 }
 static void run_format(const size_t argc, const char *argv[]) {
     const char *arg = chk_dflt_log_drv(argc, argv);
     if (!arg)
         return;
-    sd_card_t *sd_card_p = sd_get_by_name(arg);
+    sd_card_t *sd_card_p = sd_get_by_drive_prefix(arg);
     if (!sd_card_p) {
         printf("Unknown logical drive id: \"%s\"\n", arg);
         return;
@@ -272,25 +257,25 @@ static void run_mount(const size_t argc, const char *argv[]) {
     const char *arg = chk_dflt_log_drv(argc, argv);
     if (!arg)
         return;
-    sd_card_t *sd_card_p = sd_get_by_name(arg);
+    sd_card_t *sd_card_p = sd_get_by_drive_prefix(arg);
     if (!sd_card_p) {
         printf("Unknown logical drive id: \"%s\"\n", arg);
         return;
-    }    
-    FATFS *fs_p = &sd_card_p->fatfs;
+    }
+    FATFS *fs_p = &sd_card_p->state.fatfs;
     FRESULT fr = f_mount(fs_p, arg, 1);
     if (FR_OK != fr) {
         printf("f_mount error: %s (%d)\n", FRESULT_str(fr), fr);
         return;
     }
-    sd_card_p->mounted = true;
+    sd_card_p->state.mounted = true;
 }
 static void run_unmount(const size_t argc, const char *argv[]) {
     const char *arg = chk_dflt_log_drv(argc, argv);
     if (!arg)
         return;
 
-    sd_card_t *sd_card_p = sd_get_by_name(arg);
+    sd_card_t *sd_card_p = sd_get_by_drive_prefix(arg);
     if (!sd_card_p) {
         printf("Unknown logical drive id: \"%s\"\n", arg);
         return;
@@ -300,8 +285,8 @@ static void run_unmount(const size_t argc, const char *argv[]) {
         printf("f_unmount error: %s (%d)\n", FRESULT_str(fr), fr);
         return;
     }
-    sd_card_p->mounted = false;
-    sd_card_p->m_Status |= STA_NOINIT;  // in case medium is removed
+    sd_card_p->state.mounted = false;
+    sd_card_p->state.m_Status |= STA_NOINIT;  // in case medium is removed
 }
 static void run_chdrive(const size_t argc, const char *argv[]) {
     const char *arg = chk_dflt_log_drv(argc, argv);

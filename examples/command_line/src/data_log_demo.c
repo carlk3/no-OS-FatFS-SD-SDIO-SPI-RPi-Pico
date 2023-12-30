@@ -20,8 +20,6 @@ specific language governing permissions and limitations under the License.
 #include "hardware/adc.h"
 #include "pico/stdlib.h"
 //
-#include "ff.h"
-//
 #include "f_util.h"
 #include "my_debug.h"
 

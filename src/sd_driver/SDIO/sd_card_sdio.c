@@ -104,7 +104,7 @@ bool sd_sdio_begin(sd_card_t *sd_card_p)
     // CMD2 is valid only in "ready" state;
     // Transitions to "ident" state
     // Note: CMD10 is valid only in "stby" state
-    if (!checkReturnOk(rp2040_sdio_command_R2(sd_card_p, CMD2_ALL_SEND_CID, 0, (uint8_t *)&sd_card_p->CID)))
+    if (!checkReturnOk(rp2040_sdio_command_R2(sd_card_p, CMD2_ALL_SEND_CID, 0, (uint8_t *)&sd_card_p->state.CID)))
     {
         azdbg("SDIO failed to read CID");
         return false;
@@ -121,12 +121,12 @@ bool sd_sdio_begin(sd_card_t *sd_card_p)
 
     // Get CSD
     // Valid in "stby" state; stays in "stby" state
-    if (!checkReturnOk(rp2040_sdio_command_R2(sd_card_p, CMD9_SEND_CSD, STATE.rca, sd_card_p->CSD)))
+    if (!checkReturnOk(rp2040_sdio_command_R2(sd_card_p, CMD9_SEND_CSD, STATE.rca, sd_card_p->state.CSD)))
     {
         azdbg("SDIO failed to read CSD");
         return false;
     }
-    sd_card_p->sectors = CSD_sectors(sd_card_p->CSD);
+    sd_card_p->state.sectors = CSD_sectors(sd_card_p->state.CSD);
 
     // Select card
     // Valid in "stby" state; 
@@ -368,7 +368,7 @@ bool sd_sdio_readSector(sd_card_t *sd_card_p, uint32_t sector, uint8_t* dst)
 
 bool sd_sdio_readSectors(sd_card_t *sd_card_p, uint32_t sector, uint8_t* dst, size_t n)
 {
-    if (((uint32_t)dst & 3) != 0 || sector + n >= sd_card_p->sectors)
+    if (((uint32_t)dst & 3) != 0 || sector + n >= sd_card_p->state.sectors)
     {
         // Unaligned read or end-of-drive read, execute sector-by-sector
         for (size_t i = 0; i < n; i++)
@@ -431,7 +431,7 @@ bool rp2040_sdio_get_sd_status(sd_card_t *sd_card_p, uint8_t response[64]) {
 static bool sd_sdio_test_com(sd_card_t *sd_card_p) {
     bool success = false;
 
-    if (!(sd_card_p->m_Status & STA_NOINIT)) {
+    if (!(sd_card_p->state.m_Status & STA_NOINIT)) {
         // SD card is currently initialized
 
         // Get status
@@ -443,7 +443,7 @@ static bool sd_sdio_test_com(sd_card_t *sd_card_p) {
 
         if (!success) {
             // Card no longer sensed - ensure card is initialized once re-attached
-            sd_card_p->m_Status |= STA_NOINIT;
+            sd_card_p->state.m_Status |= STA_NOINIT;
         }
     } else {
         // Do a "light" version of init, just enough to test com
@@ -483,17 +483,17 @@ static int sd_sdio_init(sd_card_t *sd_card_p) {
 
     // Make sure there's a card in the socket before proceeding
     sd_card_detect(sd_card_p);
-    if (sd_card_p->m_Status & STA_NODISK) {
+    if (sd_card_p->state.m_Status & STA_NODISK) {
         sd_unlock(sd_card_p);
-        return sd_card_p->m_Status;
+        return sd_card_p->state.m_Status;
     }
     // Make sure we're not already initialized before proceeding
-    if (!(sd_card_p->m_Status & STA_NOINIT)) {
+    if (!(sd_card_p->state.m_Status & STA_NOINIT)) {
         sd_unlock(sd_card_p);
-        return sd_card_p->m_Status;
+        return sd_card_p->state.m_Status;
     }
     // Initialize the member variables
-    sd_card_p->card_type = SDCARD_NONE;
+    sd_card_p->state.card_type = SDCARD_NONE;
 
     //        pin                             function        pup   pdown  out    state fast
     gpio_conf(sd_card_p->sdio_if_p->CLK_gpio, GPIO_FUNC_PIO1, true, false, true,  true, true);
@@ -506,16 +506,16 @@ static int sd_sdio_init(sd_card_t *sd_card_p) {
     bool ok = sd_sdio_begin(sd_card_p);
     if (ok) {
         // The card is now initialized
-        sd_card_p->m_Status &= ~STA_NOINIT;
+        sd_card_p->state.m_Status &= ~STA_NOINIT;
     }
     sd_unlock(sd_card_p);
-    return sd_card_p->m_Status;
+    return sd_card_p->state.m_Status;
 }
 static void sd_sdio_deinit(sd_card_t *sd_card_p) {
     sd_lock(sd_card_p);
 
-    sd_card_p->m_Status |= STA_NOINIT;
-    sd_card_p->card_type = SDCARD_NONE;
+    sd_card_p->state.m_Status |= STA_NOINIT;
+    sd_card_p->state.card_type = SDCARD_NONE;
 
     //        pin                             function        pup   pdown   out    state  fast
     gpio_conf(sd_card_p->sdio_if_p->CLK_gpio, GPIO_FUNC_NULL, false, false, false, false, false);
@@ -533,7 +533,7 @@ static void sd_sdio_deinit(sd_card_t *sd_card_p) {
 uint64_t sd_sdio_sectorCount(sd_card_t *sd_card_p) {
     sd_card_p->init(sd_card_p);
     // return g_sdio_csd.capacity();
-    return CSD_sectors(sd_card_p->CSD);
+    return CSD_sectors(sd_card_p->state.CSD);
 }
 
 static int sd_sdio_write_blocks(sd_card_t *sd_card_p, const uint8_t *buffer,
@@ -591,7 +591,7 @@ void sd_sdio_ctor(sd_card_t *sd_card_p) {
     sd_card_p->sdio_if_p->D2_gpio = sd_card_p->sdio_if_p->D0_gpio + 2;
     sd_card_p->sdio_if_p->D3_gpio = sd_card_p->sdio_if_p->D0_gpio + 3;
 
-    sd_card_p->m_Status = STA_NOINIT;
+    sd_card_p->state.m_Status = STA_NOINIT;
 
     sd_card_p->init = sd_sdio_init;
     sd_card_p->deinit = sd_sdio_deinit;

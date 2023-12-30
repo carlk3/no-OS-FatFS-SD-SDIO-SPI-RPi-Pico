@@ -21,7 +21,6 @@ extern "C" {
 #endif
 
 void sd_spi_ctor(sd_card_t *sd_card_p);  // Constructor for sd_card_t
-bool sd_spi_readCID(sd_card_t *sd_card_p, CID_t* cid);
 
 #ifdef __cplusplus
 }

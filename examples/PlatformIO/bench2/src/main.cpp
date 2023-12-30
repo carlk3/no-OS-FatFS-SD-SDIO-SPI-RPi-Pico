@@ -144,21 +144,15 @@ void setup() {
     // Hardware Configuration of the SD Card "objects"
     static sd_card_t sd_cards[] = {
         {   // sd_cards[0]
-         /* "pcName" is the FatFs "logical drive" identifier.
-         (See http://elm-chan.org/fsw/ff/doc/filename.html#vol) */
-         .pcName = "0:",
-         .type = SD_IF_SPI,
-         .spi_if_p = &spi_if,  // Pointer to the SPI interface driving this card
-         .use_card_detect = true,
-         .card_detect_gpio = 9,
-         .card_detected_true = 0,  // What the GPIO read returns when a card is present.
-         .card_detect_use_pull = true,
-         .card_detect_pull_hi = true
+            .type = SD_IF_SPI,
+            .spi_if_p = &spi_if,  // Pointer to the SPI interface driving this card
+            .use_card_detect = true,
+            .card_detect_gpio = 9,
+            .card_detected_true = 0,  // What the GPIO read returns when a card is present.
+            .card_detect_use_pull = true,
+            .card_detect_pull_hi = true
         },
         {   // sd_cards[1]
-            /* "pcName" is the FatFs "logical drive" identifier.
-            (See http://elm-chan.org/fsw/ff/doc/filename.html#vol) */
-            .pcName = "1:",
             .type = SD_IF_SDIO,
             .sdio_if_p = &sdio_if,
             // SD Card detect:
@@ -235,7 +229,6 @@ static void bench(char const* logdrv) {
     SdCard_p->cidDmp(info_message_printf);
     SdCard_p->csdDmp(info_message_printf);
 
-    // fr = f_mount(&SdCard_p->fatfs, SdCard_p->pcName, 1);
     SdCard_p->mount();
     chk_result("f_mount", fr);
 

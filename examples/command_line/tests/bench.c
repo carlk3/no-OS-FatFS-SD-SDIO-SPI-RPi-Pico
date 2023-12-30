@@ -8,7 +8,7 @@
 
 #include "SDIO/SdioCard.h"
 #include "f_util.h"
-#include "ff.h"
+#include "sd_card.h"
 #include "hw_config.h"
 
 #define error(s)                       \
@@ -22,12 +22,6 @@ static uint32_t millis() {
 }
 static uint64_t micros() {
     return to_us_since_boot(get_absolute_time());
-}
-static sd_card_t* sd_get_by_name(const char* const name) {
-    for (size_t i = 0; i < sd_get_num(); ++i)
-        if (0 == strcmp(sd_get_by_num(i)->pcName, name)) return sd_get_by_num(i);
-    EMSG_PRINTF("%s: unknown name %s\n", __func__, name);
-    return NULL;
 }
 
 // Set PRE_ALLOCATE true to pre-allocate file clusters.
@@ -206,7 +200,7 @@ void bench(char const* logdrv) {
     static_assert(0 == FILE_SIZE % BUF_SIZE,
                   "For accurate results, FILE_SIZE must be a multiple of BUF_SIZE.");
 
-    sd_card_t* sd_card_p = sd_get_by_name(logdrv);
+    sd_card_t* sd_card_p = sd_get_by_drive_prefix(logdrv);
     if (!sd_card_p) {
         EMSG_PRINTF("Unknown logical drive name: %s\n", logdrv);
         return;
@@ -216,7 +210,7 @@ void bench(char const* logdrv) {
         EMSG_PRINTF("f_chdrive error: %s (%d)\n", FRESULT_str(fr), fr);
         return;
     }
-    switch (sd_card_p->fatfs.fs_type) {
+    switch (sd_card_p->state.fatfs.fs_type) {
         case FS_EXFAT:
             IMSG_PRINTF("Type is exFAT\n");
             break;

@@ -98,21 +98,15 @@ void setup() {
     // Hardware Configuration of the SD Card "objects"
     static sd_card_t sd_cards[] = {
         {   // sd_cards[0]
-         /* "pcName" is the FatFs "logical drive" identifier.
-         (See http://elm-chan.org/fsw/ff/doc/filename.html#vol) */
-         .pcName = "0:",
-         .type = SD_IF_SPI,
-         .spi_if_p = &spi_if,  // Pointer to the SPI interface driving this card
-         .use_card_detect = true,
-         .card_detect_gpio = 9,
-         .card_detected_true = 0,  // What the GPIO read returns when a card is present.
-         .card_detect_use_pull = true,
-         .card_detect_pull_hi = true
+            .type = SD_IF_SPI,
+            .spi_if_p = &spi_if,  // Pointer to the SPI interface driving this card
+            .use_card_detect = true,
+            .card_detect_gpio = 9,
+            .card_detected_true = 0,  // What the GPIO read returns when a card is present.
+            .card_detect_use_pull = true,
+            .card_detect_pull_hi = true
         },
         {   // sd_cards[1]
-            /* "pcName" is the FatFs "logical drive" identifier.
-            (See http://elm-chan.org/fsw/ff/doc/filename.html#vol) */
-            .pcName = "1:",
             .type = SD_IF_SDIO,
             .sdio_if_p = &sdio_if,
             // SD Card detect:
@@ -126,6 +120,9 @@ void setup() {
 
     FatFsNs::FatFs::add_sd_card(&sd_cards[0]);
     FatFsNs::FatFs::add_sd_card(&sd_cards[1]);
+
+    // The H/W config must be set up before this is called:
+    sd_init_driver(); 
 }
 
 /* ********************************************************************** */

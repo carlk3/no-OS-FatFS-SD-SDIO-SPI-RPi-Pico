@@ -66,9 +66,6 @@ static sd_sdio_if_t sdio_if = {
 
 // Hardware Configuration of the SD Card "objects"
 static sd_card_t sd_card = {
-    /* "pcName" is the FatFs "logical drive" identifier.
-    (See http://elm-chan.org/fsw/ff/doc/filename.html#vol) */
-    .pcName = "0:",         
     .type = SD_IF_SDIO,
     .sdio_if_p = &sdio_if,
     // SD Card detect:
@@ -111,7 +108,7 @@ void setup() {
     // See FatFs - Generic FAT Filesystem Module, "Application Interface",
     // http://elm-chan.org/fsw/ff/00index_e.html
     sd_card_t *pSD = sd_get_by_num(0);
-    FRESULT fr = f_mount(&pSD->fatfs, pSD->pcName, 1);
+    FRESULT fr = f_mount(&pSD->state.fatfs, "", 1);
     CHK_FRESULT("f_mount", fr);
     FIL fil;
     const char* const filename = "filename.txt";
@@ -124,7 +121,7 @@ void setup() {
     }
     fr = f_close(&fil);
     CHK_FRESULT("f_close", fr);
-    fr = f_unmount(pSD->pcName);
+    fr = f_unmount("");
     CHK_FRESULT("f_unmount", fr);
 
     puts("Goodbye, world!");
