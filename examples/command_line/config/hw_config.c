@@ -105,12 +105,12 @@ static sd_sdio_if_t sdio_ifs[] = {
     {   // sdio_ifs[0]
         .CMD_gpio = 3,
         .D0_gpio = 4,
-        .baud_rate = 125 * 1000 * 1000 / 6  // 20833333 Hz
+        .baud_rate = 125 * 1000 * 1000 / 8  // 15625000 Hz
     },
     {   // sdio_ifs[1]
         .CMD_gpio = 17,
         .D0_gpio = 18,
-        .baud_rate = 125 * 1000 * 1000 / 6  // 20833333 Hz
+        .baud_rate = 125 * 1000 * 1000 / 8  // 15625000 Hz
     }
 };
 

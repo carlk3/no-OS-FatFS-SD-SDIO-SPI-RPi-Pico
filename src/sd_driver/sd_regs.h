@@ -138,8 +138,10 @@ static inline uint32_t CSD_sectors(CSD_t csd) /*  const  */ {
         return (c_size + 1) * mult;
     } else if (ver == 1) {
         // | device size                                    | C_SIZE               | 22    | xxxxxxh              | R         | [69:48]   |
-        c_size = __builtin_bswap32(ext_bits16(csd, 69, 48));
-        return (c_size + 1) * 1024;
+        c_size = ext_bits16(csd, 69, 48);
+        /* The user data area capacity is calculated from C_SIZE as follows:
+        memory capacity = (C_SIZE+1) * 512K byte */
+        return (c_size + 1) * 1024; // sectors
     } else {
         return 0;
     }
