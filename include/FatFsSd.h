@@ -37,13 +37,13 @@ class SdCard {
 
     SdCard(const SdCard&) = default;
 
-    const char* get_name() { return m_sd_card_p->pcName; }
+    const char* get_name() { return sd_get_drive_prefix(m_sd_card_p); }
 
     FRESULT mount() {
-        return f_mount(&m_sd_card_p->fatfs, m_sd_card_p->pcName, 1);
+        return f_mount(&m_sd_card_p->state.fatfs, sd_get_drive_prefix(m_sd_card_p), 1);
     }
     FRESULT unmount() {
-        return f_unmount(m_sd_card_p->pcName);
+        return f_unmount(sd_get_drive_prefix(m_sd_card_p));
     }
     static FRESULT getfree(const TCHAR* path, DWORD* nclst, FATFS** fatfs) { /* Get number of free clusters on the drive */
         return f_getfree(path, nclst, fatfs);
@@ -69,7 +69,7 @@ class SdCard {
     //     return m_sd_card_p->sd_readCID(&m_sd_card, cid);
     // }
     FATFS* fatfs() {
-        return &m_sd_card_p->fatfs;
+        return &m_sd_card_p->state.fatfs;
     }
     uint64_t get_num_sectors() {
         return m_sd_card_p->get_num_sectors(m_sd_card_p);

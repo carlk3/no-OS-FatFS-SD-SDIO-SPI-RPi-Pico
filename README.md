@@ -1,5 +1,5 @@
 # no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
-# v1.2.4
+# v2.0.0
 
 ## C/C++ Library for SD Cards on the Pico
 
@@ -11,40 +11,22 @@ and a 4-bit wide Secure Digital Input Output (SDIO) driver derived from
 It is wrapped up in a complete runnable project, with a little command line interface, some self tests, and an example data logging application.
 
 ## What's new
-### v1.2.4
-Unified DMA interrupt request handling. Interrupts from SPI and SDIO are now handled by the same handler.
-An interrupt service routine is added only once.
-### v1.2.3 
-`command_line` example changes:
-* Defer processing for card detect interrupt: 
-the `gpio_set_irq_enabled_with_callback` callback is actually an interrupt service routine.
-This callback might need to unmount the SD card, which is too much to do in an interrupt handler.
-This change defers the interrupt processing to the superloop.
-* Fix compiler warning in run_mount, run_unmount
-### v1.2.2
-`command_line` example changes:
-* Move core 0 stack to bottom of RAM so that any stack overflow triggers a HardFault
-* Add `isr_hardfault` handler to print out Program Counter (PC) and Link register (LR) of failing instruction.
-These can be useful in conjunction with `build\command_line.dis` to find the failing line of code.
-* Fix a couple of stack overflows
-* Added a *break* feature that can interrupt long-running commands. 
-Typing **Ctrl-C** will trigger a reset; **Esc** will trigger a breakpoint.
-### v1.2.1
-`command_line` example: Power on the onboard temperature sensor for Data Log Demo
-### v1.2.0
-* Implement `ACMD42`: *SET_CLR_CARD_DETECT*: 
-At power up the CS/DAT3 line has a 50KOhm pull up enabled in the SD card. 
-This resistor serves two functions: Card detection and Mode Selection. 
-This pull-up should be disconnected by the user, during regular data transfer, 
-with SET_CLR_CARD_DETECT (ACMD42) command.
-* `command_line` example enhancements:
-  * `info` enhanced to report SD card Allocation Unit (AU_SIZE) or "segment" (available only on SDIO-attached cards)
-  * `format` now attempts to align the volume data area on an SD card segment.
+### v2.0.0
+* In the hardware configuration specification, 
+the `pcName` member of `sd_card_t` has been removed`. 
+Rationale: FatFs provides ways to customize the volume ID strings (or "drive prefixes") used
+to designate logical drives (see
+[FF_STR_VOLUME_ID](http://elm-chan.org/fsw/ff/doc/config.html#str_volume_id)).
+`pcName` was redundant and confusing.
+* A new example has been added in `examples/unix_like`. This example illustrates the use of Unix style drive prefixes. (See [Path Names on the FatFs API](http://elm-chan.org/fsw/ff/doc/filename.html)). It also demonstrates customization of the FatFs configuration file, `ffconf.h`.
+* Added a new section to this README: [Customizing the *FatFs - Generic FAT Filesystem Module*](#customizing-the-fatfs---generic-fat-filesystem-module).
 
 For required migration actions, see [Appendix A: Migration actions](#appendix-a-migration-actions).
 
-*Note:* v1.1.2 remains available on the [v1.1.2 branch](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/tree/v1.1.2).
-
+*Note:* v1.2.4 and v1.1.2 remain available on the
+[v1.2.4 branch](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/tree/v1.2.4)
+and the
+[v1.1.2 branch](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/tree/v1.1.2), repectively.
 ## Features:
 * Supports multiple SD cards, all in a common file system
 * Supports desktop compatible SD card formats
@@ -55,7 +37,7 @@ For required migration actions, see [Appendix A: Migration actions](#appendix-a-
 * Supports Real Time Clock for maintaining file and directory time stamps
 * Supports Cyclic Redundancy Check (CRC) for data integrity
 * Compatible with Pico W
-* Plus all the neat features provided by [FatFS](http://elm-chan.org/fsw/ff/00index_e.html)
+* Plus all the neat features provided by [FatFs](http://elm-chan.org/fsw/ff/00index_e.html)
 ## Limitation:
 * This library currently does not support multiple partitions on an SD card. Neither does Windows.
 
@@ -174,7 +156,7 @@ A similar strategy that I have used: SDIO for fast, interactive use, and SPI to 
 This library is not specifically designed for use with FreeRTOS. 
 For use with FreeRTOS, I suggest you consider [FreeRTOS-FAT-CLI-for-RPi-Pico](https://github.com/carlk3/FreeRTOS-FAT-CLI-for-RPi-Pico) instead. That implementation is designed from the ground up for FreeRTOS.
 
-While FatFS has some support for “re-entrancy” or thread safety (where "thread" == "task", in FreeRTOS terminology), it is limited to operations such as:
+While FatFs has some support for “re-entrancy” or thread safety (where "thread" == "task", in FreeRTOS terminology), it is limited to operations such as:
 
 - f_read
 - f_write
@@ -185,7 +167,7 @@ While FatFS has some support for “re-entrancy” or thread safety (where "thre
 - f_readdir
 - f_truncate
 
-There does not appear to be sufficient FAT and directory locking in FatFS to make operations like f_mkdir, f_chdir and f_getcwd thread safe. If your application has a static directory tree, it should be OK in a multi-tasking application with FatFS. Otherwise, you probably need to add some additional locking. 
+There does not appear to be sufficient FAT and directory locking in FatFs to make operations like f_mkdir, f_chdir and f_getcwd thread safe. If your application has a static directory tree, it should be OK in a multi-tasking application with FatFs. Otherwise, you probably need to add some additional locking. 
 
 Then, there are the facilities used for mutual exclusion and various ways of waiting (delay, wait for interrupt, etc.). This library uses the Pico SDK facilities (which are oriented towards multi-processing on the two cores), but FreeRTOS-FAT-CLI-for-RPi-Pico uses the FreeRTOS facilities, which put the waiting task into a Blocked state, allowing other, Ready tasks to run. 
 
@@ -288,7 +270,7 @@ or polling.
 ### Procedure
 * Follow instructions in [Getting started with Raspberry Pi Pico](https://datasheets.raspberrypi.org/pico/getting-started-with-pico.pdf) to set up the development environment.
 * Install source code:
-  `git clone -b sdio --recurse-submodules git@github.com:carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico.git no-OS-FatFS`
+  `git clone -b sdio --recurse-submodules git@github.com:carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico.git no-OS-FatFs`
 * Customize:
   * Configure the code to match the hardware: see section 
   [Customizing for the Hardware Configuration](#customizing-for-the-hardware-configuration), below.
@@ -297,7 +279,7 @@ or polling.
 (See *4.1. Serial input and output on Raspberry Pi Pico* in [Getting started with Raspberry Pi Pico](https://datasheets.raspberrypi.org/pico/getting-started-with-pico.pdf) and *2.7.1. Standard Input/Output (stdio) Support* in [Raspberry Pi Pico C/C++ SDK](https://datasheets.raspberrypi.org/pico/raspberry-pi-pico-c-sdk.pdf).) 
 * Build:
 ```  
-   cd no-OS-FatFS/examples/command_line
+   cd no-OS-FatFs/examples/command_line
    mkdir build
    cd build
    cmake ..
@@ -335,7 +317,6 @@ Illustration of the configuration
 ### An instance of `sd_card_t` describes the configuration of one SD card socket.
 ```
 struct sd_card_t {
-    const char *pcName;
     sd_if_t type;
     union {
         sd_spi_if_t *spi_if_p;
@@ -349,7 +330,6 @@ struct sd_card_t {
 //...
 }
 ```
-* `pcName` FatFs [Logical Drive](http://elm-chan.org/fsw/ff/doc/filename.html) name (or "number"). In general, this is "0:", "1:", "2:", ... where the number is the index that gets that particular `sd_card_t` object when `sd_card_t *sd_get_by_num(size_t num)` is called. In a static, `hw_config.c` kind of configuration, that would be the (zero origin indexed) position in the `sd_cards[]` array. However, this can be changed with [FF_STR_VOLUME_ID](http://elm-chan.org/fsw/ff/doc/config.html#str_volume_id).
 * `type` Type of interface: either `SD_IF_SPI` or `SD_IF_SDIO`
 * `spi_if_p` or `sdio_if_p` Pointer to the instance `sd_spi_if_t` or `sd_sdio_if_t` that drives this SD card
 * `use_card_detect` Whether or not to use Card Detect, meaning the hardware switch featured on some SD card sockets. This requires a GPIO pin.
@@ -523,8 +503,11 @@ If `set_drive_strength` is true, each GPIO's drive strength can be set individua
   A low drive strength generates less noise. This might be important in, say, audio applications.
 
 ### You must provide a definition for the functions declared in `sd_driver/hw_config.h`:  
-`size_t sd_get_num()` Returns the number of SD cards  
-`sd_card_t *sd_get_by_num(size_t num)` Returns a pointer to the SD card "object" at the given (zero origin) index.  
+* `size_t sd_get_num()` Returns the number of SD cards  
+* `sd_card_t *sd_get_by_num(size_t num)` Returns a pointer to the SD card "object" at the given
+[physical drive number](http://elm-chan.org/fsw/ff/doc/filename.html#vol).
+In a static, `hw_config.c` kind of configuration, that could be the (zero origin indexed) position in the `sd_cards[]` array.
+It may return NULL if the drive is not available; e.g., if it is disabled. `num` must be less than `sd_get_num()`.
 
 ### Static vs. Dynamic Configuration
 The definition of the hardware configuration can either be built in at build time, which I'm calling "static configuration", or supplied at run time, which I call "dynamic configuration". 
@@ -532,6 +515,23 @@ In either case, the application simply provides an implementation of the functio
 * See `simple_example.dir/hw_config.c` or `example/hw_config.c` for examples of static configuration.
 * See `dynamic_config_example/hw_config.cpp` for an example of dynamic configuration.
 * One advantage of static configuration is that the fantastic GNU Linker (ld) strips out anything that you don't use.
+
+## Customizing the *FatFs - Generic FAT Filesystem Module*
+There are many options to configure the features of FatFs for various requirements of each project. 
+The configuration options are defined in `ffconf.h`. 
+See [Configuration Options](http://elm-chan.org/fsw/ff/doc/config.html).
+In order to allow applications to customize `ffconf.h` without modifying this library, 
+I have renamed `src\ff15\source\ffconf.h` in the FatFs distribution files included in this library.
+(This is necessary because GCC always looks in the directory of the current file as the first search directory for #include "file".)
+There is a somewhat customized version of `ffconf.h` in `include\ffconf.h` that is normally picked up by the library's `src\CMakeLists.txt`.
+An application may provide its own tailored copy of `ffconf.h` by putting it in the include path for the library compilation.
+For example, for CMake, if the customized `ffconf.h` file is in subdirectory `include/` (relative to the application's `CMakeLists.txt` file):
+```
+target_include_directories(no-OS-FatFS-SD-SDIO-SPI-RPi-Pico BEFORE INTERFACE
+    ${CMAKE_CURRENT_LIST_DIR}/include
+)
+```
+For an example, see `examples/unix_like`.
 
 ## Using the Application Programming Interface
 After `stdio_init_all()`, `time_init()`, and whatever other Pico SDK initialization is required, 
@@ -659,7 +659,7 @@ Static Public Member Functions:
 * `static FRESULT       getcwd (TCHAR *buff, UINT len)` Retrieve the current directory and drive
 
 ## PlatformIO Libary
-This library is available at https://registry.platformio.org/libraries/carlk3/no-OS-FatFS-SD-SPI-RPi-Pico.
+This library is available at https://registry.platformio.org/libraries/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico.
 It is currently running with 
 ```
 platform = https://github.com/maxgerhardt/platform-raspberrypi.git
@@ -668,24 +668,24 @@ board_build.core = earlephilhower
 
 ## Next Steps
 * There is a example data logging application in `data_log_demo.c`. 
-It can be launched from the `no-OS-FatFS/example` CLI with the `start_logger` command.
+It can be launched from the `examples/command_line` CLI with the `start_logger` command.
 (Stop it with the `stop_logger` command.)
 It records the temperature as reported by the RP2040 internal Temperature Sensor once per second 
 in files named something like `/data/2021-03-21/11.csv`.
 Use this as a starting point for your own data logging application!
 
-* If you want to use no-OS-FatFS-SD-SPI-RPi-Pico as a library embedded in another project, use something like:
+* If you want to use no-OS-FatFS-SD-SDIO-SPI-RPi-Pico as a library embedded in another project, use something like:
   ```
-  git submodule add -b sdio git@github.com:carlk3/no-OS-FatFS-SD-SPI-RPi-Pico.git
+  git submodule add -b sdio git@github.com:carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico.git
   ```
   or
   ```
-  git submodule add -b sdio https://github.com/carlk3/no-OS-FatFS-SD-SPI-RPi-Pico.git
+  git submodule add -b sdio https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico.git
   ```
   
 You might also need to pick up the library in CMakeLists.txt:
 ```
-add_subdirectory(no-OS-FatFS-SD-SPI-RPi-Pico/src build)
+add_subdirectory(no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/src build)
 target_link_libraries(_my_app_ src)
 ```
 and `#include "ff.h"`.
@@ -703,9 +703,36 @@ You are welcome to contribute to this project! Just submit a Pull Request in Git
 ![image](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/assets/50121841/8a28782e-84c4-40c8-8757-a063a4b83292)
 -->
 ## Appendix A: Migration actions
+### Migrating from v1
+Any references to the `pcName` member must be removed from each instance of `sd_card_t` in the hardware configuration.
+
+For example, if you were using a `hw_config.c` containing 
+```
+static sd_card_t sd_cards[] = {  // One for each SD card
+    {   // sd_cards[0]: Socket sd0
+        .pcName = "0:",
+        .type = SD_IF_SPI,
+        // ...
+```
+change it to
+```
+static sd_card_t sd_cards[] = {  // One for each SD card
+    {   // sd_cards[0]: Socket sd0
+        .type = SD_IF_SPI,
+        // ...
+```
+See [Customizing for the Hardware Configuration](#customizing-for-the-hardware-configuration).
+
+If you had any references to `pcName` in your code, 
+you can replace them with calls to `char const *sd_get_drive_prefix(sd_card_t *sd_card_p);` (`sd_card.h`).
+Note: `sd_init_driver()` must be called before `sd_get_drive_prefix`.
+
 ### Migrating from no-OS-FatFS-SD-SPI-RPi-Pico [master](https://github.com/carlk3/no-OS-FatFS-SD-SPI-RPi-Pico/tree/master) branch
 The object model for hardware configuration has changed.
-If you are migrating a project from [no-OS-FatFS-SD-SPI-RPi-Pico](https://github.com/carlk3/no-OS-FatFS-SD-SPI-RPi-Pico), you will have to change the hardware configuration customization. The `sd_card_t` now contains a new object that specifies the configuration of either an SPI interface or an SDIO interface. See the [Customizing for the Hardware Configuration](#customizing-for-the-hardware-configuration) section below.
+If you are migrating a project from [no-OS-FatFS-SD-SPI-RPi-Pico](https://github.com/carlk3/no-OS-FatFS-SD-SPI-RPi-Pico), you will have to change the hardware configuration customization. The `sd_card_t` now points to new object that specifies the configuration of either an SPI interface or an SDIO interface,
+and a new `type` member that identifies which type of interface.
+Also, the `pcName` member of `sd_card_t` has been removed.
+See [Customizing for the Hardware Configuration](#customizing-for-the-hardware-configuration).
 
 For example, if you were using a `hw_config.c` containing 
 ```
@@ -713,7 +740,8 @@ static sd_card_t sd_cards[] = {  // One for each SD card
     {
         .pcName = "0:",   // Name used to mount device
         .spi = &spis[0],  // Pointer to the SPI driving this card
-        .ss_gpio = 17,    // The SPI slave select GPIO for this SD card//...
+        .ss_gpio = 17,    // The SPI slave select GPIO for this SD card
+        // ...
 ```        
 that would now become
 ```
@@ -721,15 +749,17 @@ static sd_spi_if_t spi_ifs[] = {
     { 
         .spi = &spis[0],          // Pointer to the SPI driving this card
         .ss_gpio = 17,             // The SPI slave select GPIO for this SD card
-//...
+        //...
 static sd_card_t sd_cards[] = {  // One for each SD card
     {
-        .pcName = "0:",           // Name used to mount device
         .type = SD_IF_SPI,
         .spi_if_p = &spi_ifs[0],  // Pointer to the SPI interface driving this card
+        //...
 ```
 ### Migrating from no-OS-FatFS-SD-SPI-RPi-Pico [sdio](https://github.com/carlk3/no-OS-FatFS-SD-SPI-RPi-Pico/tree/sdio) branch
-Instances of the interface classes `sd_spi_t` and `sd_sdio_t` are no longer embedded in `sd_card_t` as `spi_if` and `sdio_if`. They are moved to the top level as instances of `sd_spi_if_t` and `sd_sdio_if_t` and pointed to by instances of `sd_card_t`. For example, if you were using a `hw_config.c` containing:
+Instances of the interface classes `sd_spi_t` and `sd_sdio_t` are no longer embedded in `sd_card_t` as `spi_if` and `sdio_if`. They are moved to the top level as instances of `sd_spi_if_t` and `sd_sdio_if_t` and pointed to by instances of `sd_card_t`. 
+Also, the `pcName` member of `sd_card_t` in the hardware configuration has been removed.
+For example, if you were using a `hw_config.c` containing:
 ```
 static sd_card_t sd_cards[] = {  // One for each SD card
     {
@@ -737,7 +767,7 @@ static sd_card_t sd_cards[] = {  // One for each SD card
         .type = SD_IF_SPI,
         .spi_if.spi = &spis[0],  // Pointer to the SPI driving this card
         .spi_if.ss_gpio = 7,     // The SPI slave select GPIO for this SD card
-//...        
+        //...        
 ```
 that would become:
 ```
@@ -745,15 +775,14 @@ static sd_spi_if_t spi_ifs[] = {
     {
         .spi = &spis[0],  // Pointer to the SPI driving this card
         .ss_gpio = 7,     // The SPI slave select GPIO for this SD card
-//...
+        //...
 static sd_card_t sd_cards[] = {  // One for each SD card
     {
-        .pcName = "0:",  // Name used to mount device
         .type = SD_IF_SPI,
         .spi_if_p = &spi_ifs[0],  // Pointer to the SPI interface driving this card     
-//...           
+        //...           
 ```
-For details, see the [Customizing for the Hardware Configuration](#customizing-for-the-hardware-configuration) section below. 
+For details, see [Customizing for the Hardware Configuration](#customizing-for-the-hardware-configuration). 
 
 ## Appendix B: Operation of `command_line` example:
 * Connect a terminal. [PuTTY](https://www.putty.org/) or `tio` work OK. For example:

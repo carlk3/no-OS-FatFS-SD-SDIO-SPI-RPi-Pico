@@ -19,7 +19,6 @@ specific language governing permissions and limitations under the License.
 #include <string.h>
 //
 #include "f_util.h"
-#include "ff.h"
 #include "my_debug.h"
 
 // Maximum number of elements in buffer
@@ -27,8 +26,6 @@ specific language governing permissions and limitations under the License.
 
 #define TRACE_PRINTF(fmt, args...)
 //#define TRACE_PRINTF printf
-
-extern void ls(const char *dir);
 
 void simple() {
     IMSG_PRINTF("\nSimple Test\n");
@@ -135,13 +132,6 @@ void simple() {
     }
     fflush(stdout);
 
-    ls("");
-
-    fr = f_chdir("/");
-    if (FR_OK != fr) {
-        EMSG_PRINTF("chdir error: %s (%d)\n", FRESULT_str(fr), fr);
-        return;
-    }
     ls("");
 
     // Display the numbers file

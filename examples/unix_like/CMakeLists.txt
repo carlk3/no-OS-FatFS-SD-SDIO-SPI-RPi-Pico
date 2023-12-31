@@ -12,7 +12,7 @@ set(CMAKE_CXX_STANDARD 17)
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
 
-project(dynamic_config_example C CXX ASM)
+project(unix_like C CXX ASM)
 
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
@@ -20,28 +20,34 @@ pico_sdk_init()
 add_subdirectory(../../src build)
 
 # Add executable. Default name is the project name, version 0.1
-add_executable(dynamic_config_example 
-    main.cpp 
+add_executable(unix_like 
+    main.c
+    hw_config.c
 )
 
-# Can leave these off for silent mode:
-#add_compile_definitions(USE_PRINTF USE_DBG_PRINTF)
-#add_compile_definitions(USE_PRINTF)
-
-pico_set_program_name(dynamic_config_example "dynamic_config_example")
-pico_set_program_version(dynamic_config_example "0.1")
-
-# Choose source and destination for standard input and output:
-#   See 4.1. Serial input and output on Raspberry Pi Pico in Getting started with Raspberry Pi Pico (https://datasheets.raspberrypi.org/pico/getting-started-with-pico.pdf)
-#   and 2.7.1. Standard Input/Output (stdio) Support in Raspberry Pi Pico C/C++ SDK (https://datasheets.raspberrypi.org/pico/raspberry-pi-pico-c-sdk.pdf):
-pico_enable_stdio_uart(dynamic_config_example 1)
-pico_enable_stdio_usb(dynamic_config_example 1)
-
 # Add the standard library and FatFS/SPI to the build
-target_link_libraries(dynamic_config_example 
+target_link_libraries(unix_like 
     pico_stdlib
     no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
 )
 
-pico_add_extra_outputs(dynamic_config_example)
+# Can leave these off for silent mode:
+# add_compile_definitions(USE_PRINTF USE_DBG_PRINTF)
+add_compile_definitions(USE_PRINTF)
+
+# NOTE: for this to work, src\ff15\source\ffconf.h must be removed or renamed.
+target_include_directories(no-OS-FatFS-SD-SDIO-SPI-RPi-Pico BEFORE INTERFACE
+    ${CMAKE_CURRENT_LIST_DIR}/include
+)
+
+pico_set_program_name(unix_like "unix_like")
+pico_set_program_version(unix_like "0.1")
+
+# Choose source and destination for standard input and output:
+#   See 4.1. Serial input and output on Raspberry Pi Pico in Getting started with Raspberry Pi Pico (https://datasheets.raspberrypi.org/pico/getting-started-with-pico.pdf)
+#   and 2.7.1. Standard Input/Output (stdio) Support in Raspberry Pi Pico C/C++ SDK (https://datasheets.raspberrypi.org/pico/raspberry-pi-pico-c-sdk.pdf):
+pico_enable_stdio_uart(unix_like 1)
+pico_enable_stdio_usb(unix_like 1)
+
+pico_add_extra_outputs(unix_like)
 

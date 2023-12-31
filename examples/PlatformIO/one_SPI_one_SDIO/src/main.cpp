@@ -133,7 +133,6 @@ void setup() {
     // Hardware Configuration of the SD Card "object"
     sd_card_t *sd_card_p = new sd_card_t();
     assert(sd_card_p);
-    sd_card_p->pcName = "0:";  // Name used to mount device
     sd_card_p->type = SD_IF_SPI;
     sd_card_p->spi_if_p = spi_if_p;  // Pointer to the SPI interface driving this card
     sd_card_p->use_card_detect = true;
@@ -156,7 +155,6 @@ void setup() {
     // Hardware Configuration of the SD Card "object"
     sd_card_p = new sd_card_t();
     assert(sd_card_p);
-    sd_card_p->pcName = "1:";  // Name used to mount device
     sd_card_p->type = SD_IF_SDIO;
     sd_card_p->sdio_if_p = sd_sdio_if_p;
     sd_card_p->use_card_detect = true;
@@ -166,6 +164,9 @@ void setup() {
     sd_card_p->card_detect_pull_hi = true;
 
     FatFsNs::FatFs::add_sd_card(sd_card_p);
+
+    // The H/W config must be set up before this is called:
+    sd_init_driver(); 
 
     for (size_t i = 0; i < FatFsNs::FatFs::SdCard_get_num(); ++i)
         test(FatFsNs::FatFs::SdCard_get_by_num(i));

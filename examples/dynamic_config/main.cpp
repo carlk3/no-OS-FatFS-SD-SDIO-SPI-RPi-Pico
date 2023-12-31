@@ -37,12 +37,14 @@ sd_card_t *sd_get_by_num(size_t num) {
     }
 }
 
-static void test(sd_card_t *pSD) {
+static void test(sd_card_t *sd_card_p) {
     // See FatFs - Generic FAT Filesystem Module, "Application Interface",
     // http://elm-chan.org/fsw/ff/00index_e.html
-    FRESULT fr = f_mount(&pSD->fatfs, pSD->pcName, 1);
+    char const * const drive_prefix = sd_get_drive_prefix(sd_card_p);
+    printf("Testing drive %s\n", drive_prefix);
+    FRESULT fr = f_mount(&sd_card_p->state.fatfs, drive_prefix, 1);
     if (FR_OK != fr) panic("f_mount error: %s (%d)\n", FRESULT_str(fr), fr);
-    fr = f_chdrive(pSD->pcName);
+    fr = f_chdrive(drive_prefix);
     if (FR_OK != fr) panic("f_chdrive error: %s (%d)\n", FRESULT_str(fr), fr);
 
     FIL fil;
@@ -58,7 +60,7 @@ static void test(sd_card_t *pSD) {
         printf("f_close error: %s (%d)\n", FRESULT_str(fr), fr);
     }
 
-    f_unmount(pSD->pcName);
+    f_unmount(drive_prefix);
 }
 
 int main() {
@@ -136,56 +138,55 @@ int main() {
     /* Hardware Configuration of the SD Card "objects" */
 
     // sd_cards[0]
-    sd_card_t *p_sd_card = new sd_card_t();
-    assert(p_sd_card);
-    p_sd_card->pcName = "0:";  // Name used to mount device
-    p_sd_card->type = SD_IF_SPI;
-    p_sd_card->spi_if_p = spi_ifs[0];  // Pointer to the SPI interface driving this card
-    p_sd_card->use_card_detect = true;
-    p_sd_card->card_detect_gpio = 9;
-    p_sd_card->card_detected_true = 0;  // What the GPIO read returns when a card is present
-    p_sd_card->card_detect_use_pull = true;
-    p_sd_card->card_detect_pull_hi = true;
-    sd_cards.push_back(p_sd_card);
+    sd_card_t *sd_card_p = new sd_card_t();
+    assert(sd_card_p);
+    sd_card_p->type = SD_IF_SPI;
+    sd_card_p->spi_if_p = spi_ifs[0];  // Pointer to the SPI interface driving this card
+    sd_card_p->use_card_detect = true;
+    sd_card_p->card_detect_gpio = 9;
+    sd_card_p->card_detected_true = 0;  // What the GPIO read returns when a card is present
+    sd_card_p->card_detect_use_pull = true;
+    sd_card_p->card_detect_pull_hi = true;
+    sd_cards.push_back(sd_card_p);
 
     // sd_cards[1]: Socket sd1
-    p_sd_card = new sd_card_t();
-    assert(p_sd_card);
-    p_sd_card->pcName = "1:";  // Name used to mount device
-    p_sd_card->type = SD_IF_SPI;
-    p_sd_card->spi_if_p = spi_ifs[1];  // Pointer to the SPI interface driving this card
-    p_sd_card->use_card_detect = true;
-    p_sd_card->card_detect_gpio = 14;
-    p_sd_card->card_detected_true = 0;  // What the GPIO read returns when a card is present
-    p_sd_card->card_detect_use_pull = true;
-    p_sd_card->card_detect_pull_hi = true;
-    sd_cards.push_back(p_sd_card);
+    sd_card_p = new sd_card_t();
+    assert(sd_card_p);
+    sd_card_p->type = SD_IF_SPI;
+    sd_card_p->spi_if_p = spi_ifs[1];  // Pointer to the SPI interface driving this card
+    sd_card_p->use_card_detect = true;
+    sd_card_p->card_detect_gpio = 14;
+    sd_card_p->card_detected_true = 0;  // What the GPIO read returns when a card is present
+    sd_card_p->card_detect_use_pull = true;
+    sd_card_p->card_detect_pull_hi = true;
+    sd_cards.push_back(sd_card_p);
 
     // sd_cards[2]: Socket sd2
-    p_sd_card = new sd_card_t();
-    assert(p_sd_card);
-    p_sd_card->pcName = "2:";  // Name used to mount device
-    p_sd_card->type = SD_IF_SPI;
-    p_sd_card->spi_if_p = spi_ifs[2];  // Pointer to the SPI interface driving this card
-    p_sd_card->use_card_detect = true;
-    p_sd_card->card_detect_gpio = 15;
-    p_sd_card->card_detected_true = 0;  // What the GPIO read returns when a card is present
-    p_sd_card->card_detect_use_pull = true;
-    p_sd_card->card_detect_pull_hi = true;
-    sd_cards.push_back(p_sd_card);
+    sd_card_p = new sd_card_t();
+    assert(sd_card_p);
+    sd_card_p->type = SD_IF_SPI;
+    sd_card_p->spi_if_p = spi_ifs[2];  // Pointer to the SPI interface driving this card
+    sd_card_p->use_card_detect = true;
+    sd_card_p->card_detect_gpio = 15;
+    sd_card_p->card_detected_true = 0;  // What the GPIO read returns when a card is present
+    sd_card_p->card_detect_use_pull = true;
+    sd_card_p->card_detect_pull_hi = true;
+    sd_cards.push_back(sd_card_p);
 
     // sd_cards[3]: Socket sd3
-    p_sd_card = new sd_card_t();
-    assert(p_sd_card);
-    p_sd_card->pcName = "3:";  // Name used to mount device
-    p_sd_card->type = SD_IF_SDIO;
-    p_sd_card->sdio_if_p = sdio_ifs[0];
-    p_sd_card->use_card_detect = true;
-    p_sd_card->card_detect_gpio = 22;
-    p_sd_card->card_detected_true = 0;  // What the GPIO read returns when a card is present
-    p_sd_card->card_detect_use_pull = true;
-    p_sd_card->card_detect_pull_hi = true;
-    sd_cards.push_back(p_sd_card);
+    sd_card_p = new sd_card_t();
+    assert(sd_card_p);
+    sd_card_p->type = SD_IF_SDIO;
+    sd_card_p->sdio_if_p = sdio_ifs[0];
+    sd_card_p->use_card_detect = true;
+    sd_card_p->card_detect_gpio = 22;
+    sd_card_p->card_detected_true = 0;  // What the GPIO read returns when a card is present
+    sd_card_p->card_detect_use_pull = true;
+    sd_card_p->card_detect_pull_hi = true;
+    sd_cards.push_back(sd_card_p);
+
+    // The H/W config must be set up before this is called:
+    sd_init_driver();     
 
     for (size_t i = 0; i < sd_get_num(); ++i)
         test(sd_get_by_num(i));

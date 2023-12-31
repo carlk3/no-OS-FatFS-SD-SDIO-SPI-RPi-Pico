@@ -23,7 +23,6 @@ specific language governing permissions and limitations under the License.
 #include "pico/stdlib.h"
 //
 #include "f_util.h"
-#include "ff.h"
 #include "my_debug.h"
 
 #define FF_MAX_SS 512

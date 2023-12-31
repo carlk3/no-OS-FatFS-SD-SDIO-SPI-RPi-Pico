@@ -15,8 +15,8 @@ int main() {
 
     // See FatFs - Generic FAT Filesystem Module, "Application Interface",
     // http://elm-chan.org/fsw/ff/00index_e.html
-    sd_card_t *pSD = sd_get_by_num(0);
-    FRESULT fr = f_mount(&pSD->fatfs, pSD->pcName, 1);
+    FATFS fs;
+    FRESULT fr = f_mount(&fs, "", 1);
     if (FR_OK != fr) panic("f_mount error: %s (%d)\n", FRESULT_str(fr), fr);
     FIL fil;
     const char* const filename = "filename.txt";
@@ -30,7 +30,7 @@ int main() {
     if (FR_OK != fr) {
         printf("f_close error: %s (%d)\n", FRESULT_str(fr), fr);
     }
-    f_unmount(pSD->pcName);
+    f_unmount("");
 
     puts("Goodbye, world!");
     for (;;);

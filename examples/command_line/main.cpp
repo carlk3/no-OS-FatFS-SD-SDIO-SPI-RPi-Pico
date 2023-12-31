@@ -9,6 +9,7 @@
 #include "hw_config.h"
 #include "rtc.h"
 #include "tests.h"
+#include "sd_card.h"
 //
 #include "diskio.h" /* Declarations of disk functions */
 
@@ -22,19 +23,21 @@ static volatile uint card_det_int_gpio;
 static void process_card_detect_int() {
     card_det_int_pend = false;
     for (size_t i = 0; i < sd_get_num(); ++i) {
-        sd_card_t *pSD = sd_get_by_num(i);
-        if (pSD->card_detect_gpio == card_det_int_gpio) {
-            if (pSD->mounted) {
-                DBG_PRINTF("(Card Detect Interrupt: unmounting %s)\n", pSD->pcName);
-                FRESULT fr = f_unmount(pSD->pcName);
+        sd_card_t *sd_card_p = sd_get_by_num(i);
+        if (!sd_card_p)
+            continue;
+        if (sd_card_p->card_detect_gpio == card_det_int_gpio) {
+            if (sd_card_p->state.mounted) {
+                DBG_PRINTF("(Card Detect Interrupt: unmounting %s)\n", sd_get_drive_prefix(sd_card_p));
+                FRESULT fr = f_unmount(sd_get_drive_prefix(sd_card_p));
                 if (FR_OK == fr) {
-                    pSD->mounted = false;
+                    sd_card_p->state.mounted = false;
                 } else {
                     printf("f_unmount error: %s (%d)\n", FRESULT_str(fr), fr);
                 }
             }
-            pSD->m_Status |= STA_NOINIT;  // in case medium is removed
-            sd_card_detect(pSD);
+            sd_card_p->state.m_Status |= STA_NOINIT;  // in case medium is removed
+            sd_card_detect(sd_card_p);
         }
     }
 }
@@ -74,12 +77,14 @@ int main() {
     sd_init_driver();
 
     for (size_t i = 0; i < sd_get_num(); ++i) {
-        sd_card_t *pSD = sd_get_by_num(i);
-        if (pSD->use_card_detect) {
+        sd_card_t *sd_card_p = sd_get_by_num(i);
+        if (!sd_card_p) 
+            continue;
+        if (sd_card_p->use_card_detect) {
             // Set up an interrupt on Card Detect to detect removal of the card
             // when it happens:
             gpio_set_irq_enabled_with_callback(
-                pSD->card_detect_gpio, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL,
+                sd_card_p->card_detect_gpio, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL,
                 true, &card_detect_callback);
         }
     }

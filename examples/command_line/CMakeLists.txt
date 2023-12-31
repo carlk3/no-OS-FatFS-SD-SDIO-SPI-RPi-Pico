@@ -82,7 +82,7 @@ target_include_directories(command_line PUBLIC
         include/ 
 )
 target_link_libraries(command_line
-    FatFs_SPI
+    no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
     hardware_clocks
     hardware_adc
 )

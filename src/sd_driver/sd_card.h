@@ -83,11 +83,26 @@ typedef struct sd_sdio_if_t {
     sd_sdio_state_t state;
 } sd_sdio_if_t;
 
+typedef struct sd_spi_state_t {    
+    int m_Status;      // Card status
+    CSD_t CSD;         // Card-Specific Data register.
+    CID_t CID;         // Card IDentification register
+    uint64_t sectors;  // Assigned dynamically
+    int card_type;     // Assigned dynamically
+    mutex_t mutex;
+    FATFS fatfs;
+    bool mounted;
+#if FF_STR_VOLUME_ID     
+    char drive_prefix[32];
+#else
+    char drive_prefix[4];
+#endif   
+} sd_card_state_t;
+
 typedef struct sd_card_t sd_card_t;
 
 // "Class" representing SD Cards
 struct sd_card_t {
-    const char *pcName;
     sd_if_t type; // Interface type
     union {
         sd_spi_if_t *spi_if_p;
@@ -101,14 +116,7 @@ struct sd_card_t {
 
     /* The following fields are state variables and not part of the configuration. 
     They are dynamically assigned. */
-    int m_Status;      // Card status
-    CSD_t CSD;         // Card-Specific Data register.
-    CID_t CID;         // Card IDentification register
-    uint64_t sectors;  // Assigned dynamically
-    int card_type;     // Assigned dynamically
-    mutex_t mutex;
-    FATFS fatfs;
-    bool mounted;
+    sd_card_state_t state;
 
     int (*init)(sd_card_t *sd_card_p);
     void (*deinit)(sd_card_t *sd_card_p);
@@ -133,6 +141,10 @@ bool sd_card_detect(sd_card_t *sd_card_p);
 void cidDmp(sd_card_t *sd_card_p, printer_t printer);
 void csdDmp(sd_card_t *sd_card_p, printer_t printer);
 bool sd_allocation_unit(sd_card_t *sd_card_p, size_t *au_size_bytes_p);
+sd_card_t *sd_get_by_drive_prefix(const char* const name);
+
+// sd_init_driver() must be called before this:
+char const *sd_get_drive_prefix(sd_card_t *sd_card_p);
 
 #ifdef __cplusplus
 }

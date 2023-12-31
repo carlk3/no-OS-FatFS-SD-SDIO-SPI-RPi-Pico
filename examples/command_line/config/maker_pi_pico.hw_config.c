@@ -40,9 +40,6 @@ static sd_spi_if_t spi_if = {
 
 // Hardware Configuration of the SD Card "objects"
 static sd_card_t sd_card = {
-    /* "pcName" is the FatFs "logical drive" identifier.
-    (See http://elm-chan.org/fsw/ff/doc/filename.html#vol) */
-    .pcName = "0:", 
     .type = SD_IF_SPI,
     .spi_if_p = &spi_if,  // Pointer to the SPI interface driving this card
 };
