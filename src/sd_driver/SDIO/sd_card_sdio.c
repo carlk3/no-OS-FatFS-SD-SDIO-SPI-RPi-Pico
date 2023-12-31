@@ -531,8 +531,7 @@ static void sd_sdio_deinit(sd_card_t *sd_card_p) {
 }
 
 uint64_t sd_sdio_sectorCount(sd_card_t *sd_card_p) {
-    sd_card_p->init(sd_card_p);
-    // return g_sdio_csd.capacity();
+    myASSERT(!(sd_card_p->state.m_Status & STA_NOINIT));
     return CSD_sectors(sd_card_p->state.CSD);
 }
 

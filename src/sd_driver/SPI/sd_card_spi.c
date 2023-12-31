@@ -570,11 +570,6 @@ static int sd_cmd8(sd_card_t *sd_card_p) {
 static int sd_read_bytes(sd_card_t *sd_card_p, uint8_t *buffer, uint32_t length);
 
 static uint64_t in_sd_spi_sectors(sd_card_t *sd_card_p) {
-    uint32_t c_size, c_size_mult, read_bl_len;
-    uint32_t block_len, mult, blocknr;
-    uint32_t hc_c_size;
-    uint64_t blocks = 0, capacity = 0;
-
     // CMD9, Response R2 (R1 byte + 16-byte block read)
     if (sd_cmd(sd_card_p, CMD9_SEND_CSD, 0x0, false, 0) != 0x0) {
         DBG_PRINTF("Didn't get a response from the disk\n");
@@ -584,37 +579,7 @@ static uint64_t in_sd_spi_sectors(sd_card_t *sd_card_p) {
         DBG_PRINTF("Couldn't read CSD response from disk\n");
         return 0;
     }
-    // csd_structure : CSD[127:126]
-    int csd_structure = ext_bits16(sd_card_p->state.CSD, 127, 126);
-    switch (csd_structure) {
-        case 0:
-            c_size = ext_bits16(sd_card_p->state.CSD, 73, 62);       // c_size        : CSD[73:62]
-            c_size_mult = ext_bits16(sd_card_p->state.CSD, 49, 47);  // c_size_mult   : CSD[49:47]
-            read_bl_len =
-                ext_bits16(sd_card_p->state.CSD, 83, 80);     // read_bl_len   : CSD[83:80] - the
-                                           // *maximum* read block length
-            block_len = 1 << read_bl_len;  // BLOCK_LEN = 2^READ_BL_LEN
-            mult = 1 << (c_size_mult +
-                         2);                // MULT = 2^C_SIZE_MULT+2 (C_SIZE_MULT < 8)
-            blocknr = (c_size + 1) * mult;  // BLOCKNR = (C_SIZE+1) * MULT
-            capacity = (uint64_t)blocknr *
-                       block_len;  // memory capacity = BLOCKNR * BLOCK_LEN
-            blocks = capacity / _block_size;
-            break;
-
-        case 1:
-            hc_c_size =
-                ext_bits16(sd_card_p->state.CSD, 69, 48);       // device size : C_SIZE : [69:48]
-            blocks = (hc_c_size + 1) << 10;  // block count = C_SIZE+1) * 1K
-                                             // byte (512B is block size)
-            break;
-
-        default:
-            DBG_PRINTF("CSD struct unsupported\n");
-            myASSERT(!"CSD struct unsupported\n");
-            return 0;
-    };
-    return blocks;
+    return CSD_sectors(sd_card_p->state.CSD);
 }
 uint64_t sd_spi_sectors(sd_card_t *sd_card_p) {
     sd_card_p->init(sd_card_p);

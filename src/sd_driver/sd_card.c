@@ -112,8 +112,9 @@ void sd_set_drive_prefix(sd_card_t *sd_card_p, size_t phy_drv_num) {
 
 char const *sd_get_drive_prefix(sd_card_t *sd_card_p) {
     myASSERT(driver_initialized);
+    myASSERT(sd_card_p);
     if (!sd_card_p)
-        return NULL;
+        return "";
     return sd_card_p->state.drive_prefix;
 }
 

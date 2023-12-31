@@ -1,5 +1,5 @@
 # no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
-# v2.0.0
+# v2.0.1
 
 ## C/C++ Library for SD Cards on the Pico
 
@@ -11,9 +11,11 @@ and a 4-bit wide Secure Digital Input Output (SDIO) driver derived from
 It is wrapped up in a complete runnable project, with a little command line interface, some self tests, and an example data logging application.
 
 ## What's new
+### v2.0.1
+Fix miscalculation in `get_num_sectors`.
 ### v2.0.0
 * In the hardware configuration specification, 
-the `pcName` member of `sd_card_t` has been removed`. 
+the `pcName` member of `sd_card_t` has been removed. 
 Rationale: FatFs provides ways to customize the volume ID strings (or "drive prefixes") used
 to designate logical drives (see
 [FF_STR_VOLUME_ID](http://elm-chan.org/fsw/ff/doc/config.html#str_volume_id)).
@@ -535,7 +537,13 @@ For an example, see `examples/unix_like`.
 
 ## Using the Application Programming Interface
 After `stdio_init_all()`, `time_init()`, and whatever other Pico SDK initialization is required, 
-you may call `sd_init_driver()` to initialize the block device driver. `sd_init_driver()` is now[^2] called implicitly by `disk_initialize`, but you might want to call it sooner so that the GPIOs get configured, e.g., if you want to set up a Card Detect interrupt.
+you may call `sd_init_driver()` to initialize the block device driver. `sd_init_driver()` is now[^2] called implicitly by `disk_initialize`, 
+which is called by FatFs's [f_mount](http://elm-chan.org/fsw/ff/doc/mount.html),
+but you might want to call it sooner so that the GPIOs get configured, e.g., if you want to set up a Card Detect interrupt.
+You need to call `sd_init_driver()` before you can use `sd_get_drive_prefix(sd_card_t *sd_card_p)`,
+so you might need to add an explicit call to `sd_init_driver` if you want to use `sd_get_drive_prefix`
+to get the drive prefix to use for the `path` parameter in a call to `f_mount`.
+There is no harm in calling `sd_init_driver()` repeatedly.
 * Now, you can start using the [FatFs Application Interface](http://elm-chan.org/fsw/ff/00index_e.html). Typically,
   * f_mount - Register/Unregister the work area of the volume
   * f_open - Open/Create a file
@@ -543,7 +551,7 @@ you may call `sd_init_driver()` to initialize the block device driver. `sd_init_
   * f_read - Read data from the file
   * f_close - Close an open file
   * f_unmount
-* There is a simple example in the `simple_example` subdirectory.
+* There is a simple example in the [examples/simple](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/tree/main/examples/simple) subdirectory.
 * There is also POSIX-like API wrapper layer in `ff_stdio.h` and `ff_stdio.c`, written for compatibility with [FreeRTOS+FAT API](https://www.freertos.org/FreeRTOS-Plus/FreeRTOS_Plus_FAT/index.html) (mainly so that I could reuse some tests from that environment.)
 
 ### Messages
