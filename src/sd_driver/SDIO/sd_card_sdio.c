@@ -22,7 +22,29 @@
 
 #define STATE sd_card_p->sdio_if_p->state
 
-// #define azdbg(...)
+static char const *errstr(sdio_status_t error) {
+    switch (error) {
+        case SDIO_OK:
+            return "SDIO: OK";
+        case SDIO_BUSY:
+            return "SDIO: busy";
+        case SDIO_ERR_RESPONSE_TIMEOUT:
+            return "SDIO: Timed out waiting for response from card";
+        case SDIO_ERR_RESPONSE_CRC:
+            return "SDIO: Response CRC is wrong";
+        case SDIO_ERR_RESPONSE_CODE:
+            return "SDIO: Response command code does not match what was sent";
+        case SDIO_ERR_DATA_TIMEOUT:
+            return "SDIO: Timed out waiting for data block";
+        case SDIO_ERR_DATA_CRC:
+            return "SDIO: CRC for data packet is wrong";
+        case SDIO_ERR_WRITE_CRC:
+            return "SDIO: Card reports bad CRC for write";
+        case SDIO_ERR_WRITE_FAIL:
+            return "SDIO: Card reports write failure";
+    }
+    return "Unknown error";
+}
 
 //FIXME
 #define azdbg(arg1, ...) {\
@@ -34,7 +56,8 @@
 static bool logSDError(sd_card_t *sd_card_p, int line)
 {
     STATE.error_line = line;
-    EMSG_PRINTF("SDIO SD card error on line %d error code %d\n", line, (int)STATE.error);
+    EMSG_PRINTF("%s at line %d; error code %d\n", 
+        errstr(STATE.error), line, (int)STATE.error);
     return false;
 }
 
@@ -285,7 +308,8 @@ bool sd_sdio_writeSector(sd_card_t *sd_card_p, uint32_t sector, const uint8_t* s
 
     if (STATE.error != SDIO_OK)
     {
-        EMSG_PRINTF("sd_sdio_writeSector(%lu) failed: %d\n", sector, (int)STATE.error);
+        EMSG_PRINTF("sd_sdio_writeSector(%lu) failed: %s (%d)\n", 
+            sector, errstr(STATE.error), (int)STATE.error);
     }
 
     return STATE.error == SDIO_OK;
@@ -323,7 +347,8 @@ bool sd_sdio_writeSectors(sd_card_t *sd_card_p, uint32_t sector, const uint8_t* 
 
     if (STATE.error != SDIO_OK)
     {
-        EMSG_PRINTF("sd_sdio_writeSectors(,%lu,,%zu) failed: %d\n", sector, n, (int)STATE.error);
+        EMSG_PRINTF("sd_sdio_writeSectors(,%lu,,%zu) failed: %s (%d)\n", 
+            sector, n, errstr(STATE.error), (int)STATE.error);
         sd_sdio_stopTransmission(sd_card_p, true);
         return false;
     }
@@ -355,7 +380,8 @@ bool sd_sdio_readSector(sd_card_t *sd_card_p, uint32_t sector, uint8_t* dst)
 
     if (STATE.error != SDIO_OK)
     {
-        EMSG_PRINTF("sd_sdio_readSector(,%lu,) failed: %d\n\n", sector, (int)STATE.error);
+        EMSG_PRINTF("sd_sdio_readSector(,%lu,) failed: %s (%d)\n", 
+            sector, errstr(STATE.error), (int)STATE.error);
     }
 
     if (dst != real_dst)
@@ -395,7 +421,8 @@ bool sd_sdio_readSectors(sd_card_t *sd_card_p, uint32_t sector, uint8_t* dst, si
 
     if (STATE.error != SDIO_OK)
     {
-        EMSG_PRINTF("sd_sdio_readSectors(%ld,...,%d)  failed: %d\n", sector, n, STATE.error);
+        EMSG_PRINTF("sd_sdio_readSectors(%ld,...,%d)  failed: %s (%d)\n", 
+            sector, n, errstr(STATE.error), STATE.error);
         sd_sdio_stopTransmission(sd_card_p, true);
         return false;
     }
@@ -422,7 +449,7 @@ bool rp2040_sdio_get_sd_status(sd_card_t *sd_card_p, uint8_t response[64]) {
 
     if (STATE.error != SDIO_OK)
     {
-        EMSG_PRINTF("ACMD13 failed: %d\n", (int)STATE.error);
+        EMSG_PRINTF("ACMD13 failed: %s (%d)\n", errstr(STATE.error), (int)STATE.error);
     }
     return STATE.error == SDIO_OK;
 
@@ -478,7 +505,8 @@ static void gpio_conf(uint gpio, enum gpio_function fn, bool pullup, bool pulldo
 }
 
 static int sd_sdio_init(sd_card_t *sd_card_p) {
-	//FIXME: Initialize lock?
+    if (!mutex_is_initialized(&sd_card_p->state.mutex)) 
+        mutex_init(&sd_card_p->state.mutex);
     sd_lock(sd_card_p);
 
     // Make sure there's a card in the socket before proceeding

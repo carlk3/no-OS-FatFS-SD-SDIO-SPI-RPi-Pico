@@ -64,9 +64,9 @@ static bool chk_spi(spi_inst_t *spi) {
 }
 
 void spi_transfer_start(spi_t *spi_p, const uint8_t *tx, uint8_t *rx, size_t length) {
-    // assert(512 == length || 1 == length);
-    assert(tx || rx);
-    // assert(!(tx && rx));
+    // myASSERT(512 == length || 1 == length);
+    myASSERT(tx || rx);
+    // myASSERT(!(tx && rx));
 
     // tx write increment is already false
     if (tx) {
@@ -141,9 +141,9 @@ bool spi_transfer_wait_complete(spi_t *spi_p, uint32_t timeout_ms) {
     dma_channel_wait_for_finish_blocking(spi_p->tx_dma);
     dma_channel_wait_for_finish_blocking(spi_p->rx_dma);
 
-    assert(!sem_available(&spi_p->sem));
-    assert(!dma_channel_is_busy(spi_p->tx_dma));
-    assert(!dma_channel_is_busy(spi_p->rx_dma));
+    myASSERT(!sem_available(&spi_p->sem));
+    myASSERT(!dma_channel_is_busy(spi_p->tx_dma));
+    myASSERT(!dma_channel_is_busy(spi_p->rx_dma));
 
     return true;
 }
@@ -158,11 +158,11 @@ bool spi_transfer(spi_t *spi_p, const uint8_t *tx, uint8_t *rx, size_t length) {
 }
 
 void spi_lock(spi_t *spi_p) {
-    assert(mutex_is_initialized(&spi_p->mutex));
+    myASSERT(mutex_is_initialized(&spi_p->mutex));
     mutex_enter_blocking(&spi_p->mutex);
 }
 void spi_unlock(spi_t *spi_p) {
-    assert(mutex_is_initialized(&spi_p->mutex));
+    myASSERT(mutex_is_initialized(&spi_p->mutex));
     mutex_exit(&spi_p->mutex);
 }
 

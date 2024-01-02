@@ -76,6 +76,61 @@ void my_assert_func(const char *file, int line, const char *func, const char *pr
 #define myASSERT(__e) \
     { ((__e) ? (void)0 : my_assert_func(__func__, __LINE__, __func__, #__e)); }
 
+void assert_always_func(const char *file, int line, const char *func,
+                        const char *pred);
+#define ASSERT_ALWAYS(__e) \
+    ((__e) ? (void)0 : assert_always_func(__FILE__, __LINE__, __func__, #__e))
+
+void assert_case_is(const char *file, int line, const char *func, int v,
+                    int expected);
+#define ASSERT_CASE_IS(__v, __e) \
+    ((__v == __e) ? (void)0 : assert_case_is(__FILE__, __LINE__, __func__, __v, __e))
+
+void assert_case_not_func(const char *file, int line, const char *func, int v);
+#define ASSERT_CASE_NOT(__v) \
+    (assert_case_not_func(__FILE__, __LINE__, __func__, __v))
+
+#ifdef NDEBUG /* required by ANSI standard */
+#define DBG_ASSERT_CASE_NOT(__e) ((void)0)
+#else
+#define DBG_ASSERT_CASE_NOT(__v) \
+    (assert_case_not_func(__FILE__, __LINE__, __func__, __v))
+#endif
+static inline void dump_bytes(size_t num, uint8_t bytes[]) {
+    DBG_PRINTF("     ");
+    for (size_t j = 0; j < 16; ++j) {
+        DBG_PRINTF("%02hhx", j);
+        if (j < 15)
+            DBG_PRINTF(" ");
+        else {
+            DBG_PRINTF("\n");
+        }
+    }
+    for (size_t i = 0; i < num; i += 16) {
+        DBG_PRINTF("%04x ", i);        
+        for (size_t j = 0; j < 16 && i + j < num; ++j) {
+            DBG_PRINTF("%02hhx", bytes[i + j]);
+            if (j < 15)
+                DBG_PRINTF(" ");
+            else {
+                DBG_PRINTF("\n");
+            }
+        }
+    }
+    DBG_PRINTF("\n");
+}
+
+void dump8buf(char *buf, size_t buf_sz, uint8_t *pbytes, size_t nbytes);
+void hexdump_8(const char *s, const uint8_t *pbytes, size_t nbytes);
+bool compare_buffers_8(const char *s0, const uint8_t *pbytes0, const char *s1,
+                       const uint8_t *pbytes1, const size_t nbytes);
+
+// sz is size in BYTES!
+void hexdump_32(const char *s, const uint32_t *pwords, size_t nwords);
+// sz is size in BYTES!
+bool compare_buffers_32(const char *s0, const uint32_t *pwords0, const char *s1,
+                        const uint32_t *pwords1, const size_t nwords);
+
 #ifdef __cplusplus
 }
 #endif

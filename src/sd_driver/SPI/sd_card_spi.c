@@ -1075,7 +1075,7 @@ static bool sd_spi_test_com(sd_card_t *sd_card_p) {
     return success;
 }
 
-int sd_init(sd_card_t *sd_card_p) {
+int sd_spi_init(sd_card_t *sd_card_p) {
     TRACE_PRINTF("> %s\n", __FUNCTION__);
 
     //	STA_NOINIT = 0x01, /* Drive not initialized */
@@ -1166,7 +1166,7 @@ void sd_spi_ctor(sd_card_t *sd_card_p) {
     sd_card_p->state.m_Status = STA_NOINIT;
     sd_card_p->write_blocks = sd_write_blocks;
     sd_card_p->read_blocks = sd_read_blocks;
-    sd_card_p->init = sd_init;
+    sd_card_p->init = sd_spi_init;
     sd_card_p->deinit = sd_deinit;
     sd_card_p->get_num_sectors = sd_spi_sectors;
     sd_card_p->sd_test_com = sd_spi_test_com;

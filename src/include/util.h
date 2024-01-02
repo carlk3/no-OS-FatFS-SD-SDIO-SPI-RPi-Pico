@@ -42,34 +42,6 @@ __attribute__((always_inline)) static inline uint32_t calculate_checksum(uint32_
 	return checksum;
 }
 
-// static inline void system_reset() {
-//     __NVIC_SystemReset();
-// }
-
-static inline void dump_bytes(size_t num, uint8_t bytes[]) {
-    DBG_PRINTF("     ");
-    for (size_t j = 0; j < 16; ++j) {
-        DBG_PRINTF("%02hhx", j);
-        if (j < 15)
-            DBG_PRINTF(" ");
-        else {
-            DBG_PRINTF("\n");
-        }
-    }
-    for (size_t i = 0; i < num; i += 16) {
-        DBG_PRINTF("%04x ", i);        
-        for (size_t j = 0; j < 16 && i + j < num; ++j) {
-            DBG_PRINTF("%02hhx", bytes[i + j]);
-            if (j < 15)
-                DBG_PRINTF(" ");
-            else {
-                DBG_PRINTF("\n");
-            }
-        }
-    }
-    DBG_PRINTF("\n");
-}
-
 char const* uint_binary_str(unsigned int number);
 
 static inline void ext_str(size_t const data_sz,
