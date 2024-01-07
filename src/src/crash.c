@@ -289,8 +289,7 @@ int dump_crash_info(crash_info_t const *const pCrashInfo, int next,
             next = 0;
             break;
         default:
-            // ASSERT_CASE_NOT(pCrashInfo->magic);
-            myASSERT(false);
+            ASSERT_CASE_NOT(pCrashInfo->magic);
     }
     return next;
 }

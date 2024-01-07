@@ -40,15 +40,15 @@ static bool driver_initialized;
 
 // An SD card can only do one thing at a time.
 void sd_lock(sd_card_t *sd_card_p) {
-    assert(mutex_is_initialized(&sd_card_p->state.mutex));
+    myASSERT(mutex_is_initialized(&sd_card_p->state.mutex));
     mutex_enter_blocking(&sd_card_p->state.mutex);
 }
 void sd_unlock(sd_card_t *sd_card_p) {
-    assert(mutex_is_initialized(&sd_card_p->state.mutex));
+    myASSERT(mutex_is_initialized(&sd_card_p->state.mutex));
     mutex_exit(&sd_card_p->state.mutex);
 }
 bool sd_is_locked(sd_card_t *sd_card_p) {
-    assert(mutex_is_initialized(&sd_card_p->state.mutex));
+    myASSERT(mutex_is_initialized(&sd_card_p->state.mutex));
     uint32_t owner_out;
     return !mutex_try_enter(&sd_card_p->state.mutex, &owner_out);
 }
@@ -107,7 +107,7 @@ void sd_set_drive_prefix(sd_card_t *sd_card_p, size_t phy_drv_num) {
 #endif
     // Notice that only when this returned value is non-negative and less than n,
     // the string has been completely written.
-    assert(0 <= rc && (size_t)rc < sizeof sd_card_p->state.drive_prefix);
+    myASSERT(0 <= rc && (size_t)rc < sizeof sd_card_p->state.drive_prefix);
 }
 
 char const *sd_get_drive_prefix(sd_card_t *sd_card_p) {
@@ -127,8 +127,6 @@ bool sd_init_driver() {
             sd_card_t *sd_card_p = sd_get_by_num(i);
             if (!sd_card_p)
                 continue;
-            if (!mutex_is_initialized(&sd_card_p->state.mutex))
-                mutex_init(&sd_card_p->state.mutex);
             switch (sd_card_p->type) {
                 case SD_IF_SPI:
                     sd_spi_ctor(sd_card_p);
@@ -167,8 +165,10 @@ void cidDmp(sd_card_t *sd_card_p, printer_t printer) {
     // | Name                  | Field | Width | CID-slice |
     // +-----------------------+-------+-------+-----------+
     // | Manufacturer ID       | MID   | 8     | [127:120] | 15
-    (*printer)("\nManufacturer ID: ");
-    (*printer)("0x%x\n", ext_bits16(sd_card_p->state.CID, 127, 120));
+    (*printer)(
+        "\nManufacturer ID: "
+        "0x%x\n",
+        ext_bits16(sd_card_p->state.CID, 127, 120));
     // | OEM/Application ID    | OID   | 16    | [119:104] | 14
     (*printer)("OEM ID: ");
     {
@@ -184,19 +184,26 @@ void cidDmp(sd_card_t *sd_card_p, printer_t printer) {
         (*printer)("%s", buf);
     }
     // | Product revision      | PRV   | 8     | [63:56]   | 7
-    (*printer)("\nRevision: ");
-    (*printer)("%d.%d\n", ext_bits16(sd_card_p->state.CID, 63, 60),
-               ext_bits16(sd_card_p->state.CID, 59, 56));
+    (*printer)(
+        "\nRevision: "
+        "%d.%d\n",
+        ext_bits16(sd_card_p->state.CID, 63, 60),
+        ext_bits16(sd_card_p->state.CID, 59, 56));
     // | Product serial number | PSN   | 32    | [55:24]   | 6
-    (*printer)("Serial number: ");
-    (*printer)("0x%lx\n", __builtin_bswap32(ext_bits16(sd_card_p->state.CID, 55, 24)));
+    // (*printer)("0x%lx\n", __builtin_bswap32(ext_bits16(sd_card_p->state.CID, 55, 24))
+    (*printer)(
+        "Serial number: "
+        "0x%lx\n",
+        ext_bits16(sd_card_p->state.CID, 55, 24));
     // | reserved              | --    | 4     | [23:20]   | 2
     // | Manufacturing date    | MDT   | 12    | [19:8]    |
     // The "m" field [11:8] is the month code. 1 = January.
     // The "y" field [19:12] is the year code. 0 = 2000.
-    (*printer)("Manufacturing date: ");
-    (*printer)("%d/%d\n", ext_bits16(sd_card_p->state.CID, 11, 8),
-               ext_bits16(sd_card_p->state.CID, 19, 12) + 2000);
+    (*printer)(
+        "Manufacturing date: "
+        "%d/%d\n",
+        ext_bits16(sd_card_p->state.CID, 11, 8),
+        ext_bits16(sd_card_p->state.CID, 19, 12) + 2000);
     (*printer)("\n");
     // | CRC7 checksum         | CRC   | 7     | [7:1]     | 0
     // | not used, always 1-   | 1     | [0:0] |           |

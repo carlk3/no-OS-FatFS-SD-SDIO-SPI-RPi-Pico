@@ -83,7 +83,7 @@ typedef struct sd_sdio_if_t {
     sd_sdio_state_t state;
 } sd_sdio_if_t;
 
-typedef struct sd_spi_state_t {    
+typedef struct sd_card_state_t {    
     int m_Status;      // Card status
     CSD_t CSD;         // Card-Specific Data register.
     CID_t CID;         // Card IDentification register
