@@ -214,7 +214,7 @@ bool my_spi_init(spi_t *spi_p) {
             gpio_pull_up(spi_p->miso_gpio);
 
         // Check if the user has provided DMA channels
-        if (spi_p->static_dma_channels) {
+        if (spi_p->use_static_dma_channels) {
             // Claim the channels provided
             dma_channel_claim(spi_p->tx_dma);
             dma_channel_claim(spi_p->rx_dma);

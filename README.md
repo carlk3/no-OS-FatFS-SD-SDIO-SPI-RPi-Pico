@@ -46,7 +46,7 @@ and the
 ## Resources Used
 * SPI attached cards:
   * One or two Serial Peripheral Interface (SPI) controllers may be used.
-  * For each SPI controller used, two DMA channels are claimed with `dma_claim_unused_channel`.
+  * For each SPI controller used, two DMA channels are needed. By default they are claimed with `dma_claim_unused_channel`.
   * A configurable DMA IRQ is hooked with `irq_add_shared_handler` or `irq_set_exclusive_handler` (configurable) and enabled.
   * For each SPI controller used, one GPIO is needed for each of RX, TX, and SCK. Note: each SPI controller can only use a limited set of GPIOs for these functions.
   * For each SD card attached to an SPI controller, a GPIO is needed for slave (or "chip") select (SS or "CS"), and, optionally, another for Card Detect (CD or "DET").
@@ -475,7 +475,8 @@ If false, the GPIO's drive strength will be implicitly set to 4 mA.
   GPIO_DRIVE_STRENGTH_8MA 
   GPIO_DRIVE_STRENGTH_12MA
   ```
-### An instance of `spi_t` describes the configuration of one RP2040 SPI controller.
+### SPI Controller Configuration
+An instance of `spi_t` describes the configuration of one RP2040 SPI controller.
 ```C
 typedef struct spi_t {
     spi_inst_t *hw_inst;  // SPI HW
@@ -496,6 +497,10 @@ typedef struct spi_t {
     bool set_drive_strength;
     enum gpio_drive_strength mosi_gpio_drive_strength;
     enum gpio_drive_strength sck_gpio_drive_strength;
+
+    bool use_static_dma_channels;
+    uint tx_dma;
+    uint rx_dma;
 
     // State variables:
 // ...
@@ -542,7 +547,9 @@ If `set_drive_strength` is true, each GPIO's drive strength can be set individua
   In other cases, the signal lines might have a lot of capacitance to overcome.
   Then, a higher drive strength might allow operation at higher baud rates.
   A low drive strength generates less noise. This might be important in, say, audio applications.
-
+* `use_static_dma_channels` If true, the DMA channels provided in     `tx_dma` and `rx_dma` will be claimed with `dma_channel_claim` and used. If false, two DMA channels will be claimed with `dma_claim_unused_channel`.
+* `tx_dma` The DMA channel to use for SPI TX. Ignored if `dma_claim_unused_channel` is false
+* `rx_dma` The DMA channel to use for SPI RX. Ignored if `dma_claim_unused_channel` is false
 ### You must provide a definition for the functions declared in `sd_driver/hw_config.h`:  
 * `size_t sd_get_num()` Returns the number of SD cards  
 * `sd_card_t *sd_get_by_num(size_t num)` Returns a pointer to the SD card "object" at the given
