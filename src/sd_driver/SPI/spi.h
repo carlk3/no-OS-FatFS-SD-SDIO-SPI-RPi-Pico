@@ -52,9 +52,12 @@ typedef struct spi_t {
     enum gpio_drive_strength mosi_gpio_drive_strength;
     enum gpio_drive_strength sck_gpio_drive_strength;
 
-    /* The following fields are not part of the configuration. They are dynamically assigned. */
+    /* The following fields can be ignored. In which case they will be dynamically assigned. */
+    bool static_dma_channels;
     uint tx_dma;
     uint rx_dma;
+
+    /* The following fields are not part of the configuration. They are dynamically assigned. */
     dma_channel_config tx_dma_cfg;
     dma_channel_config rx_dma_cfg;
     semaphore_t sem;
