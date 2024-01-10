@@ -12,7 +12,7 @@ It is wrapped up in a complete runnable project, with a little command line inte
 
 ## What's new
 ### v2.1.1
-Added ability to statically assign DMA channels for SPI.
+Added ability to statically assign DMA channels for SPI. (See [SPI Controller Configuration](#spi-controller-configuration).)
 ### v2.0.1
 Fix miscalculation in `get_num_sectors`.
 ### v2.0.0
@@ -1040,7 +1040,7 @@ At power up, an SD card's CS/DAT3 line has a 50 kΩ pull up enabled in the card,
 and it won't be enabled again until the card is power cycled.
 * Try lowering the SPI or SDIO baud rate (e.g., in `hw_config.c`). This will also make it easier to use things like logic analyzers.
   * For SPI, this is in the
-  [spi_t](#an-instance-of-spi_t-describes-the-configuration-of-one-rp2040-spi-controller) instance.
+  [spi_t](#spi-controller-configuration) instance.
   * For SDIO, this is in the 
   [sd_sdio_if_t](#an-instance-of-sd_sdio_if_t-describes-the-configuration-of-one-sdio-to-sd-card-interface) instance.
 * Make sure the SD card(s) are getting enough power. Try an external supply. Try adding a decoupling capacitor between Vcc and GND. 
