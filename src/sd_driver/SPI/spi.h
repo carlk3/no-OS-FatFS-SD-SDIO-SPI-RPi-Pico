@@ -52,7 +52,7 @@ typedef struct spi_t {
     enum gpio_drive_strength mosi_gpio_drive_strength;
     enum gpio_drive_strength sck_gpio_drive_strength;
 
-    bool use_static_DMA_channels;
+    bool use_static_dma_channels;
     uint tx_dma;
     uint rx_dma;
 
