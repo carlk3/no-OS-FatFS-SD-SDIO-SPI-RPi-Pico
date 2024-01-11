@@ -1,5 +1,5 @@
 # no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
-# v2.0.1
+# v2.1.1
 
 ## C/C++ Library for SD Cards on the Pico
 
@@ -11,6 +11,8 @@ and a 4-bit wide Secure Digital Input Output (SDIO) driver derived from
 It is wrapped up in a complete runnable project, with a little command line interface, some self tests, and an example data logging application.
 
 ## What's new
+### v2.1.1
+Added ability to statically assign DMA channels for SPI.
 ### v2.0.1
 Fix miscalculation in `get_num_sectors`.
 ### v2.0.0
