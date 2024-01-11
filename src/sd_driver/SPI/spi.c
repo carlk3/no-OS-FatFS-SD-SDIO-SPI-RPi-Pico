@@ -213,10 +213,16 @@ bool my_spi_init(spi_t *spi_p) {
         if (!spi_p->no_miso_gpio_pull_up)
             gpio_pull_up(spi_p->miso_gpio);
 
-        // Grab some unused dma channels
-        spi_p->tx_dma = dma_claim_unused_channel(true);
-        spi_p->rx_dma = dma_claim_unused_channel(true);
-
+        // Check if the user has provided DMA channels
+        if (spi_p->use_static_dma_channels) {
+            // Claim the channels provided
+            dma_channel_claim(spi_p->tx_dma);
+            dma_channel_claim(spi_p->rx_dma);
+        } else {
+            // Grab some unused dma channels
+            spi_p->tx_dma = dma_claim_unused_channel(true);
+            spi_p->rx_dma = dma_claim_unused_channel(true);
+        }
         spi_p->tx_dma_cfg = dma_channel_get_default_config(spi_p->tx_dma);
         spi_p->rx_dma_cfg = dma_channel_get_default_config(spi_p->rx_dma);
         channel_config_set_transfer_data_size(&spi_p->tx_dma_cfg, DMA_SIZE_8);
