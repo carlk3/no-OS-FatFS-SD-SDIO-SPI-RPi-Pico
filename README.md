@@ -280,7 +280,9 @@ or polling.
 ### Procedure
 * Follow instructions in [Getting started with Raspberry Pi Pico](https://datasheets.raspberrypi.org/pico/getting-started-with-pico.pdf) to set up the development environment.
 * Install source code:
-  `git clone -b sdio --recurse-submodules git@github.com:carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico.git no-OS-FatFs`
+  ```bash
+  git clone --recurse-submodules git@github.com:carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico.git no-OS-FatFs
+  ```
 * Customize:
   * Configure the code to match the hardware: see section 
   [Customizing for the Hardware Configuration](#customizing-for-the-hardware-configuration), below.
