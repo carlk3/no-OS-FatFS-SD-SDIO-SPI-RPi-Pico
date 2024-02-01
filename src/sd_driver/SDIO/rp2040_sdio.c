@@ -422,8 +422,8 @@ static void sdio_verify_rx_checksums(sd_card_t *sd_card_p, uint32_t maxcount, si
             STATE.checksum_errors++;
             if (STATE.checksum_errors == 1)
             {
-                EMSG_PRINTF("%s,%d SDIO checksum error in reception: block %d calculated 0x%llx expected 0x%llx\n",
-                    __func__, __LINE__, blockidx, checksum, expected);
+                EMSG_PRINTF("SDIO checksum error in reception: block %d calculated 0x%llx expected 0x%llx\n",
+                    blockidx, checksum, expected);
                 dump_bytes(block_size_words, (uint8_t *)STATE.data_buf + blockidx * block_size_words);
             }
         }
@@ -758,7 +758,7 @@ bool rp2040_sdio_init(sd_card_t *sd_card_p, float clk_div) {
         // dma_channel_claim(SDIO_DMA_CHB);
         SDIO_DMA_CHB = dma_claim_unused_channel(true);
 
-        /* Set up IRQ handler for when DMA completes. */        
+        /* Set up IRQ handler for when DMA completes. */
         dma_irq_add_handler(sd_card_p->sdio_if_p->DMA_IRQ_num,
                             sd_card_p->sdio_if_p->use_exclusive_DMA_IRQ_handler);
 

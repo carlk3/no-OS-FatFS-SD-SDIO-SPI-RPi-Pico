@@ -60,8 +60,7 @@ sd_card_t *sd_get_by_drive_prefix(const char *const drive_prefix) {
 #if FF_STR_VOLUME_ID
     for (size_t i = 0; i < sd_get_num(); ++i) {
         // Ignore '/', trailing ':'
-        if (strstr(drive_prefix, VolumeStr[i]))
-            return sd_get_by_num(i);
+        if (strstr(drive_prefix, VolumeStr[i])) return sd_get_by_num(i);
     }
     EMSG_PRINTF("%s: unknown drive prefix %s\n", __func__, drive_prefix);
 #endif
@@ -92,16 +91,13 @@ bool sd_card_detect(sd_card_t *sd_card_p) {
 
 void sd_set_drive_prefix(sd_card_t *sd_card_p, size_t phy_drv_num) {
 #if FF_STR_VOLUME_ID == 0
-    int rc = snprintf(sd_card_p->state.drive_prefix, sizeof sd_card_p->state.drive_prefix,
-                      "%d:", phy_drv_num);
+    int rc = snprintf(sd_card_p->state.drive_prefix, sizeof sd_card_p->state.drive_prefix, "%d:", phy_drv_num);
 #elif FF_STR_VOLUME_ID == 1 /* Arbitrary string is enabled */
     // Add ':'
-    int rc = snprintf(sd_card_p->state.drive_prefix, sizeof sd_card_p->state.drive_prefix,
-                      "%s:", VolumeStr[phy_drv_num]);
+    int rc = snprintf(sd_card_p->state.drive_prefix, sizeof sd_card_p->state.drive_prefix, "%s:", VolumeStr[phy_drv_num]);
 #elif FF_STR_VOLUME_ID == 2 /* Unix style drive prefix  */
     // Add '/'
-    int rc = snprintf(sd_card_p->state.drive_prefix, sizeof sd_card_p->state.drive_prefix,
-                      "/%s", VolumeStr[phy_drv_num]);
+    int rc = snprintf(sd_card_p->state.drive_prefix, sizeof sd_card_p->state.drive_prefix, "/%s", VolumeStr[phy_drv_num]);
 #else
 #error "Unknown FF_STR_VOLUME_ID"
 #endif
@@ -113,33 +109,23 @@ void sd_set_drive_prefix(sd_card_t *sd_card_p, size_t phy_drv_num) {
 char const *sd_get_drive_prefix(sd_card_t *sd_card_p) {
     myASSERT(driver_initialized);
     myASSERT(sd_card_p);
-    if (!sd_card_p)
-        return "";
+    if (!sd_card_p) return "";
     return sd_card_p->state.drive_prefix;
 }
 
 bool sd_init_driver() {
     auto_init_mutex(initialized_mutex);
     mutex_enter_blocking(&initialized_mutex);
+    bool ok = true;
     if (!driver_initialized) {
         myASSERT(sd_get_num());
         for (size_t i = 0; i < sd_get_num(); ++i) {
             sd_card_t *sd_card_p = sd_get_by_num(i);
-            if (!sd_card_p)
-                continue;
-            switch (sd_card_p->type) {
-                case SD_IF_SPI:
-                    sd_spi_ctor(sd_card_p);
-                    if (!my_spi_init(sd_card_p->spi_if_p->spi)) {
-                        mutex_exit(&initialized_mutex);
-                        return false;
-                    }
-                    myASSERT(1 == gpio_get(sd_card_p->spi_if_p->ss_gpio));
-                    break;
-                case SD_IF_SDIO:
-                    sd_sdio_ctor(sd_card_p);
-                    break;
-            }  // switch (sd_card_p->type)
+            if (!sd_card_p) continue;
+
+            sd_card_p->state.m_Status = STA_NOINIT;
+            if (!mutex_is_initialized(&sd_card_p->state.mutex)) mutex_init(&sd_card_p->state.mutex);
+            
             // Set up Card Detect
             if (sd_card_p->use_card_detect) {
                 if (sd_card_p->card_detect_use_pull) {
@@ -152,12 +138,32 @@ bool sd_init_driver() {
                 gpio_init(sd_card_p->card_detect_gpio);
             }
             sd_set_drive_prefix(sd_card_p, i);
-        }  // for
+            switch (sd_card_p->type) {
+                case SD_IF_NONE:
+                    myASSERT(false);
+                    break;
+                case SD_IF_SPI:
+                    myASSERT(sd_card_p->spi_if_p);  // Must have an interface object
+                    myASSERT(sd_card_p->spi_if_p->spi);
+                    sd_spi_ctor(sd_card_p);
+                    if (!my_spi_init(sd_card_p->spi_if_p->spi)) {
+                        ok = false;
+                    }
+                    myASSERT(1 == gpio_get(sd_card_p->spi_if_p->ss_gpio));
+                    break;
+                case SD_IF_SDIO:
+                    myASSERT(sd_card_p->sdio_if_p);
+                    sd_sdio_ctor(sd_card_p);
+                    break;
+                default:
+                    myASSERT(false);
+            }  // switch (sd_card_p->type)
+        }      // for
 
         driver_initialized = true;
     }
     mutex_exit(&initialized_mutex);
-    return true;
+    return ok;
 }
 
 void cidDmp(sd_card_t *sd_card_p, printer_t printer) {
@@ -187,8 +193,7 @@ void cidDmp(sd_card_t *sd_card_p, printer_t printer) {
     (*printer)(
         "\nRevision: "
         "%d.%d\n",
-        ext_bits16(sd_card_p->state.CID, 63, 60),
-        ext_bits16(sd_card_p->state.CID, 59, 56));
+        ext_bits16(sd_card_p->state.CID, 63, 60), ext_bits16(sd_card_p->state.CID, 59, 56));
     // | Product serial number | PSN   | 32    | [55:24]   | 6
     // (*printer)("0x%lx\n", __builtin_bswap32(ext_bits16(sd_card_p->state.CID, 55, 24))
     (*printer)(
@@ -202,8 +207,7 @@ void cidDmp(sd_card_t *sd_card_p, printer_t printer) {
     (*printer)(
         "Manufacturing date: "
         "%d/%d\n",
-        ext_bits16(sd_card_p->state.CID, 11, 8),
-        ext_bits16(sd_card_p->state.CID, 19, 12) + 2000);
+        ext_bits16(sd_card_p->state.CID, 11, 8), ext_bits16(sd_card_p->state.CID, 19, 12) + 2000);
     (*printer)("\n");
     // | CRC7 checksum         | CRC   | 7     | [7:1]     | 0
     // | not used, always 1-   | 1     | [0:0] |           |
@@ -223,28 +227,23 @@ void csdDmp(sd_card_t *sd_card_p, printer_t printer) {
         case 0:
             c_size = ext_bits16(sd_card_p->state.CSD, 73, 62);       // c_size        : CSD[73:62]
             c_size_mult = ext_bits16(sd_card_p->state.CSD, 49, 47);  // c_size_mult   : CSD[49:47]
-            read_bl_len =
-                ext_bits16(sd_card_p->state.CSD, 83, 80);  // read_bl_len   : CSD[83:80] - the
-                                                           // *maximum* read block length
-            block_len = 1 << read_bl_len;                  // BLOCK_LEN = 2^READ_BL_LEN
-            mult = 1 << (c_size_mult +
-                         2);                // MULT = 2^C_SIZE_MULT+2 (C_SIZE_MULT < 8)
-            blocknr = (c_size + 1) * mult;  // BLOCKNR = (C_SIZE+1) * MULT
-            capacity = (uint64_t)blocknr *
-                       block_len;  // memory capacity = BLOCKNR * BLOCK_LEN
-            blocks = capacity / _block_size;
+            read_bl_len = ext_bits16(sd_card_p->state.CSD, 83, 80);  // read_bl_len   : CSD[83:80] - the
+                                                                     // *maximum* read block length
+            block_len = 1 << read_bl_len;                            // BLOCK_LEN = 2^READ_BL_LEN
+            mult = 1 << (c_size_mult + 2);                           // MULT = 2^C_SIZE_MULT+2 (C_SIZE_MULT < 8)
+            blocknr = (c_size + 1) * mult;                           // BLOCKNR = (C_SIZE+1) * MULT
+            capacity = (uint64_t)blocknr * block_len;                // memory capacity = BLOCKNR * BLOCK_LEN
+            blocks = capacity / sd_block_size;
 
             (*printer)("Standard Capacity: c_size: %" PRIu32 "\r\n", c_size);
             (*printer)("Sectors: 0x%llx : %llu\r\n", blocks, blocks);
-            (*printer)("Capacity: 0x%llx : %llu MiB\r\n", capacity,
-                       (capacity / (1024U * 1024U)));
+            (*printer)("Capacity: 0x%llx : %llu MiB\r\n", capacity, (capacity / (1024U * 1024U)));
             break;
 
         case 1:
-            hc_c_size =
-                ext_bits16(sd_card_p->state.CSD, 69, 48);  // device size : C_SIZE : [69:48]
-            blocks = (hc_c_size + 1) << 10;                // block count = C_SIZE+1) * 1K
-                                                           // byte (512B is block size)
+            hc_c_size = ext_bits16(sd_card_p->state.CSD, 69, 48);  // device size : C_SIZE : [69:48]
+            blocks = (hc_c_size + 1) << 10;                        // block count = C_SIZE+1) * 1K
+                                                                   // byte (512B is block size)
 
             /* ERASE_BLK_EN
             The ERASE_BLK_EN defines the granularity of the unit size of the data to be erased. The erase
@@ -263,10 +262,10 @@ void csdDmp(sd_card_t *sd_card_p, printer_t printer) {
 
             (*printer)("SDHC/SDXC Card: hc_c_size: %" PRIu32 "\r\n", hc_c_size);
             (*printer)("Sectors: %llu\r\n", blocks);
-            (*printer)("Capacity: %llu MiB (%llu MB)\r\n", blocks / 2048, blocks * _block_size / 1000000);
+            (*printer)("Capacity: %llu MiB (%llu MB)\r\n", blocks / 2048, blocks * sd_block_size / 1000000);
             (*printer)("ERASE_BLK_EN: %s\r\n", erase_single_block_enable ? "units of 512 bytes" : "units of SECTOR_SIZE");
-            (*printer)("SECTOR_SIZE (size of an erasable sector): %d (%lu bytes)\r\n",
-                       erase_sector_size, (uint32_t)(erase_sector_size ? 512 : 1) * erase_sector_size);
+            (*printer)("SECTOR_SIZE (size of an erasable sector): %d (%lu bytes)\r\n", erase_sector_size,
+                       (uint32_t)(erase_sector_size ? 512 : 1) * erase_sector_size);
             break;
 
         default:
@@ -281,13 +280,11 @@ void csdDmp(sd_card_t *sd_card_p, printer_t printer) {
 is a physical boundary of the card and consists of one or more blocks and its
 size depends on each card. */
 bool sd_allocation_unit(sd_card_t *sd_card_p, size_t *au_size_bytes_p) {
-    if (SD_IF_SPI == sd_card_p->type)
-        return false;  // SPI can't do full SD Status
+    if (SD_IF_SPI == sd_card_p->type) return false;  // SPI can't do full SD Status
 
     uint8_t status[64] = {0};
     bool ok = rp2040_sdio_get_sd_status(sd_card_p, status);
-    if (!ok)
-        return false;
+    if (!ok) return false;
     // 431:428 AU_SIZE
     uint8_t au_size = ext_bits(64, status, 431, 428);
     switch (au_size) {

@@ -88,4 +88,3 @@ target_link_libraries(command_line
 )
 
 pico_add_extra_outputs(command_line)
-

@@ -17,6 +17,10 @@ specific language governing permissions and limitations under the License.
 #include <stdint.h>
 #include "sd_card.h"
 
+#ifdef NDEBUG
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -39,7 +43,7 @@ void sd_spi_send_initializing_sequence(sd_card_t * sd_card_p);
 static inline uint8_t sd_spi_write(sd_card_t *sd_card_p, const uint8_t value) {
     // TRACE_PRINTF("%s\n", __FUNCTION__);
     uint8_t received = SPI_FILL_CHAR;
-#if 1
+#if 0
     int num = spi_write_read_blocking(sd_card_p->spi_if_p->spi->hw_inst, &value, &received, 1);    
     assert(1 == num);
 #else
@@ -84,6 +88,18 @@ static inline void sd_spi_acquire(sd_card_t *sd_card_p) {
 static inline void sd_spi_release(sd_card_t *sd_card_p) {
     sd_spi_deselect(sd_card_p);
     sd_spi_unlock(sd_card_p);
+}
+
+/* Transfer tx to SPI while receiving SPI to rx.
+tx or rx can be NULL if not important. */
+static inline void sd_spi_transfer_start(sd_card_t *sd_card_p, const uint8_t *tx, uint8_t *rx, size_t length) {
+    return spi_transfer_start(sd_card_p->spi_if_p->spi, tx, rx, length);
+}
+static inline bool sd_spi_transfer_wait_complete(sd_card_t *sd_card_p, uint32_t timeout_ms) {
+    return spi_transfer_wait_complete(sd_card_p->spi_if_p->spi, timeout_ms);
+}
+static inline bool sd_spi_transfer(sd_card_t *sd_card_p, const uint8_t *tx, uint8_t *rx, size_t length) {
+	return spi_transfer(sd_card_p->spi_if_p->spi, tx, rx, length);
 }
 
 #ifdef __cplusplus

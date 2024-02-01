@@ -25,3 +25,4 @@ void sd_spi_ctor(sd_card_t *sd_card_p);  // Constructor for sd_card_t
 #ifdef __cplusplus
 }
 #endif
+/* [] END OF FILE */

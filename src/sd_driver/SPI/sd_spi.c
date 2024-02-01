@@ -13,7 +13,6 @@ specific language governing permissions and limitations under the License.
 */
 
 /* Standard includes. */
-#include <assert.h>
 #include <inttypes.h>
 #include <stdint.h>
 #include <string.h>
@@ -41,6 +40,7 @@ void sd_spi_go_low_frequency(sd_card_t *sd_card_p) {
     uint actual = spi_set_baudrate(sd_card_p->spi_if_p->spi->hw_inst, 400 * 1000); // Actual frequency: 398089
     DBG_PRINTF("%s: Actual frequency: %lu\n", __FUNCTION__, (long)actual);
 }
+
 /* Some SD cards want to be deselected between every bus transaction */
 void sd_spi_deselect_pulse(sd_card_t *sd_card_p) {
     sd_spi_deselect(sd_card_p);
@@ -56,8 +56,8 @@ This sequence is a contiguous stream of logical ‘1’s. The sequence length is
 (over the 64 clocks after what the card should be ready for communication) is
 provided to eliminate power-up synchronization problems. 
 */
-void sd_spi_send_initializing_sequence(sd_card_t * sd_card_p) {
-bool old_ss = gpio_get(sd_card_p->spi_if_p->ss_gpio);
+void sd_spi_send_initializing_sequence(sd_card_t *sd_card_p) {
+    bool old_ss = gpio_get(sd_card_p->spi_if_p->ss_gpio);
     // Set DI and CS high and apply 74 or more clock pulses to SCLK:
     gpio_put(sd_card_p->spi_if_p->ss_gpio, 1);
     uint8_t ones[10];
