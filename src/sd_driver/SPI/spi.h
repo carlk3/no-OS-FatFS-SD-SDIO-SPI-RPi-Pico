@@ -17,6 +17,8 @@ specific language governing permissions and limitations under the License.
 #include <stdbool.h>
 //
 // Pico includes
+#include "pico/stdlib.h"
+//
 #include "hardware/dma.h"
 #include "hardware/gpio.h"
 #include "hardware/irq.h"

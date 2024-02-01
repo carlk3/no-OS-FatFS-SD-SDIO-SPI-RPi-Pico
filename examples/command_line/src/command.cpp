@@ -137,8 +137,8 @@ static void run_info(const size_t argc, const char *argv[]) {
     size_t au_size_bytes;
     bool ok = sd_allocation_unit(sd_card_p, &au_size_bytes);
     if (ok)
-        printf("\nSD card Allocation Unit (AU_SIZE) or \"segment\": %zu bytes (%lu sectors)\n", 
-            au_size_bytes, au_size_bytes / _block_size);
+        printf("\nSD card Allocation Unit (AU_SIZE) or \"segment\": %zu bytes (%zu sectors)\n", 
+            au_size_bytes, au_size_bytes / sd_block_size);
     
     if (!sd_card_p->state.mounted) {
         printf("Drive \"%s\" is not mounted\n", argv[0]);
@@ -184,7 +184,7 @@ static void run_info(const size_t argc, const char *argv[]) {
     // Report Partition Starting Offset
     // uint64_t offs = fs_p->volbase;
     // printf("Partition Starting Offset: %llu sectors (%llu bytes)\n",
-    //         offs, offs * _block_size);
+    //         offs, offs * sd_block_size);
 	printf("Volume base sector: %llu\n", fs_p->volbase);		
 	printf("FAT base sector: %llu\n", fs_p->fatbase);		
 	printf("Root directory base sector (FAT12/16) or cluster (FAT32/exFAT): %llu\n", fs_p->dirbase);		 
@@ -234,7 +234,7 @@ static void run_format(const size_t argc, const char *argv[]) {
     bool ok = sd_allocation_unit(sd_card_p, &au_size_bytes);
     if (!ok || !au_size_bytes)
         au_size_bytes = 4194304; // Default to 4 MiB
-    UINT n_align = au_size_bytes / _block_size;
+    UINT n_align = au_size_bytes / sd_block_size;
 
     MKFS_PARM opt = {
         FM_ANY,  /* Format option (FM_FAT, FM_FAT32, FM_EXFAT and FM_SFD) */
@@ -830,4 +830,3 @@ void process_stdio(int cRxedChar) {
         }
     }
 }
-

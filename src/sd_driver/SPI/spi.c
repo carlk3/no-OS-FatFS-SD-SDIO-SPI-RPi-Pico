@@ -26,7 +26,7 @@ specific language governing permissions and limitations under the License.
 //
 #include "spi.h"
 
-#ifdef NDEBUG 
+#ifdef NDEBUG
 #  pragma GCC diagnostic ignored "-Wunused-variable"
 #endif
 
@@ -199,6 +199,7 @@ bool my_spi_init(spi_t *spi_p) {
         // enum gpio_slew_rate { GPIO_SLEW_RATE_SLOW = 0, GPIO_SLEW_RATE_FAST = 1 }
         // void gpio_set_slew_rate (uint gpio,enum gpio_slew_rate slew)
         // Default appears to be GPIO_SLEW_RATE_SLOW.
+        gpio_set_slew_rate (spi_p->sck_gpio, GPIO_SLEW_RATE_FAST);
 
         // Drive strength levels for GPIO outputs.
         // enum gpio_drive_strength { GPIO_DRIVE_STRENGTH_2MA = 0, GPIO_DRIVE_STRENGTH_4MA = 1, GPIO_DRIVE_STRENGTH_8MA = 2,
@@ -212,6 +213,8 @@ bool my_spi_init(spi_t *spi_p) {
         // SD cards' DO MUST be pulled up. However, it might be done externally.
         if (!spi_p->no_miso_gpio_pull_up)
             gpio_pull_up(spi_p->miso_gpio);
+
+        gpio_set_input_hysteresis_enabled(spi_p->miso_gpio, false);
 
         // Check if the user has provided DMA channels
         if (spi_p->use_static_dma_channels) {
@@ -250,7 +253,7 @@ bool my_spi_init(spi_t *spi_p) {
         since if rx is complete, tx must also be complete. */
 
         // Tell the DMA to raise IRQ line 0/1 when the channel finishes a block
-                switch (spi_p->DMA_IRQ_num) {
+        switch (spi_p->DMA_IRQ_num) {
             case DMA_IRQ_0:
                 // Clear any pending interrupts:
                 dma_hw->ints0 = 1 << spi_p->rx_dma;
@@ -266,13 +269,13 @@ bool my_spi_init(spi_t *spi_p) {
                 dma_channel_set_irq1_enabled(spi_p->tx_dma, false);
                 break;
             default:
-                    myASSERT(false);
+                myASSERT(false);
         }
         dma_irq_add_handler(spi_p->DMA_IRQ_num, spi_p->use_exclusive_DMA_IRQ_handler);
-        
+
         LED_INIT();
 
-                spi_p->initialized = true;
+        spi_p->initialized = true;
         spi_unlock(spi_p);
     }
     mutex_exit(&my_spi_init_mutex);

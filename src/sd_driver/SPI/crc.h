@@ -32,8 +32,9 @@ specific language governing permissions and limitations under the License.
 #define SD_CRC_H
 
 #include <stddef.h>
+#include <stdint.h>
     
-char crc7(const char* data, int length);
+char crc7(const uint8_t* data, int length);
 unsigned short crc16(const char* data, int length);
 void update_crc16(unsigned short *pCrc16, const char data[], size_t length);
 

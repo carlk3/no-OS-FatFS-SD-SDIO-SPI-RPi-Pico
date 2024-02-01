@@ -69,6 +69,10 @@ typedef struct sd_sdio_state_t {
     uint32_t end_token_buf[3]; // CRC and end token for write block
     sdio_status_t wr_status;
     uint32_t card_response;
+
+    // Variables for extended block writes
+    bool ongoing_wr_mlt_blk;
+    uint32_t wr_mlt_blk_cnt_sector;
     
     // Variables for block reads
     // This is used to perform DMA into data buffers and checksum buffers separately.
