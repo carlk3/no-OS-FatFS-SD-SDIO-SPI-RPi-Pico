@@ -46,8 +46,10 @@ target_compile_options(command_line PUBLIC
 )
 
 # This program is useless without standard standard input and output.
-# add_compile_definitions(USE_PRINTF USE_DBG_PRINTF)
-add_compile_definitions(USE_PRINTF)
+add_compile_definitions(
+  USE_PRINTF
+  #USE_DBG_PRINTF
+)
 
 # Disable CRC checking for SPI-attached cards.
 # add_compile_definitions(SD_CRC_ENABLED=0)
@@ -88,4 +90,3 @@ target_link_libraries(command_line
 )
 
 pico_add_extra_outputs(command_line)
-

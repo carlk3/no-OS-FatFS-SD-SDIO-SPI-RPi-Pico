@@ -50,6 +50,8 @@ static char const *errstr(sdio_status_t error) {
 #define azdbg(arg1, ...) {\
     DBG_PRINTF("%s,%d: %s\n", __func__, __LINE__, arg1); \
 }
+#define TRACE_PRINTF(fmt, args...)
+//#define TRACE_PRINTF DBG_PRINTF
 
 #define checkReturnOk(call) ((STATE.error = (call)) == SDIO_OK ? true : logSDError(sd_card_p, __LINE__))
 
@@ -191,7 +193,7 @@ bool sd_sdio_begin(sd_card_t *sd_card_p)
     }
     // Increase to high clock rate
     if (!sd_card_p->sdio_if_p->baud_rate)
-        sd_card_p->sdio_if_p->baud_rate = 10*1000*1000; // 10 MHz default
+        sd_card_p->sdio_if_p->baud_rate = 10 * 1000 * 1000;  // 10 MHz default
     if (!rp2040_sdio_init(sd_card_p, calculate_clk_div(sd_card_p->sdio_if_p->baud_rate)))
         return false; 
 
@@ -242,6 +244,9 @@ uint32_t sd_sdio_status(sd_card_t *sd_card_p)
 
 bool sd_sdio_stopTransmission(sd_card_t *sd_card_p, bool blocking)
 {
+
+    STATE.ongoing_wr_mlt_blk = false;
+
     uint32_t reply;
     if (!checkReturnOk(rp2040_sdio_command_R1(sd_card_p, CMD12_STOP_TRANSMISSION, 0, &reply)))
     {
@@ -286,8 +291,11 @@ uint8_t sd_sdio_type(sd_card_t *sd_card_p) // const
 
 bool sd_sdio_writeSector(sd_card_t *sd_card_p, uint32_t sector, const uint8_t* src)
 {
-    if (((uint32_t)src & 3) != 0)
-    {
+    if (STATE.ongoing_wr_mlt_blk)
+        // Stop any ongoing write transmission
+        if (!sd_sdio_stopTransmission(sd_card_p, true)) return false;
+
+    if (((uint32_t)src & 3) != 0) {
         // Buffer is not aligned, need to memcpy() the data to a temporary buffer.
         memcpy(STATE.dma_buf, src, sizeof(STATE.dma_buf));
         src = (uint8_t*)STATE.dma_buf;
@@ -315,29 +323,31 @@ bool sd_sdio_writeSector(sd_card_t *sd_card_p, uint32_t sector, const uint8_t* s
     return STATE.error == SDIO_OK;
 }
 
-bool sd_sdio_writeSectors(sd_card_t *sd_card_p, uint32_t sector, const uint8_t* src, size_t n)
-{
-    if (((uint32_t)src & 3) != 0)
-    {
+bool sd_sdio_writeSectors(sd_card_t *sd_card_p, uint32_t sector, const uint8_t *src, size_t n) {
+    if (((uint32_t)src & 3) != 0) {
         // Unaligned write, execute sector-by-sector
-        for (size_t i = 0; i < n; i++)
-        {
-            if (!sd_sdio_writeSector(sd_card_p, sector + i, src + 512 * i))
-            {
+        for (size_t i = 0; i < n; i++) {
+            if (!sd_sdio_writeSector(sd_card_p, sector + i, src + 512 * i)) {
                 return false;
             }
         }
         return true;
     }
-
-    uint32_t reply;
-    if (/* !checkReturnOk(rp2040_sdio_command_R1(sd_card_p, 16, 512, &reply)) || // SET_BLOCKLEN */
-        !checkReturnOk(rp2040_sdio_command_R1(sd_card_p, CMD55_APP_CMD, STATE.rca, &reply)) || // APP_CMD
-        !checkReturnOk(rp2040_sdio_command_R1(sd_card_p, ACMD23_SET_WR_BLK_ERASE_COUNT, n, &reply)) || // SET_WR_CLK_ERASE_COUNT
-        !checkReturnOk(rp2040_sdio_command_R1(sd_card_p, CMD25_WRITE_MULTIPLE_BLOCK, sector, &reply)) || // WRITE_MULTIPLE_BLOCK
-        !checkReturnOk(rp2040_sdio_tx_start(sd_card_p, src, n))) // Start transmission
-    {
-        return false;
+    if (STATE.ongoing_wr_mlt_blk && sector == STATE.wr_mlt_blk_cnt_sector) {
+        /* Continue a multiblock write */
+        if (!checkReturnOk(rp2040_sdio_tx_start(sd_card_p, src, n)))  // Start transmission
+            return false;
+    } else {
+        // Stop any previous transmission
+        if (STATE.ongoing_wr_mlt_blk) {
+            if (!sd_sdio_stopTransmission(sd_card_p, true)) return false;
+        }
+        uint32_t reply;
+        if (!checkReturnOk(rp2040_sdio_command_R1(sd_card_p, CMD25_WRITE_MULTIPLE_BLOCK, sector, &reply)) ||
+            !checkReturnOk(rp2040_sdio_tx_start(sd_card_p, src, n)))  // Start transmission
+        {
+            return false;
+        }
     }
 
     do {
@@ -345,21 +355,32 @@ bool sd_sdio_writeSectors(sd_card_t *sd_card_p, uint32_t sector, const uint8_t* 
         STATE.error = rp2040_sdio_tx_poll(sd_card_p, &bytes_done);
     } while (STATE.error == SDIO_BUSY);
 
-    if (STATE.error != SDIO_OK)
-    {
-        EMSG_PRINTF("sd_sdio_writeSectors(,%lu,,%zu) failed: %s (%d)\n", 
-            sector, n, errstr(STATE.error), (int)STATE.error);
+    if (STATE.error != SDIO_OK) {
+        EMSG_PRINTF("sd_sdio_writeSectors(,%lu,,%zu) failed: %s (%d)\n", sector, n, errstr(STATE.error), (int)STATE.error);
         sd_sdio_stopTransmission(sd_card_p, true);
         return false;
+    } else {
+        STATE.wr_mlt_blk_cnt_sector = sector + n;
+        STATE.ongoing_wr_mlt_blk = true;
+        return true;
     }
-    else
-    {
-        return sd_sdio_stopTransmission(sd_card_p, true);
-    }
+    /* Optimization:
+    To optimize large contiguous writes,
+    postpone stopping transmission until it is
+    clear that the next operation is not a continuation.
+
+    Any transactions other than a `sd_sdio_writeSectors`
+    continuation must stop any ongoing transmission
+    before proceding.
+    */
 }
 
 bool sd_sdio_readSector(sd_card_t *sd_card_p, uint32_t sector, uint8_t* dst)
 {
+    if (STATE.ongoing_wr_mlt_blk)
+        // Stop any ongoing transmission
+        if (!sd_sdio_stopTransmission(sd_card_p, true)) return false;
+
     uint8_t *real_dst = dst;
     if (((uint32_t)dst & 3) != 0)
     {
@@ -394,6 +415,10 @@ bool sd_sdio_readSector(sd_card_t *sd_card_p, uint32_t sector, uint8_t* dst)
 
 bool sd_sdio_readSectors(sd_card_t *sd_card_p, uint32_t sector, uint8_t* dst, size_t n)
 {
+    if (STATE.ongoing_wr_mlt_blk)
+        // Stop any ongoing transmission
+        if (!sd_sdio_stopTransmission(sd_card_p, true)) return false;
+        
     if (((uint32_t)dst & 3) != 0 || sector + n >= sd_card_p->state.sectors)
     {
         // Unaligned read or end-of-drive read, execute sector-by-sector
@@ -504,9 +529,7 @@ static void gpio_conf(uint gpio, enum gpio_function fn, bool pullup, bool pulldo
     }
 }
 
-static int sd_sdio_init(sd_card_t *sd_card_p) {
-    if (!mutex_is_initialized(&sd_card_p->state.mutex)) 
-        mutex_init(&sd_card_p->state.mutex);
+static DSTATUS sd_sdio_init(sd_card_t *sd_card_p) {
     sd_lock(sd_card_p);
 
     // Make sure there's a card in the socket before proceeding
@@ -558,15 +581,15 @@ static void sd_sdio_deinit(sd_card_t *sd_card_p) {
     sd_unlock(sd_card_p);    
 }
 
-uint64_t sd_sdio_sectorCount(sd_card_t *sd_card_p) {
+uint32_t sd_sdio_sectorCount(sd_card_t *sd_card_p) {
     myASSERT(!(sd_card_p->state.m_Status & STA_NOINIT));
     return CSD_sectors(sd_card_p->state.CSD);
 }
 
-static int sd_sdio_write_blocks(sd_card_t *sd_card_p, const uint8_t *buffer,
-                                uint64_t ulSectorNumber, uint32_t blockCnt) {
-    // bool sd_sdio_writeSectors(sd_card_t *sd_card_p, uint32_t sector, const uint8_t* src, size_t ns);
-    bool ok;
+static block_dev_err_t sd_sdio_write_blocks(sd_card_t *sd_card_p, const uint8_t *buffer, uint32_t ulSectorNumber,
+                                            uint32_t blockCnt) {
+    TRACE_PRINTF("%s(,,,%zu)\n", __func__, blockCnt);
+    bool ok = true;
 
     sd_lock(sd_card_p);
 
@@ -580,28 +603,35 @@ static int sd_sdio_write_blocks(sd_card_t *sd_card_p, const uint8_t *buffer,
     if (ok)
         return SD_BLOCK_DEVICE_ERROR_NONE;
     else
-        return SD_BLOCK_DEVICE_ERROR_WRITE;                                    
+        return SD_BLOCK_DEVICE_ERROR_WRITE;
 }
-static int sd_sdio_read_blocks(sd_card_t *sd_card_p, uint8_t *buffer, uint64_t ulSectorNumber,
-                               uint32_t ulSectorCount) {
-    // bool sd_sdio_readSectors(sd_card_t *sd_card_p, uint32_t sector, uint8_t* dst, size_t n)
-    bool ok;
+static block_dev_err_t sd_sdio_read_blocks(sd_card_t *sd_card_p, uint8_t *buffer, uint32_t ulSectorNumber,
+                                           uint32_t ulSectorCount) {
+    bool ok = true;
 
     sd_lock(sd_card_p);
 
-    if (1 == ulSectorCount) 
+    if (1 == ulSectorCount)
         ok = sd_sdio_readSector(sd_card_p, ulSectorNumber, buffer);
-    else        
-        ok= sd_sdio_readSectors(sd_card_p, ulSectorNumber, buffer, ulSectorCount);
+    else
+        ok = sd_sdio_readSectors(sd_card_p, ulSectorNumber, buffer, ulSectorCount);
 
     sd_unlock(sd_card_p);
-    
+
     if (ok)
         return SD_BLOCK_DEVICE_ERROR_NONE;
     else
         return SD_BLOCK_DEVICE_ERROR_NO_RESPONSE;
 }
-
+static block_dev_err_t sd_sync(sd_card_t *sd_card_p) {
+    sd_lock(sd_card_p);
+    block_dev_err_t err = SD_BLOCK_DEVICE_ERROR_NONE;
+    if (STATE.ongoing_wr_mlt_blk)
+        if (!sd_sdio_stopTransmission(sd_card_p, true))
+            err = SD_BLOCK_DEVICE_ERROR_NO_RESPONSE;
+    sd_unlock(sd_card_p);
+    return err;
+}
 void sd_sdio_ctor(sd_card_t *sd_card_p) {
     myASSERT(sd_card_p->sdio_if_p); // Must have an interface object
     /*
@@ -624,6 +654,7 @@ void sd_sdio_ctor(sd_card_t *sd_card_p) {
     sd_card_p->deinit = sd_sdio_deinit;
     sd_card_p->write_blocks = sd_sdio_write_blocks;
     sd_card_p->read_blocks = sd_sdio_read_blocks;
+    sd_card_p->sync = sd_sync;
     sd_card_p->get_num_sectors = sd_sdio_sectorCount;
     sd_card_p->sd_test_com = sd_sdio_test_com;
 }
