@@ -23,8 +23,6 @@ extern "C" {
 typedef struct sd_spi_if_state_t {
     bool ongoing_mlt_blk_wrt;
     uint32_t cont_sector_wrt;
-    bool ongoing_mlt_blk_rd;
-    uint32_t cont_sector_rd;
 } sd_spi_if_state_t;
 
 void sd_spi_ctor(sd_card_t *sd_card_p);  // Constructor for sd_card_t

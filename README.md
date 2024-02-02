@@ -106,11 +106,11 @@ once on SPI and one on SDIO.
 
 * SPI:
   * Writing
-    * Elapsed seconds 74.3
-    * Transfer rate 2.69 MiB/s (2.82 MB/s), or 2755 KiB/s (2821 kB/s) (22568 kb/s)
+    * Elapsed seconds 72.9
+    * Transfer rate 2.74 MiB/s (2.88 MB/s), or 2808 KiB/s (2875 kB/s) (23002 kb/s)
   * Reading
-    * Elapsed seconds 76.1
-    * Transfer rate 2.63 MiB/s (2.76 MB/s), or 2692 KiB/s (2757 kB/s) (22052 kb/s) 
+    * Elapsed seconds 75.9
+    * Transfer rate 2.63 MiB/s (2.76 MB/s), or 2697 KiB/s (2762 kB/s) (22096 kb/s) 
 
 Results from a
 [port](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/blob/main/examples/command_line/tests/bench.c)
@@ -139,14 +139,14 @@ of
   write speed and latency
   speed,max,min,avg
   KB/Sec,usec,usec,usec
-  2811.2,33526,22951,23279
-  2843.2,24405,22924,23027
+  2887.0,23936,22497,22663
+  2904.6,23923,22496,22546
   ...
   read speed and latency
   speed,max,min,avg
   KB/Sec,usec,usec,usec
-  2756.5,24396,23729,23774
-  2756.5,24403,23734,23769
+  2778.4,24017,23569,23592
+  2778.4,24018,23569,23587
   ...
   ```
 
