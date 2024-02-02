@@ -36,7 +36,7 @@ enum sdio_status_t {
 
 typedef enum sdio_transfer_state_t { SDIO_IDLE, SDIO_RX, SDIO_TX, SDIO_TX_WAIT_IDLE} sdio_transfer_state_t;
 
-typedef struct sd_sdio_state_t {
+typedef struct sd_sdio_if_state_t {
     bool resources_claimed;
 
     uint32_t ocr; // Operating condition register from card
@@ -84,7 +84,7 @@ typedef struct sd_sdio_state_t {
         uint32_t top;
         uint32_t bottom;
     } received_checksums[SDIO_MAX_BLOCKS];
-} sd_sdio_state_t;
+} sd_sdio_if_state_t;
 
 // Execute a command that has 48-bit reply (response types R1, R6, R7)
 // If response is NULL, does not wait for reply.

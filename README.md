@@ -12,7 +12,8 @@ It is wrapped up in a complete runnable project, with a little command line inte
 
 ## What's new
 ### v2.2.1 
-Substantial performance improvement for writing large contiguous blocks of data to SDIO-attached SD cards. This is accomplished by avoiding sending "stop transmission" for as long as possible.
+Substantial performance improvement for writing large contiguous blocks of data. This is accomplished by avoiding sending "stop transmission" for as long as possible.
+The improved throughput is especially noticeable on SDIO-attached cards, since the 4 bit wide SD interface is less of a bottleneck than the 1 bit wide SPI.
 ### v2.1.1
 Added ability to statically assign DMA channels for SPI. (See [SPI Controller Configuration](#spi-controller-configuration).)
 ### v2.0.1
@@ -91,8 +92,8 @@ Memory region         Used Size  Region Size  %age Used
 Writing and reading a file of 200 MiB of psuedorandom data on the same 
 [Silicon Power 3D NAND U1 32GB microSD card](https://www.amazon.com/gp/product/B07RSXSYJC/) inserted into a 
 [Pico Stackable, Plug & Play SD Card Expansion Module](https://forums.raspberrypi.com/viewtopic.php?t=356864)
-at the default Pico system clock frequency (`clk_sys`) of 125 MHz, `MinSizeRel` build, using the command
-`big_file_test bf 200 2`,
+at the default Pico system clock frequency (`clk_sys`) of 125 MHz, `Release` build, using the command
+`big_file_test bf 200 `*x*,
 once on SPI and one on SDIO.
 
 * SDIO:
@@ -105,11 +106,11 @@ once on SPI and one on SDIO.
 
 * SPI:
   * Writing
-    * Elapsed seconds 81.7
-    * Transfer rate 2.45 MiB/s (2.57 MB/s), or 2507 KiB/s (2567 kB/s) (20539 kb/s)
+    * Elapsed seconds 74.3
+    * Transfer rate 2.69 MiB/s (2.82 MB/s), or 2755 KiB/s (2821 kB/s) (22568 kb/s)
   * Reading
-    * Elapsed seconds 73.0
-    * Transfer rate 2.74 MiB/s (2.87 MB/s), or 2804 KiB/s (2871 kB/s) (22967 kb/s)
+    * Elapsed seconds 76.1
+    * Transfer rate 2.63 MiB/s (2.76 MB/s), or 2692 KiB/s (2757 kB/s) (22052 kb/s) 
 
 Results from a
 [port](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/blob/main/examples/command_line/tests/bench.c)
@@ -138,14 +139,14 @@ of
   write speed and latency
   speed,max,min,avg
   KB/Sec,usec,usec,usec
-  2064.1,114193,8013,9907
-  2379.9,43894,7991,8591
+  2811.2,33526,22951,23279
+  2843.2,24405,22924,23027
   ...
   read speed and latency
   speed,max,min,avg
   KB/Sec,usec,usec,usec
-  2785.8,8137,7168,7351
-  2787.3,7967,7168,7350
+  2756.5,24396,23729,23774
+  2756.5,24403,23734,23769
   ...
   ```
 

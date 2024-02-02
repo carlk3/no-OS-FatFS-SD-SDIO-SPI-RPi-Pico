@@ -30,6 +30,7 @@ specific language governing permissions and limitations under the License.
 //
 #include "SDIO/rp2040_sdio.h"
 #include "SPI/spi.h"
+#include "SPI/sd_card_spi.h"
 #include "sd_card_constants.h"
 #include "sd_regs.h"
 #include "util.h"
@@ -52,6 +53,7 @@ typedef struct sd_spi_if_t {
     // GPIO_DRIVE_STRENGTH_12MA
     bool set_drive_strength;
     enum gpio_drive_strength ss_gpio_drive_strength;
+    sd_spi_if_state_t state;
 } sd_spi_if_t;
 
 typedef struct sd_sdio_if_t {
@@ -81,7 +83,7 @@ typedef struct sd_sdio_if_t {
 
     /* The following fields are not part of the configuration.
     They are state variables, and are dynamically assigned. */
-    sd_sdio_state_t state;
+    sd_sdio_if_state_t state;
 } sd_sdio_if_t;
 
 typedef struct sd_card_state_t {

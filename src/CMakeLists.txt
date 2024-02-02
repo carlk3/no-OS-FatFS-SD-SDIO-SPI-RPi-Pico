@@ -30,7 +30,6 @@ target_sources(no-OS-FatFS-SD-SDIO-SPI-RPi-Pico INTERFACE
 target_include_directories(no-OS-FatFS-SD-SDIO-SPI-RPi-Pico INTERFACE
     ff15/source
     sd_driver
-    tests
     include
 )
 target_link_libraries(no-OS-FatFS-SD-SDIO-SPI-RPi-Pico INTERFACE
