@@ -123,9 +123,14 @@ bool sd_init_driver() {
             sd_card_t *sd_card_p = sd_get_by_num(i);
             if (!sd_card_p) continue;
 
-            sd_card_p->state.m_Status = STA_NOINIT;
+            myASSERT(sd_card_p->type);
+
             if (!mutex_is_initialized(&sd_card_p->state.mutex)) mutex_init(&sd_card_p->state.mutex);
-            
+
+            sd_card_p->state.m_Status = STA_NOINIT;
+
+            sd_set_drive_prefix(sd_card_p, i);
+
             // Set up Card Detect
             if (sd_card_p->use_card_detect) {
                 if (sd_card_p->card_detect_use_pull) {
@@ -137,7 +142,7 @@ bool sd_init_driver() {
                 }
                 gpio_init(sd_card_p->card_detect_gpio);
             }
-            sd_set_drive_prefix(sd_card_p, i);
+
             switch (sd_card_p->type) {
                 case SD_IF_NONE:
                     myASSERT(false);
@@ -193,7 +198,8 @@ void cidDmp(sd_card_t *sd_card_p, printer_t printer) {
     (*printer)(
         "\nRevision: "
         "%d.%d\n",
-        ext_bits16(sd_card_p->state.CID, 63, 60), ext_bits16(sd_card_p->state.CID, 59, 56));
+        ext_bits16(sd_card_p->state.CID, 63, 60),
+        ext_bits16(sd_card_p->state.CID, 59, 56));
     // | Product serial number | PSN   | 32    | [55:24]   | 6
     // (*printer)("0x%lx\n", __builtin_bswap32(ext_bits16(sd_card_p->state.CID, 55, 24))
     (*printer)(
@@ -207,7 +213,8 @@ void cidDmp(sd_card_t *sd_card_p, printer_t printer) {
     (*printer)(
         "Manufacturing date: "
         "%d/%d\n",
-        ext_bits16(sd_card_p->state.CID, 11, 8), ext_bits16(sd_card_p->state.CID, 19, 12) + 2000);
+        ext_bits16(sd_card_p->state.CID, 11, 8),
+        ext_bits16(sd_card_p->state.CID, 19, 12) + 2000);
     (*printer)("\n");
     // | CRC7 checksum         | CRC   | 7     | [7:1]     | 0
     // | not used, always 1-   | 1     | [0:0] |           |
