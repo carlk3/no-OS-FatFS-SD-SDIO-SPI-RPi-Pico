@@ -87,11 +87,11 @@ typedef struct sd_sdio_if_t {
 } sd_sdio_if_t;
 
 typedef struct sd_card_state_t {
-    DSTATUS m_Status;       // Card status
-    card_type_t card_type;  // Assigned dynamically
-    CSD_t CSD;              // Card-Specific Data register.
-    CID_t CID;              // Card IDentification register
-    uint32_t sectors;       // Assigned dynamically
+    DSTATUS m_Status;                // Card status
+    card_type_t card_type;           // Assigned dynamically
+    CSD_t CSD;                       // Card-Specific Data register.
+    CID_t CID;                       // Card IDentification register
+    uint32_t sectors;                // Assigned dynamically
 
     mutex_t mutex;
     FATFS fatfs;

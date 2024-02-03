@@ -636,10 +636,8 @@ static block_dev_err_t sd_read_bytes(sd_card_t *sd_card_p, uint8_t *buffer, uint
     if (!ok) return SD_BLOCK_DEVICE_ERROR_NO_RESPONSE;
 
     // Read the CRC16 checksum for the data block
-    sd_spi_transfer(sd_card_p, NULL, (uint8_t *)&crc, sizeof crc);
-    //      Built-in Function: uint16_t __builtin_bswap16 (uint16_t x)
-    //      Returns x with the order of the bytes reversed; for example, 0xaabb becomes 0xbbaa.
-    crc = __builtin_bswap16(crc);
+    crc = (sd_spi_write(sd_card_p, SPI_FILL_CHAR) << 8);
+    crc |= sd_spi_write(sd_card_p, SPI_FILL_CHAR);
 
     if (!chk_crc16(buffer, length, crc)) {
         DBG_PRINTF("%s: Invalid CRC received: 0x%" PRIx16 "\n", __func__, crc);
@@ -777,7 +775,6 @@ static block_dev_err_t sd_send_block(sd_card_t *sd_card_p, const uint8_t *buffer
     }
     return SD_BLOCK_DEVICE_ERROR_NONE;
 }
-
 /** Program blocks to a block device
  *
  *

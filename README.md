@@ -1,5 +1,5 @@
 # no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
-# v2.2.1
+# v2.3.1
 
 ## C/C++ Library for SD Cards on the Pico
 
@@ -11,7 +11,9 @@ and a 4-bit wide Secure Digital Input Output (SDIO) driver derived from
 It is wrapped up in a complete runnable project, with a little command line interface, some self tests, and an example data logging application.
 
 ## What's new
-### v2.2.1 
+### v2.3.1
+Faster way to read trailing CRC bytes
+### v2.2.1
 Substantial performance improvement for writing large contiguous blocks of data. This is accomplished by avoiding sending "stop transmission" for as long as possible.
 The improved throughput is especially noticeable on SDIO-attached cards, since the 4 bit wide SD interface is less of a bottleneck than the 1 bit wide SPI.
 ### v2.1.1
