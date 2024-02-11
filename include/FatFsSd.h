@@ -129,6 +129,9 @@ class File {
     FIL fil;
 
    public:
+    ~File() {
+        close();
+    }
     FRESULT open(const TCHAR* path, BYTE mode) { /* Open or create a file */
         return f_open(&fil, path, mode);
     }
@@ -191,6 +194,9 @@ class Dir {
     DIR dir = {};
 
    public:
+    ~Dir() {
+        closedir();
+    }
     FRESULT rewinddir() {
         return f_rewinddir(&dir);
     }
