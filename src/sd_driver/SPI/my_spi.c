@@ -24,7 +24,7 @@ specific language governing permissions and limitations under the License.
 #include "my_debug.h"
 #include "util.h"
 //
-#include "spi.h"
+#include "my_spi.h"
 
 #ifdef NDEBUG
 #  pragma GCC diagnostic ignored "-Wunused-variable"

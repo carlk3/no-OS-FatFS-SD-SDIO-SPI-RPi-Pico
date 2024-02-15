@@ -146,7 +146,7 @@ bool process_logger() {
     //   the string has been completely written.
     ASSERT(0 < nw && nw < (int)sizeof buf);
     n += nw;
-    cout << buf;
+    cout << buf << "\r";
 
     UINT bw;
     fr = file.write(buf, n, &bw);

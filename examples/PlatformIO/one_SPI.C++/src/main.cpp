@@ -23,14 +23,14 @@ ArduinoOutStream cout(Serial1);
 
 /* Implement library message callbacks */
 void put_out_error_message(const char *s) {
-    Serial1.write(s);
+    Serial1.printf("%s\r", s);
 }
 void put_out_info_message(const char *s) {
-    Serial1.write(s);
+    Serial1.printf("%s\r", s);
 }
 // This will not be called unless build_flags include "-D USE_DBG_PRINTF":
 void put_out_debug_message(const char *s) {
-    Serial1.write(s);
+    Serial1.printf("%s\r", s);
 }
 
 /* ********************************************************************** */

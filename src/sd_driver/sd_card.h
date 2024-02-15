@@ -29,12 +29,12 @@ specific language governing permissions and limitations under the License.
 #include "ff.h"
 //
 #include "SDIO/rp2040_sdio.h"
-#include "SPI/spi.h"
+#include "SPI/my_spi.h"
 #include "SPI/sd_card_spi.h"
+#include "diskio.h"
 #include "sd_card_constants.h"
 #include "sd_regs.h"
 #include "util.h"
-#include "diskio.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -87,11 +87,11 @@ typedef struct sd_sdio_if_t {
 } sd_sdio_if_t;
 
 typedef struct sd_card_state_t {
-    DSTATUS m_Status;                // Card status
-    card_type_t card_type;           // Assigned dynamically
-    CSD_t CSD;                       // Card-Specific Data register.
-    CID_t CID;                       // Card IDentification register
-    uint32_t sectors;                // Assigned dynamically
+    DSTATUS m_Status;       // Card status
+    card_type_t card_type;  // Assigned dynamically
+    CSD_t CSD;              // Card-Specific Data register.
+    CID_t CID;              // Card IDentification register
+    uint32_t sectors;       // Assigned dynamically
 
     mutex_t mutex;
     FATFS fatfs;
@@ -124,8 +124,10 @@ struct sd_card_t {
 
     DSTATUS (*init)(sd_card_t *sd_card_p);
     void (*deinit)(sd_card_t *sd_card_p);
-    block_dev_err_t (*write_blocks)(sd_card_t *sd_card_p, const uint8_t *buffer, uint32_t ulSectorNumber, uint32_t blockCnt);
-    block_dev_err_t (*read_blocks)(sd_card_t *sd_card_p, uint8_t *buffer, uint32_t ulSectorNumber, uint32_t ulSectorCount);
+    block_dev_err_t (*write_blocks)(sd_card_t *sd_card_p, const uint8_t *buffer,
+                                    uint32_t ulSectorNumber, uint32_t blockCnt);
+    block_dev_err_t (*read_blocks)(sd_card_t *sd_card_p, uint8_t *buffer,
+                                   uint32_t ulSectorNumber, uint32_t ulSectorCount);
     block_dev_err_t (*sync)(sd_card_t *sd_card_p);
     uint32_t (*get_num_sectors)(sd_card_t *sd_card_p);
 

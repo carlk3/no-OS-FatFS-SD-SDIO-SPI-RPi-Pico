@@ -21,7 +21,7 @@ specific language governing permissions and limitations under the License.
 //
 #include "my_debug.h"
 #include "portability.h"
-#include "spi.h"
+#include "my_spi.h"
 //
 #if !defined(USE_DBG_PRINTF) || defined(NDEBUG)
 #  pragma GCC diagnostic ignored "-Wunused-variable"

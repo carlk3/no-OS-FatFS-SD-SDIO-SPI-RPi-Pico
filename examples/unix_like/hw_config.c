@@ -35,7 +35,7 @@ There should be one element of the sd_cards[] array for each SD card slot.
 See https://oshwlab.com/carlk3/rp2040-sd-card-dev
 
 See https://docs.google.com/spreadsheets/d/1BrzLWTyifongf_VQCc2IpJqXWtsrjmG7KnIbSBy-CPU/edit?usp=sharing,
-tab "Monster", for pin assignments assumed in this configuration file.
+tab "Dev Brd", for pin assignments assumed in this configuration file.
 */
 
 #include <assert.h>
@@ -58,16 +58,35 @@ static sd_sdio_if_t sdio_ifs[] = {
     {   // sdio_ifs[0]
         .CMD_gpio = 3,
         .D0_gpio = 4,
-        .SDIO_PIO = pio0,
-        .DMA_IRQ_num = DMA_IRQ_0,
-        .baud_rate = 125 * 1000 * 1000 / 6  // 20833333 Hz
+        .CLK_gpio_drive_strength = GPIO_DRIVE_STRENGTH_12MA,
+        .CMD_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
+        .D0_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
+        .D1_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
+        .D2_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
+        .D3_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
+        .SDIO_PIO = pio1,
+        .DMA_IRQ_num = DMA_IRQ_1,
+        // .baud_rate = 125 * 1000 * 1000 / 8  // 15625000 Hz
+        // .baud_rate = 125 * 1000 * 1000 / 7  // 17857143 Hz
+        // .baud_rate = 125 * 1000 * 1000 / 6  // 20833333 Hz
+        // .baud_rate = 125 * 1000 * 1000 / 5  // 25000000 Hz
+        .baud_rate = 125 * 1000 * 1000 / 4  // 31250000 Hz
     },
     {   // sdio_ifs[1]
         .CMD_gpio = 17,
         .D0_gpio = 18,
-        .SDIO_PIO = pio1,
+        .CLK_gpio_drive_strength = GPIO_DRIVE_STRENGTH_12MA,
+        .CMD_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
+        .D0_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
+        .D1_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
+        .D2_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
+        .D3_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
         .DMA_IRQ_num = DMA_IRQ_1,
+        // .baud_rate = 125 * 1000 * 1000 / 8  // 15625000 Hz
+        // .baud_rate = 125 * 1000 * 1000 / 7  // 17857143 Hz
         .baud_rate = 125 * 1000 * 1000 / 6  // 20833333 Hz
+        // .baud_rate = 125 * 1000 * 1000 / 5  // 25000000 Hz
+        //.baud_rate = 125 * 1000 * 1000 / 4  // 31250000 Hz
     }
 };
 
@@ -88,7 +107,7 @@ static sd_card_t sd_cards[] = {  // One for each SD card
     },
     {   // sd_cards[1]
         .type = SD_IF_SDIO,
-        .sdio_if_p = &sdio_ifs[1],
+        .sdio_if_p = &sdio_ifs[1], // Pointer to the interface driving this card
         // SD Card detect:
         .use_card_detect = true,
         .card_detect_gpio = 22,  
