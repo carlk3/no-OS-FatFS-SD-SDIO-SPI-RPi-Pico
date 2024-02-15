@@ -13,10 +13,10 @@ specific language governing permissions and limitations under the License.
 */
 
 /* Standard includes. */
+#include <stdlib.h>
 #include <ctype.h>
 #include <inttypes.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 //
 #include "pico/mutex.h"
@@ -55,7 +55,8 @@ bool sd_is_locked(sd_card_t *sd_card_p) {
 
 sd_card_t *sd_get_by_drive_prefix(const char *const drive_prefix) {
     // Numeric drive number is always valid
-    if (2 == strlen(drive_prefix) && isdigit((unsigned char)drive_prefix[0]) && ':' == drive_prefix[1])
+    if (2 == strlen(drive_prefix) && isdigit((unsigned char)drive_prefix[0]) &&
+        ':' == drive_prefix[1])
         return sd_get_by_num(atoi(drive_prefix));
 #if FF_STR_VOLUME_ID
     for (size_t i = 0; i < sd_get_num(); ++i) {
@@ -91,13 +92,16 @@ bool sd_card_detect(sd_card_t *sd_card_p) {
 
 void sd_set_drive_prefix(sd_card_t *sd_card_p, size_t phy_drv_num) {
 #if FF_STR_VOLUME_ID == 0
-    int rc = snprintf(sd_card_p->state.drive_prefix, sizeof sd_card_p->state.drive_prefix, "%d:", phy_drv_num);
+    int rc = snprintf(sd_card_p->state.drive_prefix, sizeof sd_card_p->state.drive_prefix,
+                      "%d:", phy_drv_num);
 #elif FF_STR_VOLUME_ID == 1 /* Arbitrary string is enabled */
     // Add ':'
-    int rc = snprintf(sd_card_p->state.drive_prefix, sizeof sd_card_p->state.drive_prefix, "%s:", VolumeStr[phy_drv_num]);
+    int rc = snprintf(sd_card_p->state.drive_prefix, sizeof sd_card_p->state.drive_prefix,
+                      "%s:", VolumeStr[phy_drv_num]);
 #elif FF_STR_VOLUME_ID == 2 /* Unix style drive prefix  */
     // Add '/'
-    int rc = snprintf(sd_card_p->state.drive_prefix, sizeof sd_card_p->state.drive_prefix, "/%s", VolumeStr[phy_drv_num]);
+    int rc = snprintf(sd_card_p->state.drive_prefix, sizeof sd_card_p->state.drive_prefix,
+                      "/%s", VolumeStr[phy_drv_num]);
 #else
 #error "Unknown FF_STR_VOLUME_ID"
 #endif
@@ -125,7 +129,9 @@ bool sd_init_driver() {
 
             myASSERT(sd_card_p->type);
 
-            if (!mutex_is_initialized(&sd_card_p->state.mutex)) mutex_init(&sd_card_p->state.mutex);
+            if (!mutex_is_initialized(&sd_card_p->state.mutex))
+                mutex_init(&sd_card_p->state.mutex);
+            sd_lock(sd_card_p);
 
             sd_card_p->state.m_Status = STA_NOINIT;
 
@@ -154,7 +160,19 @@ bool sd_init_driver() {
                     if (!my_spi_init(sd_card_p->spi_if_p->spi)) {
                         ok = false;
                     }
-                    myASSERT(1 == gpio_get(sd_card_p->spi_if_p->ss_gpio));
+                    /* At power up the SD card CD/DAT3 / CS  line has a 50KOhm pull up enabled
+                     * in the card. This resistor serves two functions Card detection and Mode
+                     * Selection. For Mode Selection, the host can drive the line high or let it
+                     * be pulled high to select SD mode. If the host wants to select SPI mode it
+                     * should drive the line low.
+                     *
+                     * There is an important thing needs to be considered that the MMC/SDC is
+                     * initially NOT the SPI device. Some bus activity to access another SPI
+                     * device can cause a bus conflict due to an accidental response of the
+                     * MMC/SDC. Therefore the MMC/SDC should be initialized to put it into the
+                     * SPI mode prior to access any other device attached to the same SPI bus.
+                     */
+                    sd_go_idle_state(sd_card_p);
                     break;
                 case SD_IF_SDIO:
                     myASSERT(sd_card_p->sdio_if_p);
@@ -163,8 +181,9 @@ bool sd_init_driver() {
                 default:
                     myASSERT(false);
             }  // switch (sd_card_p->type)
-        }      // for
 
+            sd_unlock(sd_card_p);
+        }  // for
         driver_initialized = true;
     }
     mutex_exit(&initialized_mutex);
@@ -198,8 +217,7 @@ void cidDmp(sd_card_t *sd_card_p, printer_t printer) {
     (*printer)(
         "\nRevision: "
         "%d.%d\n",
-        ext_bits16(sd_card_p->state.CID, 63, 60),
-        ext_bits16(sd_card_p->state.CID, 59, 56));
+        ext_bits16(sd_card_p->state.CID, 63, 60), ext_bits16(sd_card_p->state.CID, 59, 56));
     // | Product serial number | PSN   | 32    | [55:24]   | 6
     // (*printer)("0x%lx\n", __builtin_bswap32(ext_bits16(sd_card_p->state.CID, 55, 24))
     (*printer)(
@@ -232,46 +250,56 @@ void csdDmp(sd_card_t *sd_card_p, printer_t printer) {
     int csd_structure = ext_bits16(sd_card_p->state.CSD, 127, 126);
     switch (csd_structure) {
         case 0:
-            c_size = ext_bits16(sd_card_p->state.CSD, 73, 62);       // c_size        : CSD[73:62]
-            c_size_mult = ext_bits16(sd_card_p->state.CSD, 49, 47);  // c_size_mult   : CSD[49:47]
-            read_bl_len = ext_bits16(sd_card_p->state.CSD, 83, 80);  // read_bl_len   : CSD[83:80] - the
-                                                                     // *maximum* read block length
-            block_len = 1 << read_bl_len;                            // BLOCK_LEN = 2^READ_BL_LEN
-            mult = 1 << (c_size_mult + 2);                           // MULT = 2^C_SIZE_MULT+2 (C_SIZE_MULT < 8)
-            blocknr = (c_size + 1) * mult;                           // BLOCKNR = (C_SIZE+1) * MULT
-            capacity = (uint64_t)blocknr * block_len;                // memory capacity = BLOCKNR * BLOCK_LEN
+            c_size = ext_bits16(sd_card_p->state.CSD, 73, 62);  // c_size        : CSD[73:62]
+            c_size_mult =
+                ext_bits16(sd_card_p->state.CSD, 49, 47);  // c_size_mult   : CSD[49:47]
+            read_bl_len =
+                ext_bits16(sd_card_p->state.CSD, 83, 80);  // read_bl_len   : CSD[83:80] - the
+                                                           // *maximum* read block length
+            block_len = 1 << read_bl_len;                  // BLOCK_LEN = 2^READ_BL_LEN
+            mult = 1 << (c_size_mult + 2);  // MULT = 2^C_SIZE_MULT+2 (C_SIZE_MULT < 8)
+            blocknr = (c_size + 1) * mult;  // BLOCKNR = (C_SIZE+1) * MULT
+            capacity = (uint64_t)blocknr * block_len;  // memory capacity = BLOCKNR * BLOCK_LEN
             blocks = capacity / sd_block_size;
 
             (*printer)("Standard Capacity: c_size: %" PRIu32 "\r\n", c_size);
             (*printer)("Sectors: 0x%llx : %llu\r\n", blocks, blocks);
-            (*printer)("Capacity: 0x%llx : %llu MiB\r\n", capacity, (capacity / (1024U * 1024U)));
+            (*printer)("Capacity: 0x%llx : %llu MiB\r\n", capacity,
+                       (capacity / (1024U * 1024U)));
             break;
 
         case 1:
-            hc_c_size = ext_bits16(sd_card_p->state.CSD, 69, 48);  // device size : C_SIZE : [69:48]
-            blocks = (hc_c_size + 1) << 10;                        // block count = C_SIZE+1) * 1K
-                                                                   // byte (512B is block size)
+            hc_c_size =
+                ext_bits16(sd_card_p->state.CSD, 69, 48);  // device size : C_SIZE : [69:48]
+            blocks = (hc_c_size + 1) << 10;                // block count = C_SIZE+1) * 1K
+                                                           // byte (512B is block size)
 
             /* ERASE_BLK_EN
-            The ERASE_BLK_EN defines the granularity of the unit size of the data to be erased. The erase
-            operation can erase either one or multiple units of 512 bytes or one or multiple units (or sectors) of
-            SECTOR_SIZE. If ERASE_BLK_EN=0, the host can erase one or multiple units of SECTOR_SIZE.
-            If ERASE_BLK_EN=1 the host can erase one or multiple units of 512 bytes.
+            The ERASE_BLK_EN defines the granularity of the unit size of the data to be erased.
+            The erase operation can erase either one or multiple units of 512 bytes or one or
+            multiple units (or sectors) of SECTOR_SIZE. If ERASE_BLK_EN=0, the host can erase
+            one or multiple units of SECTOR_SIZE. If ERASE_BLK_EN=1 the host can erase one or
+            multiple units of 512 bytes.
             */
             erase_single_block_enable = ext_bits16(sd_card_p->state.CSD, 46, 46);
 
             /* SECTOR_SIZE
-            The size of an erasable sector. The content of this register is a 7-bit binary coded value, defining the
-            number of write blocks. The actual size is computed by increasing this number
-            by one. A value of zero means one write block, 127 means 128 write blocks.
+            The size of an erasable sector. The content of this register is a 7-bit binary coded
+            value, defining the number of write blocks. The actual size is computed by
+            increasing this number by one. A value of zero means one write block, 127 means 128
+            write blocks.
             */
             erase_sector_size = ext_bits16(sd_card_p->state.CSD, 45, 39) + 1;
 
             (*printer)("SDHC/SDXC Card: hc_c_size: %" PRIu32 "\r\n", hc_c_size);
             (*printer)("Sectors: %llu\r\n", blocks);
-            (*printer)("Capacity: %llu MiB (%llu MB)\r\n", blocks / 2048, blocks * sd_block_size / 1000000);
-            (*printer)("ERASE_BLK_EN: %s\r\n", erase_single_block_enable ? "units of 512 bytes" : "units of SECTOR_SIZE");
-            (*printer)("SECTOR_SIZE (size of an erasable sector): %d (%lu bytes)\r\n", erase_sector_size,
+            (*printer)("Capacity: %llu MiB (%llu MB)\r\n", blocks / 2048,
+                       blocks * sd_block_size / 1000000);
+            (*printer)("ERASE_BLK_EN: %s\r\n", erase_single_block_enable
+                                                   ? "units of 512 bytes"
+                                                   : "units of SECTOR_SIZE");
+            (*printer)("SECTOR_SIZE (size of an erasable sector): %d (%lu bytes)\r\n",
+                       erase_sector_size,
                        (uint32_t)(erase_sector_size ? 512 : 1) * erase_sector_size);
             break;
 

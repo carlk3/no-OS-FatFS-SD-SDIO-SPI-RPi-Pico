@@ -36,7 +36,6 @@ target_compile_definitions(command_line PRIVATE
 #   PICO_HEAP_SIZE=0x20000
 )
 
-# target_compile_options(command_line PUBLIC -Wall -Wextra -Wno-unused-function -Wno-unused-parameter)
 target_compile_options(command_line PUBLIC 
   -Wall 
   -Wextra 

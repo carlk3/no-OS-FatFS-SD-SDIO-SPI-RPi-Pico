@@ -16,7 +16,7 @@ specific language governing permissions and limitations under the License.
 
 #include <stdint.h>
 #include "sd_card.h"
-#include "spi.h"
+#include "my_spi.h"
 
 #ifdef NDEBUG
 #pragma GCC diagnostic ignored "-Wunused-variable"

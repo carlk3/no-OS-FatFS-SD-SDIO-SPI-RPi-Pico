@@ -35,7 +35,7 @@ specific language governing permissions and limitations under the License.
 #include <stdint.h>
     
 char crc7(const uint8_t* data, int length);
-unsigned short crc16(const char* data, int length);
+unsigned short crc16(uint8_t * data, int length);
 void update_crc16(unsigned short *pCrc16, const char data[], size_t length);
 
 #endif

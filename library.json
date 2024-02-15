@@ -81,7 +81,7 @@
           "+<sd_driver/SPI/crc.c>",
           "+<sd_driver/SPI/sd_card_spi.c>",
           "+<sd_driver/SPI/sd_spi.c>",
-          "+<sd_driver/SPI/spi.c>",
+          "+<sd_driver/SPI/my_spi.c>",
           "+<src/f_util.c>",
           "+<src/FatFsSd.cpp>",
           "+<src/glue.c>",

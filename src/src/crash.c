@@ -16,7 +16,6 @@ specific language governing permissions and limitations under the License.
 #include <time.h>
 //
 #include "pico/stdlib.h"
-#include "RP2040.h"
 //
 #include "my_debug.h"
 #include "rtc.h"
