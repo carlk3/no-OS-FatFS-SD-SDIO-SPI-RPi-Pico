@@ -12,9 +12,10 @@
 #include <string.h>
 #include <stdlib.h>
 //
-#include <hardware/dma.h>
-#include <hardware/gpio.h>
-#include <hardware/pio.h>
+#include "hardware/dma.h"
+#include "hardware/gpio.h"
+#include "hardware/pio.h"
+#include "RP2040.h"
 //
 #include "dma_interrupts.h"
 #include "hw_config.h"
