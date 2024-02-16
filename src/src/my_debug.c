@@ -19,8 +19,6 @@ specific language governing permissions and limitations under the License.
 //
 #include "pico/stdlib.h"
 //
-#include <RP2040.h>
-
 #include "crash.h"
 #include "my_debug.h"
 

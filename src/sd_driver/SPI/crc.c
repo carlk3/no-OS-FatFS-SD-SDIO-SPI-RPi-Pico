@@ -84,6 +84,7 @@ static const unsigned short m_Crc16Table[256] = {0x0000, 0x1021, 0x2042,
 	0x8FD9, 0x9FF8, 0x6E17, 0x7E36, 0x4E55, 0x5E74, 0x2E93, 0x3EB2, 0x0ED1,
 	0x1EF0};
 
+__attribute__((optimize("O3")))
 char crc7(const uint8_t* data, int length)
 {
 	//Calculate the CRC7 checksum for the specified data block

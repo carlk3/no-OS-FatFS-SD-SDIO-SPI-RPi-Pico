@@ -20,11 +20,6 @@ specific language governing permissions and limitations under the License.
 extern "C" {
 #endif
 
-typedef struct sd_spi_if_state_t {
-    bool ongoing_mlt_blk_wrt;
-    uint32_t cont_sector_wrt;
-} sd_spi_if_state_t;
-
 void sd_spi_ctor(sd_card_t *sd_card_p);  // Constructor for sd_card_t
 uint32_t sd_go_idle_state(sd_card_t *sd_card_p);
 

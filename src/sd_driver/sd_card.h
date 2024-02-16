@@ -42,6 +42,11 @@ extern "C" {
 
 typedef enum { SD_IF_NONE, SD_IF_SPI, SD_IF_SDIO } sd_if_t;
 
+typedef struct sd_spi_if_state_t {
+    bool ongoing_mlt_blk_wrt;
+    uint32_t cont_sector_wrt;
+} sd_spi_if_state_t;
+
 typedef struct sd_spi_if_t {
     spi_t *spi;
     // Slave select is here instead of in spi_t because multiple SDs can share an SPI.
