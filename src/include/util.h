@@ -14,7 +14,6 @@ specific language governing permissions and limitations under the License.
 
 #pragma once
 
-#include <RP2040.h>
 #include <stddef.h>    
 #include <stdint.h>
 #include <string.h>

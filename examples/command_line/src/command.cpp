@@ -9,6 +9,7 @@
 #include "hardware/clocks.h" 
 #include "hardware/rtc.h"
 #include "pico/stdlib.h"
+#include "RP2040.h"
 //
 
 #include "f_util.h"
@@ -589,9 +590,8 @@ static void clr(const size_t argc, const char *argv[]) {
 static void run_test(const size_t argc, const char *argv[]) {    
     if (!expect_argc(argc, argv, 0)) return;
 
-    // void trigger_hard_fault() {
-    void (*bad_instruction)() = (void (*)())0xE0000000;
-    bad_instruction();
+    extern bool my_test();
+    my_test();
 }
 
 static void run_help(const size_t argc, const char *argv[]);
