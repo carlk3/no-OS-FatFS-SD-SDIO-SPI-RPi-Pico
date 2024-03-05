@@ -756,8 +756,9 @@ Use this as a starting point for your own data logging application!
 You might also need to pick up the library in CMakeLists.txt:
 ```CMake
 add_subdirectory(no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/src build)
-target_link_libraries(_my_app_ src)
+target_link_libaries(${PROGRAM_NAME} no-OS-FatFS-SD-SDIO-SPI-RPi-Pico) 
 ```
+(where `${PROGRAM_NAME}` is your target `project`)
 and `#include "ff.h"`.
 
 Happy hacking!

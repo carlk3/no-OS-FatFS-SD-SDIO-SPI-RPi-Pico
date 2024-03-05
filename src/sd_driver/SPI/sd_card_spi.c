@@ -469,7 +469,7 @@ static block_dev_err_t sd_cmd(sd_card_t *sd_card_p, const cmdSupported cmd, uint
     // No need to wait for card to be ready when sending the stop command
     if (CMD12_STOP_TRANSMISSION != cmd && CMD0_GO_IDLE_STATE != cmd) {
         if (false == sd_wait_ready(sd_card_p, SD_COMMAND_TIMEOUT)) {
-            EMSG_PRINTF("%s:%d: Card not ready yet\n", __FILE__, __LINE__);
+            DBG_PRINTF("%s:%d: Card not ready yet\n", __FILE__, __LINE__);
             return SD_BLOCK_DEVICE_ERROR_NO_RESPONSE;
         }
     }
@@ -480,13 +480,13 @@ static block_dev_err_t sd_cmd(sd_card_t *sd_card_p, const cmdSupported cmd, uint
             response = sd_cmd_spi(sd_card_p, CMD55_APP_CMD, 0x0);
             // Wait for card to be ready after CMD55
             if (false == sd_wait_ready(sd_card_p, SD_COMMAND_TIMEOUT)) {
-                EMSG_PRINTF("%s:%d: Card not ready yet\n", __FILE__, __LINE__);
+                DBG_PRINTF("%s:%d: Card not ready yet\n", __FILE__, __LINE__);
             }
         }
         // Send command over SPI interface
         response = sd_cmd_spi(sd_card_p, cmd, arg);
         if (R1_NO_RESPONSE == response) {
-            EMSG_PRINTF("No response CMD:%d\n", cmd);
+            DBG_PRINTF("No response CMD:%d\n", cmd);
             continue;
         }
         break;
@@ -497,17 +497,17 @@ static block_dev_err_t sd_cmd(sd_card_t *sd_card_p, const cmdSupported cmd, uint
     }
     // Process the response R1  : Exit on CRC/Illegal command error/No response
     if (R1_NO_RESPONSE == response) {
-        EMSG_PRINTF("No response CMD:%d response: 0x%" PRIx32 "\n", cmd,
+        DBG_PRINTF("No response CMD:%d response: 0x%" PRIx32 "\n", cmd,
                    response);
         return SD_BLOCK_DEVICE_ERROR_NO_RESPONSE;
     }
     if (response & R1_COM_CRC_ERROR && ACMD23_SET_WR_BLK_ERASE_COUNT != cmd) {
-        EMSG_PRINTF("CRC error CMD:%d response 0x%" PRIx32 "\n", cmd, response);
+        DBG_PRINTF("CRC error CMD:%d response 0x%" PRIx32 "\n", cmd, response);
         return SD_BLOCK_DEVICE_ERROR_CRC;  // CRC error
     }
     if (response & R1_ILLEGAL_COMMAND) {
         if (ACMD23_SET_WR_BLK_ERASE_COUNT != cmd)
-            EMSG_PRINTF("Illegal command CMD:%d response 0x%" PRIx32 "\n", cmd,
+            DBG_PRINTF("Illegal command CMD:%d response 0x%" PRIx32 "\n", cmd,
                        response);
         if (CMD8_SEND_IF_COND == cmd) {
             // Illegal command is for Ver1 or not SD Card
