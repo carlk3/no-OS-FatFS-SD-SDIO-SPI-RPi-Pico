@@ -69,6 +69,8 @@ int __attribute__((weak)) info_message_printf(const char *fmt, ...) {
     return cw;
 }
 int __attribute__((weak)) debug_message_printf(const char *func, int line, const char *fmt, ...) {
+    (void)func;
+    (void)line;
     va_list args;
     va_start(args, fmt);
     int cw = vprintf(fmt, args);

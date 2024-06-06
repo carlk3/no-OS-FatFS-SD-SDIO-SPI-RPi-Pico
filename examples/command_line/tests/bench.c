@@ -166,7 +166,7 @@ static void bench_test(FIL* file_p, uint8_t buf[BUF_SIZE]) {
     }
     IMSG_PRINTF("\nDone\n");
 }
-static void bench_open_close(sd_card_t* sd_card_p, uint8_t* buf) {
+static void bench_open_close(uint8_t* buf) {
     // Open or create file.
     // FA_CREATE_ALWAYS:
     //	Creates a new file.
@@ -246,7 +246,7 @@ void bench(char const* logdrv) {
     }
     buf[BUF_SIZE - 1] = '\n';
 
-    bench_open_close(sd_card_p, buf);
+    bench_open_close(buf);
 
     free(buf);
 }

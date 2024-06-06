@@ -97,6 +97,10 @@ void assert_case_not_func(const char *file, int line, const char *func, int v);
     (assert_case_not_func(__FILE__, __LINE__, __func__, __v))
 #endif
 static inline void dump_bytes(size_t num, uint8_t bytes[]) {
+#if !DBG_PRINTF
+    (void)num;
+    (void)bytes;
+#else
     DBG_PRINTF("     ");
     for (size_t j = 0; j < 16; ++j) {
         DBG_PRINTF("%02hhx", j);
@@ -118,6 +122,7 @@ static inline void dump_bytes(size_t num, uint8_t bytes[]) {
         }
     }
     DBG_PRINTF("\n");
+#endif
 }
 
 void dump8buf(char *buf, size_t buf_sz, uint8_t *pbytes, size_t nbytes);

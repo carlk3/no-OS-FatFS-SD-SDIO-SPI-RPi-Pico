@@ -221,11 +221,6 @@ bool sd_sdio_isBusy(sd_card_t *sd_card_p)
     return (sio_hw->gpio_in & (1 << sd_card_p->sdio_if_p->D0_gpio)) == 0;
 }
 
-uint32_t sd_sdio_kHzSdClk(sd_card_t *sd_card_p)
-{
-    return 0;
-}
-
 bool sd_sdio_readOCR(sd_card_t *sd_card_p, uint32_t* ocr)
 {
     // SDIO mode does not have CMD58, but main program uses this to
@@ -271,11 +266,6 @@ bool sd_sdio_stopTransmission(sd_card_t *sd_card_p, bool blocking)
             return true;
         }
     }
-}
-
-bool sd_sdio_syncDevice(sd_card_t *sd_card_p)
-{
-    return true;
 }
 
 uint8_t sd_sdio_type(sd_card_t *sd_card_p) // const
