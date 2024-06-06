@@ -39,7 +39,6 @@ target_compile_definitions(command_line PRIVATE
 target_compile_options(command_line PUBLIC 
   -Wall 
   -Wextra 
-  -Wno-unused-parameter 
   -Wstack-usage=2048 
   -fanalyzer 
 )
