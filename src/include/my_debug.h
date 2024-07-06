@@ -1,40 +1,51 @@
 /* my_debug.h
 Copyright 2021 Carl John Kugler III
 
-Licensed under the Apache License, Version 2.0 (the License); you may not use 
-this file except in compliance with the License. You may obtain a copy of the 
+Licensed under the Apache License, Version 2.0 (the License); you may not use
+this file except in compliance with the License. You may obtain a copy of the
 License at
 
-   http://www.apache.org/licenses/LICENSE-2.0 
-Unless required by applicable law or agreed to in writing, software distributed 
-under the License is distributed on an AS IS BASIS, WITHOUT WARRANTIES OR 
-CONDITIONS OF ANY KIND, either express or implied. See the License for the 
+   http://www.apache.org/licenses/LICENSE-2.0
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an AS IS BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 */
 #pragma once
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
+#include <stdio.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #ifdef ANALYZER
-#  define TRIG() gpio_put(15, 1)  // DEBUG
-#else 
-#  define TRIG()
+#define TRIG() gpio_put(15, 1)  // DEBUG
+#else
+#define TRIG()
 #endif
 
 /* USE_PRINTF
-If this is defined and not zero, 
+If this is defined and not zero,
 these message output functions will use the Pico SDK's stdout.
 */
 
 /* USE_DBG_PRINTF
-If this is not defined or is zero or NDEBUG is defined, 
+If this is not defined or is zero or NDEBUG is defined,
 DBG_PRINTF statements will be effectively stripped from the code.
+*/
+
+/* Function Attribute ((weak))
+The weak attribute causes a declaration of an external symbol to be emitted as a weak symbol
+rather than a global. This is primarily useful in defining library functions that can be
+overridden in user code, though it can also be used with non-function declarations. The
+overriding symbol must have the same type as the weak symbol.
+https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html
+
+You can override these functions in your application to redirect "stdout"-type messages.
 */
 
 /* Single string output callbacks: send message output somewhere.
@@ -42,20 +53,23 @@ To use these, do not define the USE_PRINTF compile definition,
 and override these "weak" functions by strongly implementing them in user code.
 The weak implementations do nothing.
  */
-void put_out_error_message(const char *s);
-void put_out_info_message(const char *s);
-void put_out_debug_message(const char *s);
+void put_out_error_message(const char *s) __attribute__((weak));
+void put_out_info_message(const char *s) __attribute__((weak));
+void put_out_debug_message(const char *s) __attribute__((weak));
 
 // https://gcc.gnu.org/onlinedocs/gcc-3.2.3/cpp/Variadic-Macros.html
 
-int error_message_printf(const char *func, int line, const char *fmt, ...) __attribute__ ((format (__printf__, 3, 4)));
+int error_message_printf(const char *func, int line, const char *fmt, ...)
+    __attribute__((format(__printf__, 3, 4), weak));
 #ifndef EMSG_PRINTF
 #define EMSG_PRINTF(fmt, ...) error_message_printf(__func__, __LINE__, fmt, ##__VA_ARGS__)
 #endif
 
-int error_message_printf_plain(const char *fmt, ...) __attribute__ ((format (__printf__, 1, 2)));
+int error_message_printf_plain(const char *fmt, ...)
+    __attribute__((format(__printf__, 1, 2), weak));
 
-int debug_message_printf(const char *func, int line, const char *fmt, ...) __attribute__ ((format (__printf__, 3, 4)));
+int debug_message_printf(const char *func, int line, const char *fmt, ...)
+    __attribute__((format(__printf__, 3, 4), weak));
 #ifndef DBG_PRINTF
 #  if defined(USE_DBG_PRINTF) && USE_DBG_PRINTF && !defined(NDEBUG)
 #    define DBG_PRINTF(fmt, ...) debug_message_printf(__func__, __LINE__, fmt, ##__VA_ARGS__)
@@ -64,37 +78,37 @@ int debug_message_printf(const char *func, int line, const char *fmt, ...) __att
 #  endif
 #endif
 
-int info_message_printf(const char *fmt, ...) __attribute__ ((format (__printf__, 1, 2)));
+int info_message_printf(const char *fmt, ...) __attribute__((format(__printf__, 1, 2), weak));
 #ifndef IMSG_PRINTF
 #define IMSG_PRINTF(fmt, ...) info_message_printf(fmt, ##__VA_ARGS__)
 #endif
 
-/* For passing an output function as an argument */
-typedef int (*printer_t)(const char* format, ...);
+void lock_printf();
+void unlock_printf();
 
-void my_assert_func(const char *file, int line, const char *func, const char *pred) __attribute__((noreturn));
+void my_assert_func(const char *file, int line, const char *func, const char *pred)
+    __attribute__((noreturn));
 #define myASSERT(__e) \
     { ((__e) ? (void)0 : my_assert_func(__func__, __LINE__, __func__, #__e)); }
 
-void assert_always_func(const char *file, int line, const char *func,
-                        const char *pred);
+void assert_always_func(const char *file, int line, const char *func, const char *pred)
+    __attribute__((noreturn));
 #define ASSERT_ALWAYS(__e) \
-    ((__e) ? (void)0 : assert_always_func(__FILE__, __LINE__, __func__, #__e))
+    ((__e) ? (void)0 : my_assert_func(__FILE__, __LINE__, __func__, #__e))
 
-void assert_case_is(const char *file, int line, const char *func, int v,
-                    int expected);
+void assert_case_is(const char *file, int line, const char *func, int v, int expected)
+    __attribute__((noreturn));
 #define ASSERT_CASE_IS(__v, __e) \
     ((__v == __e) ? (void)0 : assert_case_is(__FILE__, __LINE__, __func__, __v, __e))
 
-void assert_case_not_func(const char *file, int line, const char *func, int v);
-#define ASSERT_CASE_NOT(__v) \
-    (assert_case_not_func(__FILE__, __LINE__, __func__, __v))
+void assert_case_not_func(const char *file, int line, const char *func, int v)
+    __attribute__((noreturn));
+#define ASSERT_CASE_NOT(__v) (assert_case_not_func(__FILE__, __LINE__, __func__, __v))
 
 #ifdef NDEBUG /* required by ANSI standard */
 #define DBG_ASSERT_CASE_NOT(__e) ((void)0)
 #else
-#define DBG_ASSERT_CASE_NOT(__v) \
-    (assert_case_not_func(__FILE__, __LINE__, __func__, __v))
+#define DBG_ASSERT_CASE_NOT(__v) (assert_case_not_func(__FILE__, __LINE__, __func__, __v))
 #endif
 static inline void dump_bytes(size_t num, uint8_t bytes[]) {
 #if !DBG_PRINTF
@@ -111,7 +125,7 @@ static inline void dump_bytes(size_t num, uint8_t bytes[]) {
         }
     }
     for (size_t i = 0; i < num; i += 16) {
-        DBG_PRINTF("%04x ", i);        
+        DBG_PRINTF("%04x ", i);
         for (size_t j = 0; j < 16 && i + j < num; ++j) {
             DBG_PRINTF("%02hhx", bytes[i + j]);
             if (j < 15)

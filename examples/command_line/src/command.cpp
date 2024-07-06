@@ -8,6 +8,7 @@
 #include "hardware/adc.h"
 #include "hardware/clocks.h" 
 #include "hardware/rtc.h"
+#include "pico/stdio.h"
 #include "pico/stdlib.h"
 #include "RP2040.h"
 //

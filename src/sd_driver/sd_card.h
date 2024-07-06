@@ -45,6 +45,7 @@ typedef enum { SD_IF_NONE, SD_IF_SPI, SD_IF_SDIO } sd_if_t;
 typedef struct sd_spi_if_state_t {
     bool ongoing_mlt_blk_wrt;
     uint32_t cont_sector_wrt;
+    uint32_t n_wrt_blks_reqd;
 } sd_spi_if_state_t;
 
 typedef struct sd_spi_if_t {

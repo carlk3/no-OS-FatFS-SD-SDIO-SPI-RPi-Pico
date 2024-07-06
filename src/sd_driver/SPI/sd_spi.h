@@ -15,8 +15,9 @@ specific language governing permissions and limitations under the License.
 #pragma once
 
 #include <stdint.h>
-#include "sd_card.h"
+//
 #include "my_spi.h"
+#include "sd_card.h"
 
 #ifdef NDEBUG
 #pragma GCC diagnostic ignored "-Wunused-variable"
@@ -30,7 +31,6 @@ extern "C" {
 tx or rx can be NULL if not important. */
 void sd_spi_go_low_frequency(sd_card_t *this);
 void sd_spi_go_high_frequency(sd_card_t *this);
-void sd_spi_deselect_pulse(sd_card_t *sd_card_p);
 
 /* 
 After power up, the host starts the clock and sends the initializing sequence on the CMD line. 
@@ -73,6 +73,12 @@ static inline void sd_spi_deselect(sd_card_t *sd_card_p) {
     deasserted.
     */
     sd_spi_write(sd_card_p, SPI_FILL_CHAR);
+}
+/* Some SD cards want to be deselected between every bus transaction */
+static inline void sd_spi_deselect_pulse(sd_card_t *sd_card_p) {
+    sd_spi_deselect(sd_card_p);
+    // tCSH Pulse duration, CS high 200 ns
+    sd_spi_select(sd_card_p);
 }
 
 static inline void sd_spi_lock(sd_card_t *sd_card_p) {
