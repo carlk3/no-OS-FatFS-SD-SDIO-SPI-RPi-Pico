@@ -6,8 +6,8 @@ C library's Standard Input/Output (stdio) buffering.
 Typical output:
 ```
 Hello, world!
-Time without buffering: 5301 ms
-Time with buffering: 2581 ms
+Time without buffering: 7840 ms
+Time with buffering: 3207 ms
 Goodbye, world!
 ```
 showing a speedup of greater than 2X.

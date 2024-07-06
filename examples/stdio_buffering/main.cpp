@@ -12,7 +12,7 @@
 #include "file_stream.h"
 #include "hw_config.h"
 
-#define DRIVE "2:"
+#define DRIVE "0:"
 #define ITERATIONS 100000
 
 #if defined(NDEBUG)

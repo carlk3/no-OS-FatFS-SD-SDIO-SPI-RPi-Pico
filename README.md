@@ -22,6 +22,11 @@ which use the C library's
 [fopencookie—open a stream with custom callbacks](https://sourceware.org/newlib/libc.html#fopencookie)
 API to put a buffered Standard Input/Output (stdio) wrapper around the
 [FreeRTOS-Plus-FAT Standard API](https://www.freertos.org/FreeRTOS-Plus/FreeRTOS_Plus_FAT/Standard_File_System_API.html).
+* Added
+[examples/stdio_buffering/](https://github.com/carlk3/FreeRTOS-FAT-CLI-for-RPi-Pico/tree/master/examples/stdio_buffering)
+which shows how to use the C library's Standard Input/Output (stdio) buffering to achieve significant
+(up to 2X) speedups in many applications.
+* See [Appendix D: Performance Tuning Tips](#appendix-d-performance-tuning-tips).
 ### v2.3.2
 Fix initialization problem when multiple SD cards share an SPI bus. The fix puts all cards into SPI mode at driver initialization time (rather than deferring until media initialization time).
 ### v2.3.1

@@ -24,17 +24,29 @@ specific language governing permissions and limitations under the License.
 //
 #include "my_debug.h"
 
+/* Function Attribute ((weak))
+The weak attribute causes a declaration of an external symbol to be emitted as a weak symbol
+rather than a global. This is primarily useful in defining library functions that can be
+overridden in user code, though it can also be used with non-function declarations. The
+overriding symbol must have the same type as the weak symbol.
+https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html
+
+You can override these functions in your application to redirect "stdout"-type messages.
+*/
+
 /* Single string output callbacks */
 
-void put_out_error_message(const char *s) { (void)s; }
-void put_out_info_message(const char *s) { (void)s; }
-void put_out_debug_message(const char *s) { (void)s; }
+void __attribute__((weak)) put_out_error_message(const char *s) { (void)s; }
+void __attribute__((weak)) put_out_info_message(const char *s) { (void)s; }
+void __attribute__((weak)) put_out_debug_message(const char *s) { (void)s; }
 
 /* "printf"-style output callbacks */
 
 #if defined(USE_PRINTF) && USE_PRINTF
 
-int error_message_printf(const char *func, int line, const char *fmt, ...) {
+int __attribute__((weak)) error_message_printf(const char *func, int line, 
+        const char *fmt, ...) 
+{
     printf("%s:%d: ", func, line);
     va_list args;
     va_start(args, fmt);
@@ -44,7 +56,7 @@ int error_message_printf(const char *func, int line, const char *fmt, ...) {
     fflush(stdout);
     return cw;
 }
-int error_message_printf_plain(const char *fmt, ...) {
+int __attribute__((weak)) error_message_printf_plain(const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     int cw = vprintf(fmt, args);
@@ -53,15 +65,20 @@ int error_message_printf_plain(const char *fmt, ...) {
     fflush(stdout);
     return cw;
 }
-int info_message_printf(const char *fmt, ...) {
+int __attribute__((weak)) info_message_printf(const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     int cw = vprintf(fmt, args);
     va_end(args);
     return cw;
 }
-int debug_message_printf(const char *func, int line, const char *fmt, ...) {
-    printf("%s:%d: ", func, line);
+int __attribute__((weak)) debug_message_printf(const char *func, int line,  
+        const char *fmt, ...) 
+{
+#ifndef NDEBUG
+    (void) func;
+    (void) line;
+#endif
     va_list args;
     va_start(args, fmt);
     int cw = vprintf(fmt, args);
@@ -75,7 +92,9 @@ int debug_message_printf(const char *func, int line, const char *fmt, ...) {
 
 /* These will truncate at 256 bytes. You can tell by checking the return code. */
 
-int error_message_printf(const char *func, int line, const char *fmt, ...) {
+int __attribute__((weak)) error_message_printf(const char *func, int line,  
+        const char *fmt, ...) 
+{
     char buf[256] = {0};
     va_list args;
     va_start(args, fmt);
@@ -84,7 +103,7 @@ int error_message_printf(const char *func, int line, const char *fmt, ...) {
     va_end(args);
     return cw;
 }
-int error_message_printf_plain(const char *fmt, ...) {
+int __attribute__((weak)) error_message_printf_plain(const char *fmt, ...) {
     char buf[256] = {0};
     va_list args;
     va_start(args, fmt);
@@ -93,7 +112,7 @@ int error_message_printf_plain(const char *fmt, ...) {
     va_end(args);
     return cw;
 }
-int info_message_printf(const char *fmt, ...) {
+int __attribute__((weak)) info_message_printf(const char *fmt, ...) {
     char buf[256] = {0};
     va_list args;
     va_start(args, fmt);
@@ -102,7 +121,9 @@ int info_message_printf(const char *fmt, ...) {
     va_end(args);
     return cw;
 }
-int debug_message_printf(const char *func, int line, const char *fmt, ...) {
+int __attribute__((weak)) debug_message_printf(const char *func, int line,  
+        const char *fmt, ...) 
+{
     char buf[256] = {0};
     va_list args;
     va_start(args, fmt);
@@ -114,10 +135,10 @@ int debug_message_printf(const char *func, int line, const char *fmt, ...) {
 
 #endif
 
-void my_assert_func(const char *file, int line, const char *func, const char *pred) {
+void __attribute__((weak)) my_assert_func(const char *file, int line, const char *func,
+                                          const char *pred) {
     error_message_printf_plain("assertion \"%s\" failed: file \"%s\", line %d, function: %s\n",
                                pred, file, line, func);
-    fflush(stdout);
     __disable_irq(); /* Disable global interrupts. */
     capture_assert(file, line, func, pred);
 }

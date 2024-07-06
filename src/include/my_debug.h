@@ -38,38 +38,27 @@ If this is not defined or is zero or NDEBUG is defined,
 DBG_PRINTF statements will be effectively stripped from the code.
 */
 
-/* Function Attribute ((weak))
-The weak attribute causes a declaration of an external symbol to be emitted as a weak symbol
-rather than a global. This is primarily useful in defining library functions that can be
-overridden in user code, though it can also be used with non-function declarations. The
-overriding symbol must have the same type as the weak symbol.
-https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html
-
-You can override these functions in your application to redirect "stdout"-type messages.
-*/
-
 /* Single string output callbacks: send message output somewhere.
 To use these, do not define the USE_PRINTF compile definition,
 and override these "weak" functions by strongly implementing them in user code.
 The weak implementations do nothing.
  */
-void put_out_error_message(const char *s) __attribute__((weak));
-void put_out_info_message(const char *s) __attribute__((weak));
-void put_out_debug_message(const char *s) __attribute__((weak));
+void put_out_error_message(const char *s);
+void put_out_info_message(const char *s);
+void put_out_debug_message(const char *s);
 
 // https://gcc.gnu.org/onlinedocs/gcc-3.2.3/cpp/Variadic-Macros.html
 
 int error_message_printf(const char *func, int line, const char *fmt, ...)
-    __attribute__((format(__printf__, 3, 4), weak));
+    __attribute__((format(__printf__, 3, 4)));
 #ifndef EMSG_PRINTF
 #define EMSG_PRINTF(fmt, ...) error_message_printf(__func__, __LINE__, fmt, ##__VA_ARGS__)
 #endif
 
-int error_message_printf_plain(const char *fmt, ...)
-    __attribute__((format(__printf__, 1, 2), weak));
+int error_message_printf_plain(const char *fmt, ...) __attribute__((format(__printf__, 1, 2)));
 
 int debug_message_printf(const char *func, int line, const char *fmt, ...)
-    __attribute__((format(__printf__, 3, 4), weak));
+    __attribute__((format(__printf__, 3, 4)));
 #ifndef DBG_PRINTF
 #  if defined(USE_DBG_PRINTF) && USE_DBG_PRINTF && !defined(NDEBUG)
 #    define DBG_PRINTF(fmt, ...) debug_message_printf(__func__, __LINE__, fmt, ##__VA_ARGS__)
@@ -78,7 +67,7 @@ int debug_message_printf(const char *func, int line, const char *fmt, ...)
 #  endif
 #endif
 
-int info_message_printf(const char *fmt, ...) __attribute__((format(__printf__, 1, 2), weak));
+int info_message_printf(const char *fmt, ...) __attribute__((format(__printf__, 1, 2)));
 #ifndef IMSG_PRINTF
 #define IMSG_PRINTF(fmt, ...) info_message_printf(fmt, ##__VA_ARGS__)
 #endif
