@@ -15,9 +15,9 @@ It is wrapped up in a complete runnable project, with a little command line inte
 * Fix bug in SPI sd_write_blocks that caused single block writes to be sent with CMD25 WRITE_MULTIPLE_BLOCK
 instead of CMD24 WRITE_BLOCK.
 * Added
-[src/include/file_stream.h]
+[src/include/file_stream.h](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/blob/main/src/include/file_stream.h)
 and
-[src/src/file_stream.c]
+[src/src/file_stream.c](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/blob/main/src/src/file_stream.c)
 which use the C library's
 [fopencookie—open a stream with custom callbacks](https://sourceware.org/newlib/libc.html#fopencookie)
 API to put a buffered Standard Input/Output (stdio) wrapper around the
@@ -1032,10 +1032,10 @@ One quick and easy way to speed up many applications is to take advantage of the
 [fopencookie—open a stream with custom callbacks](https://sourceware.org/newlib/libc.html#fopencookie) and 
 [setvbuf—specify file or stream buffering](https://sourceware.org/newlib/libc.html#setvbuf)). 
 The application would use [fprintf](https://sourceware.org/newlib/libc.html#sprintf) instead of 
-[f_fprintf], 
+[f_fprintf](http://elm-chan.org/fsw/ff/doc/printf.html), 
 or 
 [fwrite](https://sourceware.org/newlib/libc.html#fwrite) instead of 
-[f_write],
+[f_write](http://elm-chan.org/fsw/ff/doc/write.html),
 for example.
 If you are using SDIO, it is critically important for performance to use `setvbuf` 
 to set the buffer to an `aligned` buffer. 
