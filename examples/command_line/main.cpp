@@ -44,6 +44,7 @@ static void process_card_detect_int() {
 
 // If the card is physically removed, unmount the filesystem:
 static void card_detect_callback(uint gpio, uint32_t events) {
+    (void)events;
     // This is actually an interrupt service routine!
     card_det_int_gpio = gpio;
     card_det_int_pend = true;

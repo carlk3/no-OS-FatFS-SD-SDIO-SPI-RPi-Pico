@@ -15,6 +15,8 @@ specific language governing permissions and limitations under the License.
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 //
 // Pico includes
 #include "pico/stdlib.h"

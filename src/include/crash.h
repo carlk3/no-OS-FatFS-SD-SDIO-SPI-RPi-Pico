@@ -116,9 +116,9 @@ __attribute__((noreturn)) void system_request_bootloader_entry(void);
 #endif
 
 void capture_assert(const char *file, int line, const char *func,
-                    const char *pred);
+                    const char *pred) __attribute__((noreturn));
 void capture_assert_case_not(const char *file, int line, const char *func,
-                             int v);
+                             int v) __attribute__((noreturn));
 
 int dump_crash_info(crash_info_t const *const pCrashInfo, int next,
                     char *const buf, size_t const buf_sz);

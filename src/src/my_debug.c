@@ -11,22 +11,24 @@ under the License is distributed on an AS IS BASIS, WITHOUT WARRANTIES OR
 CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 */
+
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 //
-#include "pico/stdlib.h"
 #include "RP2040.h"
+#include "pico/stdlib.h"
 //
 #include "crash.h"
+//
 #include "my_debug.h"
 
 /* Function Attribute ((weak))
-The weak attribute causes a declaration of an external symbol to be emitted as a weak symbol rather than a global.
-This is primarily useful in defining library functions that can be overridden in user code, though it can also be used with
-non-function declarations. The overriding symbol must have the same type as the weak symbol.
+The weak attribute causes a declaration of an external symbol to be emitted as a weak symbol
+rather than a global. This is primarily useful in defining library functions that can be
+overridden in user code, though it can also be used with non-function declarations. The
+overriding symbol must have the same type as the weak symbol.
 https://gcc.gnu.org/onlinedocs/gcc/Common-Function-Attributes.html
 
 You can override these functions in your application to redirect "stdout"-type messages.
@@ -42,7 +44,9 @@ void __attribute__((weak)) put_out_debug_message(const char *s) { (void)s; }
 
 #if defined(USE_PRINTF) && USE_PRINTF
 
-int __attribute__((weak)) error_message_printf(const char *func, int line, const char *fmt, ...) {
+int __attribute__((weak)) error_message_printf(const char *func, int line, 
+        const char *fmt, ...) 
+{
     printf("%s:%d: ", func, line);
     va_list args;
     va_start(args, fmt);
@@ -68,7 +72,13 @@ int __attribute__((weak)) info_message_printf(const char *fmt, ...) {
     va_end(args);
     return cw;
 }
-int __attribute__((weak)) debug_message_printf(const char *func, int line, const char *fmt, ...) {
+int __attribute__((weak)) debug_message_printf(const char *func, int line,  
+        const char *fmt, ...) 
+{
+#ifdef NDEBUG
+    (void) func;
+    (void) line;
+#endif
     va_list args;
     va_start(args, fmt);
     int cw = vprintf(fmt, args);
@@ -82,7 +92,9 @@ int __attribute__((weak)) debug_message_printf(const char *func, int line, const
 
 /* These will truncate at 256 bytes. You can tell by checking the return code. */
 
-int __attribute__((weak)) error_message_printf(const char *func, int line, const char *fmt, ...) {
+int __attribute__((weak)) error_message_printf(const char *func, int line,  
+        const char *fmt, ...) 
+{
     char buf[256] = {0};
     va_list args;
     va_start(args, fmt);
@@ -109,7 +121,9 @@ int __attribute__((weak)) info_message_printf(const char *fmt, ...) {
     va_end(args);
     return cw;
 }
-int __attribute__((weak)) debug_message_printf(const char *func, int line, const char *fmt, ...) {
+int __attribute__((weak)) debug_message_printf(const char *func, int line,  
+        const char *fmt, ...) 
+{
     char buf[256] = {0};
     va_list args;
     va_start(args, fmt);
@@ -121,31 +135,25 @@ int __attribute__((weak)) debug_message_printf(const char *func, int line, const
 
 #endif
 
-void __attribute__((weak)) my_assert_func(const char *file, int line, const char *func, const char *pred) {
-    error_message_printf_plain("assertion \"%s\" failed: file \"%s\", line %d, function: %s\n", pred, file, line, func);
+void __attribute__((weak)) my_assert_func(const char *file, int line, const char *func,
+                                          const char *pred) {
+    error_message_printf_plain("assertion \"%s\" failed: file \"%s\", line %d, function: %s\n",
+                               pred, file, line, func);
     __disable_irq(); /* Disable global interrupts. */
-    exit(1);
-}
-
-void assert_always_func(const char *file, int line, const char *func, const char *pred) {
-    TRIG();  // DEBUG
-    error_message_printf_plain("assertion \"%s\" failed: file \"%s\", line %d, function: %s\n", pred, file, line, func);
-    __disable_irq(); /* Disable global interrupts. */
-    exit(1);
+    capture_assert(file, line, func, pred);
 }
 
 void assert_case_not_func(const char *file, int line, const char *func, int v) {
-    TRIG();  // DEBUG
     char pred[128];
     snprintf(pred, sizeof pred, "case not %d", v);
-    assert_always_func(file, line, func, pred);
+    my_assert_func(file, line, func, pred);
 }
 
 void assert_case_is(const char *file, int line, const char *func, int v, int expected) {
     TRIG();  // DEBUG
     char pred[128];
     snprintf(pred, sizeof pred, "%d is %d", v, expected);
-    assert_always_func(file, line, func, pred);
+    my_assert_func(file, line, func, pred);
 }
 
 void dump8buf(char *buf, size_t buf_sz, uint8_t *pbytes, size_t nbytes) {
@@ -187,7 +195,8 @@ void hexdump_32(const char *s, const uint32_t *pwords, size_t nwords) {
     }
 }
 // nwords is size in bytes
-bool compare_buffers_8(const char *s0, const uint8_t *pbytes0, const char *s1, const uint8_t *pbytes1, const size_t nbytes) {
+bool compare_buffers_8(const char *s0, const uint8_t *pbytes0, const char *s1,
+                       const uint8_t *pbytes1, const size_t nbytes) {
     /* Verify the data. */
     if (0 != memcmp(pbytes0, pbytes1, nbytes)) {
         hexdump_8(s0, pbytes0, nbytes);
@@ -197,7 +206,8 @@ bool compare_buffers_8(const char *s0, const uint8_t *pbytes0, const char *s1, c
     return true;
 }
 // nwords is size in WORDS!
-bool compare_buffers_32(const char *s0, const uint32_t *pwords0, const char *s1, const uint32_t *pwords1, const size_t nwords) {
+bool compare_buffers_32(const char *s0, const uint32_t *pwords0, const char *s1,
+                        const uint32_t *pwords1, const size_t nwords) {
     /* Verify the data. */
     if (0 != memcmp(pwords0, pwords1, nwords * sizeof(uint32_t))) {
         hexdump_32(s0, pwords0, nwords);

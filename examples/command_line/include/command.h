@@ -1,5 +1,9 @@
 #pragma once
 
+#include <stdint.h>
+//
+#include "pico/stdlib.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

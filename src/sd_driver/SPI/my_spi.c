@@ -37,26 +37,26 @@ void spi_irq_handler(spi_t *spi_p) {
     assert(ok);
 }
 
-static bool chk_spi(spi_inst_t *spi) {
+static bool chk_spi(spi_inst_t *spi_p) {
     bool rc = true;
 
-    if (spi_get_const_hw(spi)->sr & SPI_SSPSR_BSY_BITS) {
+    if (spi_get_const_hw(spi_p)->sr & SPI_SSPSR_BSY_BITS) {
         DBG_PRINTF("\tSPI is busy\n");
         rc = false;
     }
-    if (spi_get_const_hw(spi)->sr & SPI_SSPSR_RFF_BITS) {
+    if (spi_get_const_hw(spi_p)->sr & SPI_SSPSR_RFF_BITS) {
         DBG_PRINTF("\tSPI Receive FIFO full\n");
         rc = false;
     }
-    if (spi_get_const_hw(spi)->sr & SPI_SSPSR_RNE_BITS) {
+    if (spi_get_const_hw(spi_p)->sr & SPI_SSPSR_RNE_BITS) {
         DBG_PRINTF("\tSPI Receive FIFO not empty\n");
         rc = false;
     }
-    if (!(spi_get_const_hw(spi)->sr & SPI_SSPSR_TNF_BITS)) {
+    if (!(spi_get_const_hw(spi_p)->sr & SPI_SSPSR_TNF_BITS)) {
         DBG_PRINTF("\tSPI Transmit FIFO is full\n");
         rc = false;
     }
-    if (!(spi_get_const_hw(spi)->sr & SPI_SSPSR_TFE_BITS)) {
+    if (!(spi_get_const_hw(spi_p)->sr & SPI_SSPSR_TFE_BITS)) {
         DBG_PRINTF("\tSPI Transmit FIFO is not empty\n");
         rc = false;
     }
@@ -154,7 +154,7 @@ bool spi_transfer_wait_complete(spi_t *spi_p, uint32_t timeout_ms) {
 //     element.
 bool spi_transfer(spi_t *spi_p, const uint8_t *tx, uint8_t *rx, size_t length) {
     spi_transfer_start(spi_p, tx, rx, length);
-    return spi_transfer_wait_complete(spi_p, 1000);
+    return spi_transfer_wait_complete(spi_p, 2000);
 }
 
 void spi_lock(spi_t *spi_p) {

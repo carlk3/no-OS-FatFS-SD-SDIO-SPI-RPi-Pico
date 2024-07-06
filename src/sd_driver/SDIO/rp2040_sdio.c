@@ -21,7 +21,7 @@
 #include "hw_config.h"
 #include "rp2040_sdio.h"
 #include "rp2040_sdio.pio.h"
-#include "portability.h"
+#include "delays.h"
 #include "sd_card.h"
 #include "my_debug.h"
 #include "util.h"

@@ -1,10 +1,10 @@
-#pragma once
-
-#include <stdint.h>
-//
-#include "pico/stdlib.h"
-
-/* Using millis() for timeouts
+/*
+ * delays.h
+ *
+ *  Created on: Apr 25, 2022
+ *      Author: carlk
+ */
+/* Using millis() or micros() for timeouts
 
 For example, 
 
@@ -45,10 +45,35 @@ call to millis() returns 0xFFFFFFFF:
     while (millis() < end)  // while (0xFFFFFFFF < 0x00000054)
 
 */
+
+#pragma once
+
+#include <stdint.h>
+//
+#include "pico/stdlib.h"
+#include "RP2040.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 static inline uint32_t millis() {
+    __COMPILER_BARRIER();
     return time_us_64() / 1000;
+    __COMPILER_BARRIER();
 }
 
 static inline void delay_ms(uint32_t ulTime_ms) {
     sleep_ms(ulTime_ms);
 }
+
+static inline uint64_t micros() {
+    __COMPILER_BARRIER();
+    return to_us_since_boot(get_absolute_time());
+    __COMPILER_BARRIER();
+}
+
+#ifdef __cplusplus
+}
+#endif
+/* [] END OF FILE */

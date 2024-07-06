@@ -73,7 +73,7 @@ uint32_t sd_sdio_errorLine() /* const */;
  */
 bool sd_sdio_isBusy();
 /** \return the SD clock frequency in kHz. */
-uint32_t sd_sdio_kHzSdClk();
+//uint32_t sd_sdio_kHzSdClk();
 /**
  * Read a 512 byte sector from an SD card.
  *
@@ -155,7 +155,7 @@ uint32_t sd_sdio_sectorCount(sd_card_t *sd_card_p);
  */
 bool sd_sdio_stopTransmission(sd_card_t *sd_card_p, bool blocking);
 /** \return success if sync successful. Not for user apps. */
-bool sd_sdio_syncDevice(sd_card_t *sd_card_p);
+//bool sd_sdio_syncDevice(sd_card_t *sd_card_p);
 /** Return the card type: SD V1, SD V2 or SDHC
  * \return 0 - SD V1, 1 - SD V2, or 3 - SDHC.
  */

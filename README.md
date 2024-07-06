@@ -1,5 +1,5 @@
 # no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
-# v2.3.2
+# v2.4.0
 
 ## C/C++ Library for SD Cards on the Pico
 
@@ -11,6 +11,22 @@ and a 4-bit wide Secure Digital Input Output (SDIO) driver derived from
 It is wrapped up in a complete runnable project, with a little command line interface, some self tests, and an example data logging application.
 
 ## What's new
+### v2.4.0
+* Fix bug in SPI sd_write_blocks that caused single block writes to be sent with CMD25 WRITE_MULTIPLE_BLOCK
+instead of CMD24 WRITE_BLOCK.
+* Added
+[src/include/file_stream.h]
+and
+[src/src/file_stream.c]
+which use the C library's
+[fopencookie—open a stream with custom callbacks](https://sourceware.org/newlib/libc.html#fopencookie)
+API to put a buffered Standard Input/Output (stdio) wrapper around the
+[FreeRTOS-Plus-FAT Standard API](https://www.freertos.org/FreeRTOS-Plus/FreeRTOS_Plus_FAT/Standard_File_System_API.html).
+* Added
+[examples/stdio_buffering/](https://github.com/carlk3/FreeRTOS-FAT-CLI-for-RPi-Pico/tree/master/examples/stdio_buffering)
+which shows how to use the C library's Standard Input/Output (stdio) buffering to achieve significant
+(up to 2X) speedups in many applications.
+* See [Appendix D: Performance Tuning Tips](#appendix-d-performance-tuning-tips).
 ### v2.3.2
 Fix initialization problem when multiple SD cards share an SPI bus. The fix puts all cards into SPI mode at driver initialization time (rather than deferring until media initialization time).
 ### v2.3.1
@@ -181,7 +197,7 @@ While FatFs has some support for “re-entrancy” or thread safety (where "thre
 - f_readdir
 - f_truncate
 
-There does not appear to be sufficient FAT and directory locking in FatFs to make operations like f_mkdir, f_chdir and f_getcwd thread safe. If your application has a static directory tree, it should be OK in a multi-tasking application with FatFs. Otherwise, you probably need to add some additional locking. 
+There does not appear to be sufficient FAT and directory locking in FatFs to make operations like `f_mkdir`, `f_chdir` and `f_getcwd` thread safe. If your application has a static directory tree, it should be OK in a multi-tasking application with FatFs. Otherwise, you probably need to add some additional locking. 
 
 Then, there are the facilities used for mutual exclusion and various ways of waiting (delay, wait for interrupt, etc.). This library uses the Pico SDK facilities (which are oriented towards multi-processing on the two cores), but FreeRTOS-FAT-CLI-for-RPi-Pico uses the FreeRTOS facilities, which put the waiting task into a Blocked state, allowing other, Ready tasks to run. 
 
@@ -985,10 +1001,16 @@ CD0||22|29|||CD|
 GND|||18, 23|||GND|GND
 3v3|||36|||3v3|3v3
 
-### Wiring: 
+### Wiring
 As you can see from the table above, the only new signals are CD1 and CS1. Otherwise, the new card is wired in parallel with the first card.
 ### Firmware
-* `hw_config.c` (or equivalent) must be edited to add a new instance to `static sd_card_t sd_cards[]` and its interface `sd_sdio_if_t`
+* [The hardware configuration](#customizing-for-the-hardware-configuration)
+must be edited to add a new instance of 
+[sd_card_t](#an-instance-of-sd_card_t-describes-the-configuration-of-one-sd-card-socket)
+and its interface
+[sd_sdio_if_t](#an-instance-of-sd_sdio_if_t-describes-the-configuration-of-one-sdio-to-sd-card-interface)
+or
+[sd_spi_if_t](#an-instance-of-sd_spi_if_t-describes-the-configuration-of-one-spi-to-sd-card-interface).
 * Edit `ff14a/source/ffconf.h`. In particular, `FF_VOLUMES`:
 ```C
 #define FF_VOLUMES		2
@@ -1005,6 +1027,33 @@ Obviously, set the baud rate as high as you can. (See
 TL;DR: In general, it is much faster to transfer a given number of bytes in one large write (or read) 
 than to transfer the same number of bytes in multiple smaller writes (or reads). 
 
+One quick and easy way to speed up many applications is to take advantage of the buffering built into the C library for standard I/O streams.
+(See 
+[fopencookie—open a stream with custom callbacks](https://sourceware.org/newlib/libc.html#fopencookie) and 
+[setvbuf—specify file or stream buffering](https://sourceware.org/newlib/libc.html#setvbuf)). 
+The application would use [fprintf](https://sourceware.org/newlib/libc.html#sprintf) instead of 
+[f_fprintf], 
+or 
+[fwrite](https://sourceware.org/newlib/libc.html#fwrite) instead of 
+[f_write],
+for example.
+If you are using SDIO, it is critically important for performance to use `setvbuf` 
+to set the buffer to an `aligned` buffer. 
+Also, the buffer should be a multiple of the SD block size, 512 bytes, in size.
+For example:
+```C
+    static char vbuf[1024] __attribute__((aligned));
+    int err = setvbuf(file_p, vbuf, _IOFBF, sizeof vbuf);
+```
+If you have a record-oriented application, 
+and the records are multiples of 512 bytes in size,
+you might not see a significant speedup.
+However, if, for example, you are writing text files with 
+no fixed record length, the speedup can be great.
+See
+[examples/stdio_buffering/](https://github.com/carlk3/FreeRTOS-FAT-CLI-for-RPi-Pico/tree/master/examples/stdio_buffering).
+
+Now, for the details:
 The modern SD card is a block device, meaning that the smallest addressable unit is a a block (or "sector") of 512 bytes. So, it helps performance if your write size is a multiple of 512. If it isn't, partial block writes involve reading the existing block, modifying it in memory, and writing it back out. With all the space in SD cards these days, it can be well worth it to pad a record length to a multiple of 512.
 
 Generally, flash memory has to be erased before it can be written, and the minimum erase size is the "allocation unit" or "segment":
