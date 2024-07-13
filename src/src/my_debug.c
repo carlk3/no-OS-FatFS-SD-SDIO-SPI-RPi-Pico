@@ -75,7 +75,7 @@ int __attribute__((weak)) info_message_printf(const char *fmt, ...) {
 int __attribute__((weak)) debug_message_printf(const char *func, int line,  
         const char *fmt, ...) 
 {
-#ifdef NDEBUG
+#if defined(NDEBUG) || !USE_DBG_PRINTF
     (void) func;
     (void) line;
 #endif
