@@ -1,5 +1,5 @@
 # no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
-# v2.4.0
+# v2.5.0
 
 ## C/C++ Library for SD Cards on the Pico
 
@@ -11,6 +11,10 @@ and a 4-bit wide Secure Digital Input Output (SDIO) driver derived from
 It is wrapped up in a complete runnable project, with a little command line interface, some self tests, and an example data logging application.
 
 ## What's new
+### v2.5.0
+* Refactor SPI sd_write_blocks
+* Drop support for SD Standard Capacity Memory Card (up to and including 2 GB). 
+SDSC Card uses byte unit address and SDHC and SDXC Cards (CCS=1) use block unit address (512 Bytes unit).
 ### v2.4.0
 * Fix bug in SPI sd_write_blocks that caused single block writes to be sent with CMD25 WRITE_MULTIPLE_BLOCK
 instead of CMD24 WRITE_BLOCK.
