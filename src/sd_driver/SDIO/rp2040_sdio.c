@@ -815,7 +815,7 @@ bool rp2040_sdio_init(sd_card_t *sd_card_p, float clk_div) {
     SDIO_PIO->input_sync_bypass |= (1 << SDIO_CLK) | (1 << SDIO_CMD) | (1 << SDIO_D0) | (1 << SDIO_D1) | (1 << SDIO_D2) | (1 << SDIO_D3);
 
     // Redirect GPIOs to PIO
-    enum gpio_function fn;
+   gpio_function_t fn;
     if (pio1 == SDIO_PIO) 
         fn = GPIO_FUNC_PIO1;
     else
