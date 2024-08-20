@@ -822,7 +822,7 @@ int iReturned, iExpectedReturn;
 	overwritten. */
 	pcBuffer = ( char * ) pvPortMalloc( xBufferSize + xOverwriteCheckBytes );
 	configASSERT( pcBuffer );
-	pulVerifyBuffer = ( uint32_t * ) pvPortMalloc( xBufferSize );
+	pulVerifyBuffer = ( uint32_t * ) pvPortMalloc( ( xBufferSize + sizeof( uint32_t ) - 1 ) & ~( sizeof( uint32_t ) - 1 ) );
 	configASSERT( pulVerifyBuffer );
 
 	/* Write a byte to the end of the buffer which is used to ensure nothing has

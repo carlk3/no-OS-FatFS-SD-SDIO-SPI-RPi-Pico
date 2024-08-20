@@ -33,10 +33,22 @@ specific language governing permissions and limitations under the License.
 
 #include <stddef.h>
 #include <stdint.h>
-    
-char crc7(const uint8_t* data, int length);
+
+extern const char m_Crc7Table[];    
+__attribute__((optimize("O3")))
+static inline char crc7(const uint8_t* data, int length) {
+	//Calculate the CRC7 checksum for the specified data block
+	char crc = 0;
+	for (int i = 0; i < length; i++) {
+		crc = m_Crc7Table[(crc << 1) ^ data[i]];
+	}
+
+	//Return the calculated checksum
+	return crc;
+}
+
 unsigned short crc16(uint8_t * data, int length);
-void update_crc16(unsigned short *pCrc16, const char data[], size_t length);
+
 
 #endif
 
