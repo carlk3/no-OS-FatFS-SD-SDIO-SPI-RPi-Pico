@@ -203,7 +203,6 @@ void setup() {
         .mosi_gpio = 11,
         .sck_gpio = 10,
         .baud_rate = 12 * 1000 * 1000,  // Actual frequency: 10416666
-        .DMA_IRQ_num = DMA_IRQ_1,
         .set_drive_strength = true,
         .mosi_gpio_drive_strength = GPIO_DRIVE_STRENGTH_12MA,
         .sck_gpio_drive_strength = GPIO_DRIVE_STRENGTH_12MA

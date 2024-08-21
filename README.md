@@ -1,5 +1,5 @@
 # no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
-# v2.6.0
+# v3.0.0
 
 ## C/C++ Library for SD Cards on the Pico
 
@@ -11,6 +11,10 @@ and a 4-bit wide Secure Digital Input Output (SDIO) driver derived from
 It is wrapped up in a complete runnable project, with a little command line interface, some self tests, and an example data logging application.
 
 ## What's new
+### v3.0.0
+* Migrate to **Raspberry Pi Pico SDK 2.0.0**
+* Simplify SPI wait for DMA transfer completion, including elimination of DMA interrupt handler
+For required migration actions, see [Appendix A: Migration actions](#appendix-a-migration-actions).
 ### v2.6.0
 * CRC performance improvements for SPI
 * Clean up `sd_write_blocks` in `sd_card_spi.c`
@@ -78,8 +82,6 @@ and the
 ## Resources Used
 * SPI attached cards:
   * One or two Serial Peripheral Interface (SPI) controllers may be used.
-  * For each SPI controller used, two DMA channels are needed. By default they are claimed with `dma_claim_unused_channel`.
-  * A configurable DMA IRQ is hooked with `irq_add_shared_handler` or `irq_set_exclusive_handler` (configurable) and enabled.
   * For each SPI controller used, one GPIO is needed for each of RX, TX, and SCK. Note: each SPI controller can only use a limited set of GPIOs for these functions.
   * For each SD card attached to an SPI controller, a GPIO is needed for slave (or "chip") select (SS or "CS"), and, optionally, another for Card Detect (CD or "DET").
 * SDIO attached cards:
@@ -91,8 +93,6 @@ and the
     * D1_gpio = D0_gpio + 1;
     * D2_gpio = D0_gpio + 2;
     * D3_gpio = D0_gpio + 3;
-
-SPI and SDIO can share the same DMA IRQ.
 
 For the complete 
 [examples/command_line](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/tree/main/examples/command_line) application, 
@@ -521,8 +521,6 @@ typedef struct spi_t {
     uint mosi_gpio;
     uint sck_gpio;
     uint baud_rate;
-    uint DMA_IRQ_num; // DMA_IRQ_0 or DMA_IRQ_1
-    bool use_exclusive_DMA_IRQ_handler;
     bool no_miso_gpio_pull_up;
 
     /* Drive strength levels for GPIO outputs.
@@ -565,8 +563,6 @@ typedef struct spi_t {
   The higher the baud rate, the faster the data transfer.
   However, the hardware might limit the usable baud rate.
   See [Pull Up Resistors and other electrical considerations](#pull-up-resistors-and-other-electrical-considerations).
-* `DMA_IRQ_num` Which IRQ to use for DMA. Defaults to DMA_IRQ_0. Set this to avoid conflicts with any exclusive DMA IRQ handlers that might be elsewhere in the system.
-* `use_exclusive_DMA_IRQ_handler` If true, the IRQ handler is added with the SDK's `irq_set_exclusive_handler`. The default is to add the handler with `irq_add_shared_handler`, so it's not exclusive. 
 * `no_miso_gpio_pull_up` According to the standard, an SD card's DO MUST be pulled up (at least for the old MMC cards). 
 However, it might be done externally. If `no_miso_gpio_pull_up` is false, the library will set the RP2040 GPIO internal pull up.
 * `set_drive_strength` Specifies whether or not to set the RP2040 GPIO pin drive strength.
@@ -581,12 +577,13 @@ If `set_drive_strength` is true, each GPIO's drive strength can be set individua
   GPIO_DRIVE_STRENGTH_8MA 
   GPIO_DRIVE_STRENGTH_12MA
   ```
-  You might want to do this for electrical tuning. A low drive strength can give a cleaner signal, with less overshoot and undershoot. 
+  You might want to do this for electrical tuning. A low drive strength can give a cleaner signal, with less overshoot and undershoot.
   In some cases, this allows operation at higher baud rates.
   In other cases, the signal lines might have a lot of capacitance to overcome.
   Then, a higher drive strength might allow operation at higher baud rates.
   A low drive strength generates less noise. This might be important in, say, audio applications.
-* `use_static_dma_channels` If true, the DMA channels provided in     `tx_dma` and `rx_dma` will be claimed with `dma_channel_claim` and used. If false, two DMA channels will be claimed with `dma_claim_unused_channel`.
+* `use_static_dma_channels` If true, the DMA channels provided in `tx_dma` and `rx_dma` will be claimed with `dma_channel_claim` and used.
+If false, two DMA channels will be claimed with `dma_claim_unused_channel`.
 * `tx_dma` The DMA channel to use for SPI TX. Ignored if `dma_claim_unused_channel` is false
 * `rx_dma` The DMA channel to use for SPI RX. Ignored if `dma_claim_unused_channel` is false
 ### You must provide a definition for the functions declared in `sd_driver/hw_config.h`:  
@@ -797,6 +794,11 @@ You are welcome to contribute to this project! Just submit a Pull Request in Git
 ![image](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/assets/50121841/8a28782e-84c4-40c8-8757-a063a4b83292)
 -->
 ## Appendix A: Migration actions
+### Migrating from v2
+* **Raspberry Pi Pico SDK** minimum version is now 2.0.0.
+* All references to the `DMA_IRQ_num` member must be removed from each instance of `spi_t` in the hardware configuration.
+* All references to the `use_exclusive_DMA_IRQ_handler` member must be removed from each instance of `spi_t` in the hardware configuration.
+
 ### Migrating from v1
 Any references to the `pcName` member must be removed from each instance of `sd_card_t` in the hardware configuration.
 

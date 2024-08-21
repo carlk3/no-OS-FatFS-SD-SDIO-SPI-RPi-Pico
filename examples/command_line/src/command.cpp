@@ -34,6 +34,7 @@ absolute_time_t next_log_time;
 #pragma GCC diagnostic ignored "-Wunused-function"
 #ifdef NDEBUG 
 #  pragma GCC diagnostic ignored "-Wunused-variable"
+#  pragma GCC diagnostic ignored "-Wunused-parameter"
 #endif
 
 static void missing_argument_msg() {

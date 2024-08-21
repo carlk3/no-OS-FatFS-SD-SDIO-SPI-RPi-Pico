@@ -180,6 +180,11 @@ void setup() {
 }
 
 //------------------------------------------------------------------------------
+/**
+ * Benchmarks the SD card by writing and reading a file.
+ *
+ * @param logdrv The logical drive name of the SD card to benchmark.
+ */
 static void bench(char const* logdrv) {
     File file;
     float s;
@@ -284,7 +289,6 @@ static void bench(char const* logdrv) {
             totalLatency += m;
             if (skipLatency) {
                 // Wait until first write to SD, not just a copy to the cache.
-                // skipLatency = file.curPosition() < 512;
                 skipLatency = file.tell() < 512;
             } else {
                 if (maxLatency < m) {

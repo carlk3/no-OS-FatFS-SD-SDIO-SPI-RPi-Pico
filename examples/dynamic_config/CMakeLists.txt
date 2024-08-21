@@ -1,6 +1,6 @@
 # Generated Cmake Pico project file
 
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.5)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
@@ -44,4 +44,3 @@ target_link_libraries(dynamic_config_example
 )
 
 pico_add_extra_outputs(dynamic_config_example)
-
