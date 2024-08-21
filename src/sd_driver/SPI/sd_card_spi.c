@@ -247,6 +247,7 @@ static bool crc_on = false;
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wswitch-enum"
+
 /**
  * @brief Send a command over SPI interface
  *
@@ -501,6 +502,7 @@ static int chk_CMD13_response(uint32_t response) {
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wswitch-enum"
+
 /**
  * @brief Send a command to the SD card.
  * @param sd_card_p pointer to sd_card_t structure
@@ -520,6 +522,7 @@ static int chk_CMD13_response(uint32_t response) {
  * SD_BLOCK_DEVICE_ERROR_PARAMETER if there was a parameter error,
  * SD_BLOCK_DEVICE_ERROR_ERASE if there was an erase error.
  */
+
 static block_dev_err_t sd_cmd(sd_card_t *sd_card_p, const cmdSupported cmd, uint32_t arg,
                               bool isAcmd, uint32_t *resp) {
 //    TRACE_PRINTF("%s(%s(0x%08lx)): ", __FUNCTION__, cmd2str(cmd), arg);
