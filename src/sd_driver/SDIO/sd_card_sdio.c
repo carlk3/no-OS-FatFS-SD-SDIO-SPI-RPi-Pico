@@ -2,13 +2,24 @@
 
 #include "ZuluSCSI_platform.h"
 
-#ifdef SD_USE_SDIO
-
 #include <stdint.h>
 #include <string.h>
+
 //
+// Hardware
+//
+#include <hardware/dma.h>
 #include <hardware/gpio.h>
 #include <hardware/clocks.h>
+#include <hardware/pio.h>
+
+//
+// Platform
+//
+#include "pico/stdlib.h"
+
+//
+// Project
 //
 #include "diskio.h"
 #include "my_debug.h"
@@ -505,18 +516,19 @@ static bool sd_sdio_test_com(sd_card_t *sd_card_p) {
     return success;
 }
 
+#if PICO_SDK_VERSION_MAJOR < 2
+    typedef enum gpio_function gpio_function_t;
+#endif
+
 // Helper function to configure whole GPIO in one line
-static void gpio_conf(uint gpio, gpio_function_t fn, bool pullup, bool pulldown, bool output, bool initial_state, bool fast_slew)
+static void gpio_conf(uint gpio, gpio_function_t fn, bool pullup, bool pulldown, bool output, bool initial_state)
 {
     gpio_put(gpio, initial_state);
     gpio_set_dir(gpio, output);
     gpio_set_pulls(gpio, pullup, pulldown);
     gpio_set_function(gpio, fn);
 
-    if (fast_slew)
-    {
-        pads_bank0_hw->io[gpio] |= PADS_BANK0_GPIO0_SLEWFAST_BITS;
-    }
+    // See rp2040_sdio_init
 }
 
 static DSTATUS sd_sdio_init(sd_card_t *sd_card_p) {
@@ -536,13 +548,13 @@ static DSTATUS sd_sdio_init(sd_card_t *sd_card_p) {
     // Initialize the member variables
     sd_card_p->state.card_type = SDCARD_NONE;
 
-    //        pin                             function        pup   pdown  out    state fast
-    gpio_conf(sd_card_p->sdio_if_p->CLK_gpio, GPIO_FUNC_PIO1, true, false, true,  true, true);
-    gpio_conf(sd_card_p->sdio_if_p->CMD_gpio, GPIO_FUNC_PIO1, true, false, true,  true, true);
-    gpio_conf(sd_card_p->sdio_if_p->D0_gpio,  GPIO_FUNC_PIO1, true, false, false, true, true);
-    gpio_conf(sd_card_p->sdio_if_p->D1_gpio,  GPIO_FUNC_PIO1, true, false, false, true, true);
-    gpio_conf(sd_card_p->sdio_if_p->D2_gpio,  GPIO_FUNC_PIO1, true, false, false, true, true);
-    gpio_conf(sd_card_p->sdio_if_p->D3_gpio,  GPIO_FUNC_PIO1, true, false, false, true, true);
+    //        pin                             function        pup   pdown  out    state
+    gpio_conf(sd_card_p->sdio_if_p->CLK_gpio, GPIO_FUNC_PIO1, true, false, true,  true);
+    gpio_conf(sd_card_p->sdio_if_p->CMD_gpio, GPIO_FUNC_PIO1, true, false, true,  true);
+    gpio_conf(sd_card_p->sdio_if_p->D0_gpio,  GPIO_FUNC_PIO1, true, false, false, true);
+    gpio_conf(sd_card_p->sdio_if_p->D1_gpio,  GPIO_FUNC_PIO1, true, false, false, true);
+    gpio_conf(sd_card_p->sdio_if_p->D2_gpio,  GPIO_FUNC_PIO1, true, false, false, true);
+    gpio_conf(sd_card_p->sdio_if_p->D3_gpio,  GPIO_FUNC_PIO1, true, false, false, true);
 
     bool ok = sd_sdio_begin(sd_card_p);
     if (ok) {
@@ -558,13 +570,13 @@ static void sd_sdio_deinit(sd_card_t *sd_card_p) {
     sd_card_p->state.m_Status |= STA_NOINIT;
     sd_card_p->state.card_type = SDCARD_NONE;
 
-    //        pin                             function        pup   pdown   out    state  fast
-    gpio_conf(sd_card_p->sdio_if_p->CLK_gpio, GPIO_FUNC_NULL, false, false, false, false, false);
-    gpio_conf(sd_card_p->sdio_if_p->CMD_gpio, GPIO_FUNC_NULL, false, false, false, false, false);
-    gpio_conf(sd_card_p->sdio_if_p->D0_gpio,  GPIO_FUNC_NULL, false, false, false, false, false);
-    gpio_conf(sd_card_p->sdio_if_p->D1_gpio,  GPIO_FUNC_NULL, false, false, false, false, false);
-    gpio_conf(sd_card_p->sdio_if_p->D2_gpio,  GPIO_FUNC_NULL, false, false, false, false, false);
-    gpio_conf(sd_card_p->sdio_if_p->D3_gpio,  GPIO_FUNC_NULL, false, false, false, false, false);
+    //        pin                             function        pup   pdown   out    state
+    gpio_conf(sd_card_p->sdio_if_p->CLK_gpio, GPIO_FUNC_NULL, false, false, false, false);
+    gpio_conf(sd_card_p->sdio_if_p->CMD_gpio, GPIO_FUNC_NULL, false, false, false, false);
+    gpio_conf(sd_card_p->sdio_if_p->D0_gpio,  GPIO_FUNC_NULL, false, false, false, false);
+    gpio_conf(sd_card_p->sdio_if_p->D1_gpio,  GPIO_FUNC_NULL, false, false, false, false);
+    gpio_conf(sd_card_p->sdio_if_p->D2_gpio,  GPIO_FUNC_NULL, false, false, false, false);
+    gpio_conf(sd_card_p->sdio_if_p->D3_gpio,  GPIO_FUNC_NULL, false, false, false, false);
 
     //TODO: free other resources: PIO, SMs, etc.
 
@@ -648,5 +660,3 @@ void sd_sdio_ctor(sd_card_t *sd_card_p) {
     sd_card_p->get_num_sectors = sd_sdio_sectorCount;
     sd_card_p->sd_test_com = sd_sdio_test_com;
 }
-
-#endif

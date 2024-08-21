@@ -42,4 +42,3 @@ pico_enable_stdio_uart(simple_sdio 1)
 pico_enable_stdio_usb(simple_sdio 1)
 
 pico_add_extra_outputs(simple_sdio)
-

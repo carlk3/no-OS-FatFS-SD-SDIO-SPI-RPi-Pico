@@ -81,8 +81,6 @@ int main() {
     spi_p->set_drive_strength = true;
     spi_p->mosi_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA;
     spi_p->sck_gpio_drive_strength = GPIO_DRIVE_STRENGTH_2MA;
-    spi_p->DMA_IRQ_num = DMA_IRQ_0;
-    spi_p->use_exclusive_DMA_IRQ_handler = true;
     spi_p->baud_rate = 12 * 1000 * 1000;  // Actual frequency: 10416666
     spis.push_back(spi_p);
 
@@ -96,7 +94,6 @@ int main() {
     spi_p->set_drive_strength = true;
     spi_p->mosi_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA;
     spi_p->sck_gpio_drive_strength = GPIO_DRIVE_STRENGTH_2MA;
-    spi_p->DMA_IRQ_num = DMA_IRQ_1;
     spi_p->baud_rate = 12 * 1000 * 1000;  // Actual frequency: 10416666spi_p->
     spis.push_back(spi_p);
 

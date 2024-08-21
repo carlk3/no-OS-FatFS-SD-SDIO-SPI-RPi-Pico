@@ -1,16 +1,22 @@
-/* sd_card.c
-Copyright 2021 Carl John Kugler III
-
-Licensed under the Apache License, Version 2.0 (the License); you may not use
-this file except in compliance with the License. You may obtain a copy of the
-License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-Unless required by applicable law or agreed to in writing, software distributed
-under the License is distributed on an AS IS BASIS, WITHOUT WARRANTIES OR
-CONDITIONS OF ANY KIND, either express or implied. See the License for the
-specific language governing permissions and limitations under the License.
-*/
+/**
+ * @file sd_card_spi.c
+ * @brief SD Card SPI Driver
+ *
+ * @section License
+ *
+ * Copyright 2021 Carl John Kugler III
+ *
+ * Licensed under the Apache License, Version 2.0 (the License); you may not use
+ * this file except in compliance with the License. You may obtain a copy of the
+ * License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed
+ * under the License is distributed on an AS IS BASIS, WITHOUT WARRANTIES OR
+ * CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 /*
  * This code borrows heavily from the Mbed SDBlockDevice:
  *       https://os.mbed.com/docs/mbed-os/v5.15/apis/sdblockdevice.html
@@ -241,6 +247,25 @@ static bool crc_on = false;
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wswitch-enum"
+/**
+ * @brief Send a command over SPI interface
+ *
+ * @param sd_card_p Pointer to the sd card structure
+ * @param cmd Command to send
+ * @param arg Argument to send with the command
+ *
+ * @return The response from the card
+ *
+ * @details
+ * This function sends a command over the SPI interface and waits for the
+ * response. The command is prepared by setting the correct bits in the packet
+ * and calculating the CRC if necessary. The command is then sent and the
+ * response is received and returned.
+ *
+ * @note
+ * For CMD12_STOP_TRANSMISSION, the first byte received is a stuff byte and
+ * should be discarded.
+ */
 static uint8_t sd_cmd_spi(sd_card_t *sd_card_p, cmdSupported cmd, uint32_t arg) {
     uint8_t response;
     uint8_t cmdPacket[PACKET_SIZE];
@@ -291,6 +316,16 @@ static uint8_t sd_cmd_spi(sd_card_t *sd_card_p, cmdSupported cmd, uint32_t arg) 
 }
 #pragma GCC diagnostic pop
 
+/**
+ * @brief Wait for the SD card to be ready for the next command.
+ *
+ * Sends dummy clocks with DI held high until the card releases the DO line.
+ *
+ * @param sd_card_p Pointer to the sd_card_t struct.
+ * @param timeout The maximum time to wait for the card to become ready.
+ *
+ * @return true if the card is ready, false otherwise.
+ */
 static bool sd_wait_ready(sd_card_t *sd_card_p, uint32_t timeout) {
     char resp;
 
@@ -387,6 +422,14 @@ static const char *cmd2str(const cmdSupported cmd) {
 }
 #endif
 
+/**
+ * @brief Check the response of the card status command (CMD13) and set
+ * the status bit accordingly.
+ *
+ * @param response The response of the card status command (CMD13).
+ *
+ * @return The status of the SD card.
+ */
 static int chk_CMD13_response(uint32_t response) {
     int32_t status = 0;
     DBG_PRINTF("Card Status: R2: 0x%" PRIx32 "\n", response);
@@ -458,6 +501,25 @@ static int chk_CMD13_response(uint32_t response) {
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wswitch-enum"
+/**
+ * @brief Send a command to the SD card.
+ * @param sd_card_p pointer to sd_card_t structure
+ * @param cmd command to send
+ * @param arg argument for the command
+ * @param isAcmd true if this is an application command
+ * @param resp pointer to a uint32_t to save the response
+ * @return error code
+ *
+ * This function sends a command to the SD card and waits for the response.
+ * It will retry the command up to SD_COMMAND_RETRIES times if there is no response.
+ * The response is stored in the @p resp variable if it is not NULL.
+ * The function will return SD_BLOCK_DEVICE_ERROR_NONE if the command was successful,
+ * SD_BLOCK_DEVICE_ERROR_NO_RESPONSE if there was no response,
+ * SD_BLOCK_DEVICE_ERROR_CRC if there was a CRC error,
+ * SD_BLOCK_DEVICE_ERROR_UNSUPPORTED if the command was not supported,
+ * SD_BLOCK_DEVICE_ERROR_PARAMETER if there was a parameter error,
+ * SD_BLOCK_DEVICE_ERROR_ERASE if there was an erase error.
+ */
 static block_dev_err_t sd_cmd(sd_card_t *sd_card_p, const cmdSupported cmd, uint32_t arg,
                               bool isAcmd, uint32_t *resp) {
 //    TRACE_PRINTF("%s(%s(0x%08lx)): ", __FUNCTION__, cmd2str(cmd), arg);
@@ -559,6 +621,21 @@ static block_dev_err_t sd_cmd(sd_card_t *sd_card_p, const cmdSupported cmd, uint
 /* R7 response pattern for CMD8 */
 #define CMD8_PATTERN (0xAA)
 
+/**
+ * @brief Send CMD8 to check if the card supports version 2.0 of the SD spec.
+ *
+ * @param sd_card_p Pointer to the SD card information structure.
+ * @return sd_block_dev_err_t Returns SD_BLOCK_DEVICE_ERROR_NONE if the card
+ * supports version 2.0 of the SD spec, SD_BLOCK_DEVICE_ERROR_UNSUPPORTED if the
+ * card does not support version 2.0 of the SD spec, or other error codes as
+ * defined in sd_block_dev_err_t.
+ *
+ * @details CMD8 is sent to check if the card supports version 2.0 of the SD
+ * spec. The response from the card is checked to see if the card supports
+ * version 2.0 of the SD spec. If the card does not support version 2.0 of the SD
+ * spec, the card type is set to CARD_UNKNOWN and the card is considered
+ * unreadable.
+ */
 static block_dev_err_t sd_cmd8(sd_card_t *sd_card_p) {
     uint32_t arg = (CMD8_PATTERN << 0);  // [7:0]check pattern
     uint32_t response = 0;
@@ -581,6 +658,16 @@ static block_dev_err_t sd_cmd8(sd_card_t *sd_card_p) {
 
 static block_dev_err_t sd_read_bytes(sd_card_t *sd_card_p, uint8_t *buffer, uint32_t length);
 
+/**
+ * @brief Get the number of sectors on an SD card.
+ *
+ * @param sd_card_p A pointer to the sd_card_t structure for the card.
+ *
+ * @return The number of sectors on the card, or 0 if an error occurred.
+ *
+ * @details This function sends a CMD9 command to the card to get the Card Specific
+ * Data (CSD) and then extracts the number of sectors from the CSD.
+ */
 static uint32_t in_sd_spi_sectors(sd_card_t *sd_card_p) {
     // CMD9, Response R2 (R1 byte + 16-byte block read)
     if (sd_cmd(sd_card_p, CMD9_SEND_CSD, 0x0, false, 0) != 0x0) {
@@ -593,6 +680,17 @@ static uint32_t in_sd_spi_sectors(sd_card_t *sd_card_p) {
     }
     return CSD_sectors(sd_card_p->state.CSD);
 }
+/**
+ * @brief Get the number of sectors on an SD card.
+ *
+ * @param sd_card_p A pointer to the sd_card_t structure for the card.
+ *
+ * @return The number of sectors on the card, or 0 if an error occurred.
+ *
+ * @details This function gets the number of sectors by first acquiring the card,
+ *          then calling in_sd_spi_sectors to get the number of sectors, and finally
+ *          releasing the card.
+ */
 uint32_t sd_spi_sectors(sd_card_t *sd_card_p) {
     sd_acquire(sd_card_p);
     uint32_t sectors = in_sd_spi_sectors(sd_card_p);
@@ -600,7 +698,18 @@ uint32_t sd_spi_sectors(sd_card_t *sd_card_p) {
     return sectors;
 }
 
-// SPI function to wait till chip is ready and sends start token
+/**
+ * @brief Wait for the card to become ready and send a given token.
+ *
+ * @param sd_card_p A pointer to the sd_card_t structure for the card.
+ * @param token The token to be sent once the card is ready.
+ *
+ * @return True if the card became ready and the token was sent, false otherwise.
+ *
+ * @details The function waits until the card is ready and then sends the given
+ *          token. If the card doesn't become ready within the timeout period,
+ *          the function returns false.
+ */
 static bool sd_wait_token(sd_card_t *sd_card_p, uint8_t token) {
     TRACE_PRINTF("%s(0x%02x)\n", __FUNCTION__, token);
 
@@ -653,6 +762,29 @@ static block_dev_err_t sd_read_bytes(sd_card_t *sd_card_p, uint8_t *buffer, uint
     }
     return 0;
 }
+/**
+ * @brief Read a block of data from the SD card.
+ *
+ * @param sd_card_p pointer to sd_card_t structure
+ * @param buffer pointer to the buffer to store the data
+ * @param data_address the address of the block to read
+ * @param num_rd_blks the number of blocks to read
+ *
+ * @return error code
+ *
+ * @details
+ * This function checks if the SD card is initialized and has a valid disk,
+ * and if the number of blocks to read is not zero and is within the range of
+ * the card's sectors. If not, it returns SD_BLOCK_DEVICE_ERROR_PARAMETER.
+ * If there is an ongoing write transmission, it stops it. 
+ * It then sends a command to receive data based on
+ * the number of blocks to read. It reads the data from the SD card and checks
+ * the CRC16 checksum for each block. If the two match, the function continues
+ * to the next block. If the number of blocks to read is greater than 1, it
+ * sends CMD12 to stop the transmission after all blocks have been
+ * read. It then checks the CRC16 checksum for the last block and returns the
+ * error code.
+ */
 static block_dev_err_t in_sd_read_blocks(sd_card_t *sd_card_p, uint8_t *buffer,
                                          const uint32_t data_address,
                                          const uint32_t num_rd_blks) {
@@ -738,20 +870,42 @@ static block_dev_err_t sd_read_blocks(sd_card_t *sd_card_p, uint8_t *buffer,
     return status;
 }
 
-/* Send the numbers of the well written (without errors) blocks.
- * Responds with R1 byte + 32-bit+CRC data block. */
+/**
+ * @brief Send the numbers of the well written (without errors) blocks.
+ * 
+ * This function sends the ACMD22 command to the SD card to get the number of
+ * blocks that were successfully written without errors. It then reads the
+ * response from the SD card and returns it.
+ *
+ * @param sd_card_p Pointer to the SD card object.
+ * @param num_p Pointer to a variable to store the number of blocks.
+ *
+ * @return Block device error code. Returns SD_BLOCK_DEVICE_ERROR_NONE on success,
+ *         SD_BLOCK_DEVICE_ERROR_NO_DEVICE if the SD card is not responding,
+ *         SD_BLOCK_DEVICE_ERROR_CRC if there was a CRC error reading the response,
+ *         SD_BLOCK_DEVICE_ERROR_PARAMETER if an invalid parameter was passed.
+ */
 static block_dev_err_t sd_SEND_NUM_WR_BLOCKS(sd_card_t *sd_card_p, uint32_t *num_p) {
+    // Send the ACMD22 command to get the number of written blocks
     block_dev_err_t err = sd_cmd(sd_card_p, ACMD22_SEND_NUM_WR_BLOCKS, 0, true, NULL);
+    
+    // If the command was not successful, return the error code
     if (SD_BLOCK_DEVICE_ERROR_NONE != err) {
         DBG_PRINTF("Didn't get a response from the disk\n");
         return err;
     }
+    
+    // Read the response from the SD card and store it in the num_p variable
     err = sd_read_bytes(sd_card_p, (uint8_t *)num_p, sizeof(uint32_t));
     *num_p = __builtin_bswap32(*num_p);
+    
+    // If there was an error reading the response, return the error code
     if (SD_BLOCK_DEVICE_ERROR_NONE != err) {
         DBG_PRINTF("Couldn't read NUM_WR_BLOCKS response from disk\n");
         return err;
     }
+    
+    // Return success
     return SD_BLOCK_DEVICE_ERROR_NONE;
 }
 
@@ -1089,6 +1243,23 @@ static block_dev_err_t sd_write_blocks(sd_card_t *sd_card_p, uint8_t const buffe
     return status;
 }
 
+/**
+ * @brief Synchronize the SD card
+ *
+ * This function is used to ensure that any ongoing write operations are
+ * completed before the SD card is released. This is necessary to ensure
+ * that the SD card is not released while it is still busy with a write
+ * operation.
+ *
+ * @param sd_card_p Pointer to the SD card object.
+ *
+ * @return
+ * - SD_BLOCK_DEVICE_ERROR_NONE on success
+ * - SD_BLOCK_DEVICE_ERROR_WRITE if there was a write error
+ * - SD_BLOCK_DEVICE_ERROR_UNSUPPORTED if the command is unsupported
+ * - SD_BLOCK_DEVICE_ERROR_NO_INIT if the device is not initialized
+ * - SD_BLOCK_DEVICE_ERROR_NO_DEVICE if the device (SD card) is missing or not connected
+ */
 static block_dev_err_t sd_sync(sd_card_t *sd_card_p) {
     block_dev_err_t status = SD_BLOCK_DEVICE_ERROR_NONE;
     sd_acquire(sd_card_p);
@@ -1101,6 +1272,16 @@ static block_dev_err_t sd_sync(sd_card_t *sd_card_p) {
 /*!< Number of retries for sending CMDO */
 #define SD_CMD0_GO_IDLE_STATE_RETRIES 10
 
+/**
+ * @brief Resets the SD card to the idle state.
+ *
+ * This function sends the initializing sequence to the SD card and waits for it to enter the idle state.
+ *
+ * @param sd_card_p Pointer to the SD card object.
+ * @return The response from the SD card.
+ * @retval R1_IDLE_STATE if the SD card successfully entered the idle state.
+ * @retval R1_NO_RESPONSE if the SD card did not respond.
+ */
 static uint32_t in_sd_go_idle_state(sd_card_t *sd_card_p) {
     /*
      Power ON or card insertion
@@ -1145,12 +1326,43 @@ static uint32_t in_sd_go_idle_state(sd_card_t *sd_card_p) {
     }
     return response;
 }
+/**
+ * @brief Resets the SD card to the idle state.
+ *
+ * This function sends the initializing sequence to the SD card and waits for it to enter the idle state.
+ *
+ * @param sd_card_p Pointer to the SD card object.
+ * @return The response from the SD card.
+ * @retval R1_IDLE_STATE if the SD card successfully entered the idle state.
+ * @retval R1_NO_RESPONSE if the SD card did not respond.
+ */
 uint32_t sd_go_idle_state(sd_card_t *sd_card_p) {
     sd_spi_lock(sd_card_p);
     uint32_t response = in_sd_go_idle_state(sd_card_p);
     sd_spi_release(sd_card_p);
     return response;
 }
+/**
+ * @brief Initializes the SD card medium.
+ *
+ * This function initializes the SD card medium by following the SD card initialization sequence.
+ * It transitions the card from SD card mode to SPI mode by sending the CMD0 command and applying
+ * the initializing sequence. It then sends the CMD8 command to check if the card supports the
+ * SD version 2.0 specification. If the card rejects the command, it assumes the card is using the
+ * legacy protocol or is a MMC card. It then enables or disables CRC based on the crc_on flag.
+ * It reads the OCR (Operating Conditions Register) using the CMD58 command and checks if the card
+ * supports the voltage range of 3.3V. If not, it sets the card type to CARD_UNKNOWN and returns
+ * SD_BLOCK_DEVICE_ERROR_UNUSABLE. It sets the card type based on the response of the ACMD41 command.
+ * If the initialization is successful, it disables or enables CRC and sets the card type based on
+ * the response of the CMD58 command. It then disconnects the 50 KOhm pull-up resistor on CS (pin 1)
+ * of the card using the ACMD42_SET_CLR_CARD_DETECT command.
+ *
+ * @param sd_card_p Pointer to the SD card object.
+ * @return The block device error status.
+ * @retval SD_BLOCK_DEVICE_ERROR_NONE if the initialization is successful.
+ * @retval SD_BLOCK_DEVICE_ERROR_NO_DEVICE if the card did not respond.
+ * @retval SD_BLOCK_DEVICE_ERROR_UNUSABLE if the card does not support the voltage range.
+ */
 static block_dev_err_t sd_init_medium(sd_card_t *sd_card_p) {
     int32_t status = SD_BLOCK_DEVICE_ERROR_NONE;
     uint32_t response, arg;
@@ -1247,6 +1459,21 @@ static block_dev_err_t sd_init_medium(sd_card_t *sd_card_p) {
     return status;
 }
 
+/**
+ * @brief Tests the communication with the SD card.
+ *
+ * This function is used to test the communication with the SD card. It first checks if the
+ * SD card is already initialized, and if so, it sends a command to get the card status. If the
+ * card status is not received, it assumes that the card is no longer present and sets the
+ * `STA_NOINIT` flag in the card status. If the card is not initialized, it performs a light
+ * version of the initialization to test the communication. It sends the initializing sequence
+ * and waits for the card to go idle. If the card responds with a response status, it assumes
+ * that the communication is successful and returns `true`. If the card does not respond, it
+ * assumes that something is holding the DO line and returns `false`.
+ *
+ * @param sd_card_p Pointer to the SD card object.
+ * @return `true` if the communication with the SD card is successful, `false` otherwise.
+ */
 static bool sd_spi_test_com(sd_card_t *sd_card_p) {
     // This is allowed to be called before initialization, so ensure mutex is created
     if (!mutex_is_initialized(&sd_card_p->state.mutex)) mutex_init(&sd_card_p->state.mutex);
@@ -1314,6 +1541,19 @@ static bool sd_spi_test_com(sd_card_t *sd_card_p) {
     return success;
 }
 
+/**
+ * Initializes the SD card over SPI.
+ *
+ * @param sd_card_p Pointer to the SD card object.
+ * @return The status of the SD card.
+ *
+ * This function initializes the SD card over SPI. It first checks if the SD card is already
+ * initialized, and if so, it returns the current status. If the card is not initialized, it
+ * performs the initialization sequence and returns the status of the card. The card is
+ * initialized by sending the initializing sequence, checking the card type, setting the SCK
+ * for data transfer, and setting the block length to 512. The card is now considered initialized
+ * and its status is returned.
+ */
 DSTATUS sd_spi_init(sd_card_t *sd_card_p) {
     TRACE_PRINTF("> %s\n", __FUNCTION__);
 
@@ -1392,6 +1632,15 @@ DSTATUS sd_spi_init(sd_card_t *sd_card_p) {
     return sd_card_p->state.m_Status;
 }
 
+/**
+ * @brief Deinitializes the SD card.
+ *
+ * This function deinitializes the SD card by setting the STA_NOINIT bit in the
+ * status field and setting the card type to SDCARD_NONE. It also deinitializes
+ * the chip select GPIO.
+ *
+ * @param sd_card_p Pointer to the sd_card_t structure to be deinitialized.
+ */
 static void sd_deinit(sd_card_t *sd_card_p) {
     sd_card_p->state.m_Status |= STA_NOINIT;
     sd_card_p->state.card_type = SDCARD_NONE;
@@ -1401,6 +1650,17 @@ static void sd_deinit(sd_card_t *sd_card_p) {
     gpio_set_dir(sd_card_p->spi_if_p->ss_gpio, GPIO_IN);
 }
 
+/**
+ * @brief Initializes the sd_card_t structure.
+ *
+ * This function initializes the sd_card_t structure with pointers to the
+ * respective functions for reading and writing blocks, syncing the card,
+ * initializing the card, deinitializing the card, getting the number of
+ * sectors, and testing the card's communication. It also initializes the chip
+ * select GPIO pin.
+ *
+ * @param sd_card_p Pointer to the sd_card_t structure to be initialized.
+ */
 void sd_spi_ctor(sd_card_t *sd_card_p) {
     sd_card_p->write_blocks = sd_write_blocks;
     sd_card_p->read_blocks = sd_read_blocks;

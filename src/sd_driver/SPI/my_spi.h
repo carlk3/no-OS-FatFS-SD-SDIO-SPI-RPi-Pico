@@ -42,8 +42,6 @@ typedef struct spi_t {
     uint mosi_gpio;
     uint sck_gpio;
     uint baud_rate;
-    uint DMA_IRQ_num; // DMA_IRQ_0 or DMA_IRQ_1
-    bool use_exclusive_DMA_IRQ_handler;
     bool no_miso_gpio_pull_up;
 
     /* Drive strength levels for GPIO outputs.
@@ -71,7 +69,6 @@ typedef struct spi_t {
 void __not_in_flash_func(spi_transfer_start)(spi_t *spi_p, const uint8_t *tx, uint8_t *rx, size_t length);
 bool __not_in_flash_func(spi_transfer_wait_complete)(spi_t *spi_p, uint32_t timeout_ms);
 bool __not_in_flash_func(spi_transfer)(spi_t *spi_p, const uint8_t *tx, uint8_t *rx, size_t length);  
-void __not_in_flash_func(spi_irq_handler)(spi_t *spi_p);
 void spi_lock(spi_t *spi_p);
 void spi_unlock(spi_t *spi_p);
 bool my_spi_init(spi_t *spi_p);
