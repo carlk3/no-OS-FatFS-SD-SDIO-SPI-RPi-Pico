@@ -82,8 +82,6 @@ and the
 ## Resources Used
 * SPI attached cards:
   * One or two Serial Peripheral Interface (SPI) controllers may be used.
-  * For each SPI controller used, two DMA channels are needed. By default they are claimed with `dma_claim_unused_channel`.
-  * A configurable DMA IRQ is hooked with `irq_add_shared_handler` or `irq_set_exclusive_handler` (configurable) and enabled.
   * For each SPI controller used, one GPIO is needed for each of RX, TX, and SCK. Note: each SPI controller can only use a limited set of GPIOs for these functions.
   * For each SD card attached to an SPI controller, a GPIO is needed for slave (or "chip") select (SS or "CS"), and, optionally, another for Card Detect (CD or "DET").
 * SDIO attached cards:
@@ -95,8 +93,6 @@ and the
     * D1_gpio = D0_gpio + 1;
     * D2_gpio = D0_gpio + 2;
     * D3_gpio = D0_gpio + 3;
-
-SPI and SDIO can share the same DMA IRQ.
 
 For the complete 
 [examples/command_line](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/tree/main/examples/command_line) application, 
