@@ -15,7 +15,11 @@
 #include "hardware/dma.h"
 #include "hardware/gpio.h"
 #include "hardware/pio.h"
+#if PICO_RP2040
 #include "RP2040.h"
+#else
+#include "RP2350.h"
+#endif
 //
 #include "dma_interrupts.h"
 #include "hw_config.h"
