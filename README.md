@@ -1,5 +1,5 @@
 # no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
-# v3.0.0
+# v3.1.0
 
 ## C/C++ Library for SD Cards on the Pico
 
@@ -11,6 +11,8 @@ and a 4-bit wide Secure Digital Input Output (SDIO) driver derived from
 It is wrapped up in a complete runnable project, with a little command line interface, some self tests, and an example data logging application.
 
 ## What's new
+### v3.1.0
+* Add support for the RP2350
 ### v3.0.0
 * Migrate to **Raspberry Pi Pico SDK 2.0.0**
 * Simplify SPI wait for DMA transfer completion, including elimination of DMA interrupt handler
