@@ -28,6 +28,7 @@
 #include "rp2040_sdio.pio.h"  // build\build\rp2040_sdio.pio.h
 #include "sd_card_constants.h"
 #include "sd_card.h"
+#include "sd_timeouts.h"
 #include "SdioCard.h"
 #include "util.h"
 
@@ -129,7 +130,7 @@ bool sd_sdio_begin(sd_card_t *sd_card_p)
             return false;
         }
 
-        if ((uint32_t)(millis() - start) > 1000)
+        if ((uint32_t)(millis() - start) > sd_timeouts.sd_sdio_begin)
         {
             EMSG_PRINTF("SDIO card initialization timeout\n");
             return false;

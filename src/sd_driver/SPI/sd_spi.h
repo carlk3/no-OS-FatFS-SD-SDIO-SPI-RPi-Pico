@@ -16,8 +16,13 @@ specific language governing permissions and limitations under the License.
 
 #include <stdint.h>
 //
+#include "pico/stdlib.h"
+//
+#include "delays.h"
+#include "my_debug.h"
 #include "my_spi.h"
 #include "sd_card.h"
+#include "sd_timeouts.h"
 
 #ifdef NDEBUG
 #pragma GCC diagnostic ignored "-Wunused-variable"
@@ -34,23 +39,43 @@ void sd_spi_go_high_frequency(sd_card_t *this);
 
 /* 
 After power up, the host starts the clock and sends the initializing sequence on the CMD line. 
-This sequence is a contiguous stream of logical ‘1’s. The sequence length is the maximum of 1msec, 
-74 clocks or the supply-ramp-uptime; the additional 10 clocks 
-(over the 64 clocks after what the card should be ready for communication) is
-provided to eliminate power-up synchronization problems. 
+This sequence is a contiguous stream of logical ‘1’s. The sequence length is the maximum of
+1msec, 74 clocks or the supply-ramp-uptime; the additional 10 clocks (over the 64 clocks after
+what the card should be ready for communication) is provided to eliminate power-up
+synchronization problems.
 */
-void sd_spi_send_initializing_sequence(sd_card_t * sd_card_p);
+void sd_spi_send_initializing_sequence(sd_card_t *sd_card_p);
 
-static inline uint8_t sd_spi_write(sd_card_t *sd_card_p, const uint8_t value) {
-    // TRACE_PRINTF("%s\n", __FUNCTION__);
+static inline uint8_t sd_spi_read(sd_card_t *sd_card_p) {
     uint8_t received = SPI_FILL_CHAR;
-#if 1
+    uint32_t start = millis();
+    while (!spi_is_writable(sd_card_p->spi_if_p->spi->hw_inst) &&
+           millis() - start < sd_timeouts.sd_spi_read)
+        tight_loop_contents();
+    myASSERT(spi_is_writable(sd_card_p->spi_if_p->spi->hw_inst));
+    int num = spi_read_blocking(sd_card_p->spi_if_p->spi->hw_inst, SPI_FILL_CHAR, &received, 1);
+    myASSERT(1 == num);
+    return received;
+}
+
+static inline void sd_spi_write(sd_card_t *sd_card_p, const uint8_t value) {
+    uint32_t start = millis();
+    while (!spi_is_writable(sd_card_p->spi_if_p->spi->hw_inst) &&
+           millis() - start < sd_timeouts.sd_spi_write)
+        tight_loop_contents();
+    myASSERT(spi_is_writable(sd_card_p->spi_if_p->spi->hw_inst));
+    int num = spi_write_blocking(sd_card_p->spi_if_p->spi->hw_inst, &value, 1);
+    myASSERT(1 == num);
+}
+static inline uint8_t sd_spi_write_read(sd_card_t *sd_card_p, const uint8_t value) {
+    uint8_t received = SPI_FILL_CHAR;
+    uint32_t start = millis();
+    while (!spi_is_writable(sd_card_p->spi_if_p->spi->hw_inst) &&
+           millis() - start < sd_timeouts.sd_spi_write_read)
+        tight_loop_contents();
+    myASSERT(spi_is_writable(sd_card_p->spi_if_p->spi->hw_inst));
     int num = spi_write_read_blocking(sd_card_p->spi_if_p->spi->hw_inst, &value, &received, 1);    
-    assert(1 == num);
-#else
-    bool success = spi_transfer(sd_card_p->spi_if_p->spi, &value, &received, 1);
-    assert(success);
-#endif
+    myASSERT(1 == num);
     return received;
 }
 
@@ -74,19 +99,9 @@ static inline void sd_spi_deselect(sd_card_t *sd_card_p) {
     */
     sd_spi_write(sd_card_p, SPI_FILL_CHAR);
 }
-/* Some SD cards want to be deselected between every bus transaction */
-static inline void sd_spi_deselect_pulse(sd_card_t *sd_card_p) {
-    sd_spi_deselect(sd_card_p);
-    // tCSH Pulse duration, CS high 200 ns
-    sd_spi_select(sd_card_p);
-}
 
-static inline void sd_spi_lock(sd_card_t *sd_card_p) {
-    spi_lock(sd_card_p->spi_if_p->spi);
-}
-static inline void sd_spi_unlock(sd_card_t *sd_card_p) {
-   spi_unlock(sd_card_p->spi_if_p->spi);
-}
+static inline void sd_spi_lock(sd_card_t *sd_card_p) { spi_lock(sd_card_p->spi_if_p->spi); }
+static inline void sd_spi_unlock(sd_card_t *sd_card_p) { spi_unlock(sd_card_p->spi_if_p->spi); }
 
 static inline void sd_spi_acquire(sd_card_t *sd_card_p) {
     sd_spi_lock(sd_card_p);
@@ -99,13 +114,15 @@ static inline void sd_spi_release(sd_card_t *sd_card_p) {
 
 /* Transfer tx to SPI while receiving SPI to rx.
 tx or rx can be NULL if not important. */
-static inline void sd_spi_transfer_start(sd_card_t *sd_card_p, const uint8_t *tx, uint8_t *rx, size_t length) {
+static inline void sd_spi_transfer_start(sd_card_t *sd_card_p, const uint8_t *tx, uint8_t *rx,
+                                         size_t length) {
     return spi_transfer_start(sd_card_p->spi_if_p->spi, tx, rx, length);
 }
 static inline bool sd_spi_transfer_wait_complete(sd_card_t *sd_card_p, uint32_t timeout_ms) {
     return spi_transfer_wait_complete(sd_card_p->spi_if_p->spi, timeout_ms);
 }
-static inline bool sd_spi_transfer(sd_card_t *sd_card_p, const uint8_t *tx, uint8_t *rx, size_t length) {
+static inline bool sd_spi_transfer(sd_card_t *sd_card_p, const uint8_t *tx, uint8_t *rx,
+                                   size_t length) {
 	return spi_transfer(sd_card_p->spi_if_p->spi, tx, rx, length);
 }
 

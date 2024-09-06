@@ -37,9 +37,11 @@ static spi_t spi  = {  // One for each RP2040 SPI component used
     .mosi_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
     .sck_gpio_drive_strength = GPIO_DRIVE_STRENGTH_2MA,
     .no_miso_gpio_pull_up = true,
-    // .baud_rate = 125 * 1000 * 1000 / 8  // 15625000 Hz
+    .spi_mode = 3,
+    //.baud_rate = 125 * 1000 * 1000 / 8  // 15625000 Hz
     //.baud_rate = 125 * 1000 * 1000 / 6  // 20833333 Hz
     .baud_rate = 125 * 1000 * 1000 / 4  // 31250000 Hz
+    //.baud_rate = 125 * 1000 * 1000 / 2  // 62500000 Hz
 };
 
 /* SPI Interface */

@@ -20,14 +20,16 @@ specific language governing permissions and limitations under the License.
 //
 // Pico includes
 #include "pico/stdlib.h"
+#include "pico/mutex.h"
+#include "pico/types.h"
 //
 #include "hardware/dma.h"
 #include "hardware/gpio.h"
 #include "hardware/irq.h"
 #include "hardware/spi.h"
-#include "pico/mutex.h"
-#include "pico/sem.h"
-#include "pico/types.h"
+//
+#include "my_debug.h"
+#include "sd_timeouts.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,14 +44,26 @@ typedef struct spi_t {
     uint mosi_gpio;
     uint sck_gpio;
     uint baud_rate;
+
+    /* The different modes of the Motorola SPI protocol are:
+    - Mode 0: When CPOL and CPHA are both 0, data sampled at the leading rising edge of the
+    clock pulse and shifted out on the falling edge. This is the most common mode for SPI bus
+    communication.
+    - Mode 1: When CPOL is 0 and CPHA is 1, data sampled at the trailing falling edge and
+    shifted out on the rising edge.
+    - Mode 2: When CPOL is 1 and CPHA is 0, data sampled at the leading falling edge
+    and shifted out on the rising edge.
+    - Mode 3: When CPOL is 1 and CPHA is 1, data sampled at the trailing rising edge and
+    shifted out on the falling edge. */
+    uint spi_mode;
+    
     bool no_miso_gpio_pull_up;
 
-    /* Drive strength levels for GPIO outputs.
+    /* Drive strength levels for GPIO outputs:
         GPIO_DRIVE_STRENGTH_2MA, 
         GPIO_DRIVE_STRENGTH_4MA, 
         GPIO_DRIVE_STRENGTH_8MA,
-        GPIO_DRIVE_STRENGTH_12MA
-    */
+        GPIO_DRIVE_STRENGTH_12MA */
     bool set_drive_strength;
     enum gpio_drive_strength mosi_gpio_drive_strength;
     enum gpio_drive_strength sck_gpio_drive_strength;
@@ -61,17 +75,25 @@ typedef struct spi_t {
     /* The following fields are not part of the configuration. They are dynamically assigned. */
     dma_channel_config tx_dma_cfg;
     dma_channel_config rx_dma_cfg;
-    semaphore_t sem;
     mutex_t mutex;    
     bool initialized;  
 } spi_t;
 
-void __not_in_flash_func(spi_transfer_start)(spi_t *spi_p, const uint8_t *tx, uint8_t *rx, size_t length);
-bool __not_in_flash_func(spi_transfer_wait_complete)(spi_t *spi_p, uint32_t timeout_ms);
-bool __not_in_flash_func(spi_transfer)(spi_t *spi_p, const uint8_t *tx, uint8_t *rx, size_t length);  
-void spi_lock(spi_t *spi_p);
-void spi_unlock(spi_t *spi_p);
+void spi_transfer_start(spi_t *spi_p, const uint8_t *tx, uint8_t *rx, size_t length);
+uint32_t calculate_transfer_time_ms(spi_t *spi_p, uint32_t bytes);
+bool spi_transfer_wait_complete(spi_t *spi_p, uint32_t timeout_ms);
+bool spi_transfer(spi_t *spi_p, const uint8_t *tx, uint8_t *rx, size_t length);
 bool my_spi_init(spi_t *spi_p);
+
+
+static inline void spi_lock(spi_t *spi_p) {
+    myASSERT(mutex_is_initialized(&spi_p->mutex));
+    mutex_enter_blocking(&spi_p->mutex);
+}
+static inline void spi_unlock(spi_t *spi_p) {
+    myASSERT(mutex_is_initialized(&spi_p->mutex));
+    mutex_exit(&spi_p->mutex);
+}
 
 /* 
 This uses the Pico LED to show SD card activity.

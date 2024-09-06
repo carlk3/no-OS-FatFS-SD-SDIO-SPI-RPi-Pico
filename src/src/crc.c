@@ -334,7 +334,7 @@ static inline uint16_t swaplow(uint16_t crc) {
 
 // This code assumes that integers are stored little-endian.
 
-__attribute__((optimize("O3")))
+__attribute__((optimize("Ofast")))
 static uint16_t crc16ibm_3740_word(uint16_t crc, void const *mem, size_t len) {
     unsigned char const *data = mem;
     if (data == NULL)
@@ -368,8 +368,7 @@ static uint16_t crc16ibm_3740_word(uint16_t crc, void const *mem, size_t len) {
     return crc;
 }
 
-
-unsigned short crc16(uint8_t* data, int length)
+uint16_t crc16(uint8_t const *data, int const length)
 {
 	//Calculate the CRC16 checksum for the specified data block
 	unsigned short crc = 0;

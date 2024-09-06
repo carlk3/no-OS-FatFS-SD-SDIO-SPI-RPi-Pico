@@ -33,24 +33,21 @@ extern "C" {
  * information across reboots.
  */
 
-#define CRASH_INFO_SECTION_LENGTH 192
-
-#define CY_R0_Pos \
-    (0U) /**< The position of the R0  content in a fault structure */
-#define CY_R1_Pos \
-    (1U) /**< The position of the R1  content in a fault structure */
-#define CY_R2_Pos \
-    (2U) /**< The position of the R2  content in a fault structure */
-#define CY_R3_Pos \
-    (3U) /**< The position of the R3  content in a fault structure */
-#define CY_R12_Pos \
-    (4U) /**< The position of the R12 content in a fault structure */
-#define CY_LR_Pos \
-    (5U) /**< The position of the LR  content in a fault structure */
-#define CY_PC_Pos \
-    (6U) /**< The position of the PC  content in a fault structure */
-#define CY_PSR_Pos \
-    (7U) /**< The position of the PSR content in a fault structure */
+/**
+ * These are the positions of the fault frame elements in the
+ * fault frame structure.
+ */
+enum {
+    R0_Pos = 0, /**< The position of the R0  content in a fault structure */
+    R1_Pos,     /**< The position of the R1  content in a fault structure */
+    R2_Pos,     /**< The position of the R2  content in a fault structure */
+    R3_Pos,     /**< The position of the R3  content in a fault structure */
+    R12_Pos,    /**< The position of the R12 content in a fault structure */
+    LR_Pos,     /**< The position of the LR  content in a fault structure */
+    PC_Pos,     /**< The position of the PC  content in a fault structure */
+    PSR_Pos,    /**< The position of the PSR content in a fault structure */
+    NUM_REGS,   /**< The number of registers in the fault frame */
+};
 
 typedef struct {
     uint32_t r0;  /**< R0 register content */
@@ -68,8 +65,8 @@ typedef enum {
     crash_magic_bootloader_entry = 0xB000B000,
     crash_magic_hard_fault = 0xCAFEBABE,
     crash_magic_debug_mon = 0x01020304,
-    crash_magic_reboot_requested = 0x0ABCDEF,
-    crash_magic_stack_overflow = 0xBADBEEF,
+    crash_magic_reboot_requested = 0x00ABCDEF,
+    crash_magic_stack_overflow = 0x0BADBEEF,
     crash_magic_assert = 0xDEBDEBDE
 } crash_magic_t;
 
@@ -88,41 +85,27 @@ typedef struct {
         crash_assert_t assert;
         char calling_func[64];
     };
-    uint32_t xor_checksum;  // last to avoid including in calculation
+    uint8_t xor_checksum;  // last to avoid including in calculation
 } crash_info_t;
-
-typedef struct {
-    crash_info_t crash_info;
-    uint8_t unused[CRASH_INFO_SECTION_LENGTH - sizeof(crash_info_t)];
-} crash_info_ram_t;
-
-_Static_assert(sizeof(crash_info_ram_t) == CRASH_INFO_SECTION_LENGTH,
-               "Wrong size");
 
 // Trick to find struct size at compile time:
 // char (*__kaboom)[sizeof(crash_info_flash_t)] = 1;
 // warning: initialization of 'char (*)[132]' from 'int' makes ...
 
 void crash_handler_init();
-const crash_info_t *crash_handler_get_info(void);
+const crash_info_t *crash_handler_get_info();
 volatile const crash_info_t *crash_handler_get_info_flash();
 
 #define SYSTEM_RESET() system_reset_func(__FUNCTION__)
-__attribute__((noreturn)) void system_reset_func(char const *const func);
-#ifdef BOOTLOADER_BUILD
-bool system_check_bootloader_request_flag(void);
-#else
-__attribute__((noreturn)) void system_request_bootloader_entry(void);
-#endif
+void system_reset_func(char const *const func) __attribute__((noreturn));
 
-void capture_assert(const char *file, int line, const char *func,
-                    const char *pred) __attribute__((noreturn));
-void capture_assert_case_not(const char *file, int line, const char *func,
-                             int v) __attribute__((noreturn));
+void capture_assert(const char *file, int line, const char *func, const char *pred)
+    __attribute__((noreturn));
+void capture_assert_case_not(const char *file, int line, const char *func, int v)
+    __attribute__((noreturn));
 
-int dump_crash_info(crash_info_t const *const pCrashInfo, int next,
-                    char *const buf, size_t const buf_sz);
-
+int dump_crash_info(crash_info_t const *const pCrashInfo, int next, char *const buf,
+                    size_t const buf_sz);
 
 #ifdef __cplusplus
 }
