@@ -16,6 +16,7 @@ specific language governing permissions and limitations under the License.
 #include <time.h>
 //
 #include "pico/stdlib.h"
+#include "RP2040.h"
 //
 #include "crc.h"
 #include "my_debug.h"
@@ -24,6 +25,10 @@ specific language governing permissions and limitations under the License.
 //
 #include "crash.h"
 
+#if defined(NDEBUG) || !USE_DBG_PRINTF
+#  pragma GCC diagnostic ignored "-Wunused-variable"
+#endif
+
 static volatile crash_info_t crash_info_ram __attribute__((section(".uninitialized_data")));
 
 static crash_info_t volatile *crash_info_ram_p = &crash_info_ram;
@@ -31,7 +36,7 @@ static crash_info_t volatile *crash_info_ram_p = &crash_info_ram;
 static crash_info_t previous_crash_info;
 static bool _previous_crash_info_valid = false;
 
-__attribute__((noreturn))
+__attribute__((noreturn, always_inline))
 static inline void reset() {
 //    if (debugger_connected()) {
         __breakpoint();
@@ -111,14 +116,14 @@ __attribute__((used)) extern void DebugMon_HandlerC(uint32_t const *faultStackAd
     crash_info_ram.timestamp = epochtime;
 
     /* Stores general registers */
-    crash_info_ram.cy_faultFrame.r0 = faultStackAddr[CY_R0_Pos];
-    crash_info_ram.cy_faultFrame.r1 = faultStackAddr[CY_R1_Pos];
-    crash_info_ram.cy_faultFrame.r2 = faultStackAddr[CY_R2_Pos];
-    crash_info_ram.cy_faultFrame.r3 = faultStackAddr[CY_R3_Pos];
-    crash_info_ram.cy_faultFrame.r12 = faultStackAddr[CY_R12_Pos];
-    crash_info_ram.cy_faultFrame.lr = faultStackAddr[CY_LR_Pos];
-    crash_info_ram.cy_faultFrame.pc = faultStackAddr[CY_PC_Pos];
-    crash_info_ram.cy_faultFrame.psr = faultStackAddr[CY_PSR_Pos];
+    crash_info_ram.cy_faultFrame.r0 = faultStackAddr[R0_Pos];
+    crash_info_ram.cy_faultFrame.r1 = faultStackAddr[R1_Pos];
+    crash_info_ram.cy_faultFrame.r2 = faultStackAddr[R2_Pos];
+    crash_info_ram.cy_faultFrame.r3 = faultStackAddr[R3_Pos];
+    crash_info_ram.cy_faultFrame.r12 = faultStackAddr[R12_Pos];
+    crash_info_ram.cy_faultFrame.lr = faultStackAddr[LR_Pos];
+    crash_info_ram.cy_faultFrame.pc = faultStackAddr[PC_Pos];
+    crash_info_ram.cy_faultFrame.psr = faultStackAddr[PSR_Pos];
     ///* Stores the Configurable Fault Status Register state with the fault cause */
     //crash_info_ram.cy_faultFrame.cfsr.cfsrReg = SCB->CFSR;
     ///* Stores the Hard Fault Status Register */
@@ -167,14 +172,14 @@ void Hardfault_HandlerC(uint32_t const *faultStackAddr) {
     crash_info_ram.timestamp = epochtime;
 
     /* Stores general registers */
-    crash_info_ram.cy_faultFrame.r0 = faultStackAddr[CY_R0_Pos];
-    crash_info_ram.cy_faultFrame.r1 = faultStackAddr[CY_R1_Pos];
-    crash_info_ram.cy_faultFrame.r2 = faultStackAddr[CY_R2_Pos];
-    crash_info_ram.cy_faultFrame.r3 = faultStackAddr[CY_R3_Pos];
-    crash_info_ram.cy_faultFrame.r12 = faultStackAddr[CY_R12_Pos];
-    crash_info_ram.cy_faultFrame.lr = faultStackAddr[CY_LR_Pos];
-    crash_info_ram.cy_faultFrame.pc = faultStackAddr[CY_PC_Pos];
-    crash_info_ram.cy_faultFrame.psr = faultStackAddr[CY_PSR_Pos];
+    crash_info_ram.cy_faultFrame.r0 = faultStackAddr[R0_Pos];
+    crash_info_ram.cy_faultFrame.r1 = faultStackAddr[R1_Pos];
+    crash_info_ram.cy_faultFrame.r2 = faultStackAddr[R2_Pos];
+    crash_info_ram.cy_faultFrame.r3 = faultStackAddr[R3_Pos];
+    crash_info_ram.cy_faultFrame.r12 = faultStackAddr[R12_Pos];
+    crash_info_ram.cy_faultFrame.lr = faultStackAddr[LR_Pos];
+    crash_info_ram.cy_faultFrame.pc = faultStackAddr[PC_Pos];
+    crash_info_ram.cy_faultFrame.psr = faultStackAddr[PSR_Pos];
 
     crash_info_ram.xor_checksum =
         crc7((uint8_t *)&crash_info_ram, offsetof(crash_info_t, xor_checksum));
@@ -261,11 +266,6 @@ int dump_crash_info(crash_info_t const *const crash_info_p, int next, char *cons
                               (void *)crash_info_p->cy_faultFrame.pc);
             next = 0;
             break;
-        //case crash_info_task_name:
-        //    nwrit += snprintf(buf + nwrit, buf_sz - nwrit, "\tTask Name: %s\n",
-        //                      crash_info_p->task_name);
-        //    next = 0;
-        //    break;
         case crash_info_reset_request_line:
             nwrit +=
                 snprintf(buf + nwrit, buf_sz - nwrit, "\tReset request calling function: %s\n",

@@ -48,7 +48,8 @@ void __attribute__((weak)) put_out_debug_message(const char *s) { (void)s; }
 
 #if defined(USE_PRINTF) && USE_PRINTF
 
-int __attribute__((weak)) error_message_printf(const char *func, int line, 
+int __attribute__((weak)) 
+error_message_printf(const char *func, int line, 
         const char *fmt, ...) 
 {
     printf("%s:%d: ", func, line);
@@ -56,8 +57,7 @@ int __attribute__((weak)) error_message_printf(const char *func, int line,
     va_start(args, fmt);
     int cw = vprintf(fmt, args);
     va_end(args);
-    // stdio_flush();
-    fflush(stdout);
+    stdio_flush();
     return cw;
 }
 int __attribute__((weak)) error_message_printf_plain(const char *fmt, ...) {
@@ -65,8 +65,7 @@ int __attribute__((weak)) error_message_printf_plain(const char *fmt, ...) {
     va_start(args, fmt);
     int cw = vprintf(fmt, args);
     va_end(args);
-    // stdio_flush();
-    fflush(stdout);
+    stdio_flush();
     return cw;
 }
 int __attribute__((weak)) info_message_printf(const char *fmt, ...) {
@@ -76,7 +75,8 @@ int __attribute__((weak)) info_message_printf(const char *fmt, ...) {
     va_end(args);
     return cw;
 }
-int __attribute__((weak)) debug_message_printf(const char *func, int line,  
+int __attribute__((weak)) 
+debug_message_printf(const char *func, int line, 
         const char *fmt, ...) 
 {
 #if defined(NDEBUG) || !USE_DBG_PRINTF
@@ -87,8 +87,7 @@ int __attribute__((weak)) debug_message_printf(const char *func, int line,
     va_start(args, fmt);
     int cw = vprintf(fmt, args);
     va_end(args);
-    // stdio_flush();
-    fflush(stdout);
+    stdio_flush();
     return cw;
 }
 
@@ -96,7 +95,8 @@ int __attribute__((weak)) debug_message_printf(const char *func, int line,
 
 /* These will truncate at 256 bytes. You can tell by checking the return code. */
 
-int __attribute__((weak)) error_message_printf(const char *func, int line,  
+int __attribute__((weak)) 
+error_message_printf(const char *func, int line, 
         const char *fmt, ...) 
 {
     char buf[256] = {0};
@@ -125,7 +125,8 @@ int __attribute__((weak)) info_message_printf(const char *fmt, ...) {
     va_end(args);
     return cw;
 }
-int __attribute__((weak)) debug_message_printf(const char *func, int line,  
+int __attribute__((weak)) 
+debug_message_printf(const char *func, int line, 
         const char *fmt, ...) 
 {
     char buf[256] = {0};
@@ -154,7 +155,6 @@ void assert_case_not_func(const char *file, int line, const char *func, int v) {
 }
 
 void assert_case_is(const char *file, int line, const char *func, int v, int expected) {
-    TRIG();  // DEBUG
     char pred[128];
     snprintf(pred, sizeof pred, "%d is %d", v, expected);
     my_assert_func(file, line, func, pred);
@@ -173,7 +173,7 @@ void dump8buf(char *buf, size_t buf_sz, uint8_t *pbytes, size_t nbytes) {
 }
 void hexdump_8(const char *s, const uint8_t *pbytes, size_t nbytes) {
     IMSG_PRINTF("\n%s(%s, 0x%p, %zu)\n", __FUNCTION__, s, pbytes, nbytes);
-    fflush(stdout);
+    stdio_flush();
     size_t col = 0;
     for (size_t byte_ix = 0; byte_ix < nbytes; ++byte_ix) {
         IMSG_PRINTF("%02hhx ", pbytes[byte_ix]);
@@ -181,13 +181,13 @@ void hexdump_8(const char *s, const uint8_t *pbytes, size_t nbytes) {
             IMSG_PRINTF("\n");
             col = 0;
         }
-        fflush(stdout);
+        stdio_flush();
     }
 }
 // nwords is size in WORDS!
 void hexdump_32(const char *s, const uint32_t *pwords, size_t nwords) {
     IMSG_PRINTF("\n%s(%s, 0x%p, %zu)\n", __FUNCTION__, s, pwords, nwords);
-    fflush(stdout);
+    stdio_flush();
     size_t col = 0;
     for (size_t word_ix = 0; word_ix < nwords; ++word_ix) {
         IMSG_PRINTF("%08lx ", pwords[word_ix]);
@@ -195,7 +195,7 @@ void hexdump_32(const char *s, const uint32_t *pwords, size_t nwords) {
             IMSG_PRINTF("\n");
             col = 0;
         }
-        fflush(stdout);
+        stdio_flush();
     }
 }
 // nwords is size in bytes

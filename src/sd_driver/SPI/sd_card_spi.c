@@ -179,6 +179,7 @@
 #include "sd_card.h"
 #include "sd_card_constants.h"
 #include "sd_spi.h"
+#include "sd_timeouts.h"
 #include "util.h"
 //
 #include "sd_card_spi.h"
@@ -204,45 +205,69 @@ static bool crc_on = false;
 #endif
 
 #define TRACE_PRINTF(fmt, args...)
-// #define TRACE_PRINTF printf  // task_printf
+//#define TRACE_PRINTF DBG_PRINTF
 
-/* Control Tokens   */
-#define SPI_DATA_RESPONSE_MASK (0x1F)
-#define SPI_DATA_ACCEPTED (0x05)
-#define SPI_DATA_CRC_ERROR (0x0B)
-#define SPI_DATA_WRITE_ERROR (0x0D)
-#define SPI_START_BLOCK (0xFE) /*!< For Single Block Read/Write and Multiple Block Read */
-#define SPI_START_BLK_MUL_WRITE (0xFC) /*!< Start Multi-block write */
-#define SPI_STOP_TRAN (0xFD)           /*!< Stop Multi-block write */
+/**
+ * @brief Control Tokens
+ */
+typedef enum {
+    SPI_DATA_RESPONSE_MASK = 0x1F,
+    SPI_DATA_ACCEPTED = 0x05,
+    SPI_DATA_CRC_ERROR = 0x0B,
+    SPI_DATA_WRITE_ERROR = 0x0D,
+    SPI_START_BLOCK = 0xFE,
+    SPI_START_BLK_MUL_WRITE = 0xFC,
+    SPI_STOP_TRAN = 0xFD,
+} spi_control_t;
 
-#define SPI_DATA_READ_ERROR_MASK (0xF)  /*!< Data Error Token: 4 LSB bits */
-#define SPI_READ_ERROR (0x1 << 0)       /*!< Error */
-#define SPI_READ_ERROR_CC (0x1 << 1)    /*!< CC Error*/
-#define SPI_READ_ERROR_ECC_C (0x1 << 2) /*!< Card ECC failed */
-#define SPI_READ_ERROR_OFR (0x1 << 3)   /*!< Out of Range */
+/**
+ * @brief Data Error Token Mask
+ */
+typedef enum {
+    SPI_DATA_READ_ERROR_MASK = 0xF,
+} spi_data_read_error_mask_t;
 
-/* R1 Response Format */
-#define R1_NO_RESPONSE (0xFF)
-#define R1_RESPONSE_RECV (0x80)
-#define R1_IDLE_STATE (1 << 0)
-#define R1_ERASE_RESET (1 << 1)
-#define R1_ILLEGAL_COMMAND (1 << 2)
-#define R1_COM_CRC_ERROR (1 << 3)
-#define R1_ERASE_SEQUENCE_ERROR (1 << 4)
-#define R1_ADDRESS_ERROR (1 << 5)
-#define R1_PARAMETER_ERROR (1 << 6)
+/**
+ * @brief Data Error Token Flags
+ */
+typedef enum {
+    SPI_READ_ERROR = 0x1 << 0,
+    SPI_READ_ERROR_CC = 0x1 << 1,
+    SPI_READ_ERROR_ECC_C = 0x1 << 2,
+    SPI_READ_ERROR_OFR = 0x1 << 3,
+} spi_data_read_error_t;
+
+/**
+ * @brief R1 Response Format
+ */
+typedef enum {
+    R1_NO_RESPONSE = 0xFF,
+    R1_RESPONSE_RECV = 0x80,
+    R1_IDLE_STATE = 1 << 0,
+    R1_ERASE_RESET = 1 << 1,
+    R1_ILLEGAL_COMMAND = 1 << 2,
+    R1_COM_CRC_ERROR = 1 << 3,
+    R1_ERASE_SEQUENCE_ERROR = 1 << 4,
+    R1_ADDRESS_ERROR = 1 << 5,
+    R1_PARAMETER_ERROR = 1 << 6,
+} spi_r1_response_t;
 
 /* SIZE in Bytes */
 #define PACKET_SIZE 6         /*!< SD Packet size CMD+ARG+CRC */
-#define R1_RESPONSE_SIZE 1    /*!< Size of R1 response */
-#define R2_RESPONSE_SIZE 2    /*!< Size of R2 response */
-#define R3_R7_RESPONSE_SIZE 5 /*!< Size of R3/R7 response */
+/**
+ * @brief OCR Register Flags
+ */
+typedef enum {
+    OCR_HCS_CCS = 0x1 << 30,
+    OCR_LOW_VOLTAGE = 0x01 << 24,
+    OCR_3_3V = 0x1 << 20,
+} spi_ocr_register_t;
 
-/* R3 Response : OCR Register */
-#define OCR_HCS_CCS (0x1 << 30)
-#define OCR_LOW_VOLTAGE (0x01 << 24)
-#define OCR_3_3V (0x1 << 20)
-
+/**
+ * @brief Control Command
+ *
+ * @param x Command
+ */
 #define SPI_CMD(x) (0x40 | (x & 0x3f))
 
 #pragma GCC diagnostic push
@@ -268,51 +293,54 @@ static bool crc_on = false;
  * should be discarded.
  */
 static uint8_t sd_cmd_spi(sd_card_t *sd_card_p, cmdSupported cmd, uint32_t arg) {
-    uint8_t response;
-    uint8_t cmdPacket[PACKET_SIZE];
-
-    // Prepare the command packet
-    cmdPacket[0] = SPI_CMD(cmd);
-    cmdPacket[1] = (arg >> 24);
-    cmdPacket[2] = (arg >> 16);
-    cmdPacket[3] = (arg >> 8);
-    cmdPacket[4] = (arg >> 0);
+    uint8_t cmd_packet[PACKET_SIZE] = {
+        SPI_CMD(cmd),
+        (arg >> 24),
+        (arg >> 16),
+        (arg >> 8),
+        (arg >> 0),
+    };
 
     if (crc_on) {
-        cmdPacket[5] = (crc7(cmdPacket, 5) << 1) | 0x01;
+        cmd_packet[5] = (crc7(cmd_packet, 5) << 1) | 0x01;
     } else {
         // CMD0 is executed in SD mode, hence should have correct CRC
         // CMD8 CRC verification is always enabled
         switch (cmd) {
             case CMD0_GO_IDLE_STATE:
-                cmdPacket[5] = 0x95;
+                cmd_packet[5] = 0x95;
                 break;
             case CMD8_SEND_IF_COND:
-                cmdPacket[5] = 0x87;
+                cmd_packet[5] = 0x87;
                 break;
             default:
-                cmdPacket[5] = 0xFF;  // Make sure bit 0-End bit is high
+                // Make sure bit 0-End bit is high
+                cmd_packet[5] = 0xFF;
                 break;
         }
     }
     // send a command
-    for (int i = 0; i < PACKET_SIZE; i++) {
-        sd_spi_write(sd_card_p, cmdPacket[i]);
+    for (size_t i = 0; i < PACKET_SIZE; i++) {
+        sd_spi_write(sd_card_p, cmd_packet[i]);
     }
+
     // The received byte immediately following CMD12 is a stuff byte,
     // it should be discarded before receive the response of the CMD12.
     if (CMD12_STOP_TRANSMISSION == cmd) {
         sd_spi_write(sd_card_p, SPI_FILL_CHAR);
     }
+
     // Loop for response: Response is sent back within command response time
     // (NCR), 0 to 8 bytes for SDC
-    for (int i = 0; i < 0x10; i++) {
-        response = sd_spi_write(sd_card_p, SPI_FILL_CHAR);
+    uint8_t response;
+    for (size_t i = 0; i < 0x10; i++) {
+        response = sd_spi_read(sd_card_p);
         // Got the response
         if (!(response & R1_RESPONSE_RECV)) {
             break;
         }
     }
+
     return response;
 }
 #pragma GCC diagnostic pop
@@ -334,13 +362,15 @@ static bool sd_wait_ready(sd_card_t *sd_card_p, uint32_t timeout) {
     // DO line
     uint32_t start = millis();
     do {
-        resp = sd_spi_write(sd_card_p, 0xFF);
-    } while (resp == 0x00 && millis() - start < timeout);
-
-    if (resp == 0x00) DBG_PRINTF("%s failed\n", __FUNCTION__);
+        resp = sd_spi_write_read(sd_card_p, 0xFF);
+    } while (resp != 0xFF && millis() - start < timeout);
+    /* Checking for 0xFF provides a little extra margin to 
+    make sure that DO has gone high and stayed there.
+    (the alternative is to accept the first non-zero byte) */
+    if (resp != 0xFF) DBG_PRINTF("%s failed\n", __FUNCTION__);
 
     // Return success/failure
-    return (resp > 0x00);
+    return (0xFF == resp);
 }
 
 /* Locks the SD card and acquires its SPI
@@ -355,8 +385,8 @@ static void sd_acquire(sd_card_t *sd_card_p) {
     sd_spi_acquire(sd_card_p);
 }
 static void sd_release(sd_card_t *sd_card_p) {
-    sd_unlock(sd_card_p);
     sd_spi_release(sd_card_p);
+    sd_unlock(sd_card_p);
 }
 
 #if TRACE
@@ -497,9 +527,6 @@ static int chk_CMD13_response(uint32_t response) {
     return status;
 }
 
-#define SD_COMMAND_RETRIES 3    /*!< Times SPI cmd is retried when there is no response */
-#define SD_COMMAND_TIMEOUT 2000 /*!< Timeout in ms for response */
-
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wswitch-enum"
 
@@ -513,7 +540,7 @@ static int chk_CMD13_response(uint32_t response) {
  * @return error code
  *
  * This function sends a command to the SD card and waits for the response.
- * It will retry the command up to SD_COMMAND_RETRIES times if there is no response.
+ * It will retry the command up to sd_timeouts.sd_command_retries times if there is no response.
  * The response is stored in the @p resp variable if it is not NULL.
  * The function will return SD_BLOCK_DEVICE_ERROR_NONE if the command was successful,
  * SD_BLOCK_DEVICE_ERROR_NO_RESPONSE if there was no response,
@@ -522,30 +549,28 @@ static int chk_CMD13_response(uint32_t response) {
  * SD_BLOCK_DEVICE_ERROR_PARAMETER if there was a parameter error,
  * SD_BLOCK_DEVICE_ERROR_ERASE if there was an erase error.
  */
-
 static block_dev_err_t sd_cmd(sd_card_t *sd_card_p, const cmdSupported cmd, uint32_t arg,
                               bool isAcmd, uint32_t *resp) {
-//    TRACE_PRINTF("%s(%s(0x%08lx)): ", __FUNCTION__, cmd2str(cmd), arg);
+    //    TRACE_PRINTF("%s(%s(0x%08lx)): ", __FUNCTION__, cmd2str(cmd), arg);
     myASSERT(sd_is_locked(sd_card_p));
     myASSERT(0 == gpio_get(sd_card_p->spi_if_p->ss_gpio));
 
     int32_t status = SD_BLOCK_DEVICE_ERROR_NONE;
-    uint32_t response;
+    uint32_t response = 0;
 
     // No need to wait for card to be ready when sending the stop command
     if (CMD12_STOP_TRANSMISSION != cmd && CMD0_GO_IDLE_STATE != cmd) {
-        if (false == sd_wait_ready(sd_card_p, SD_COMMAND_TIMEOUT)) {
+        if (false == sd_wait_ready(sd_card_p, sd_timeouts.sd_command)) {
             DBG_PRINTF("Card not ready yet\n");
             return SD_BLOCK_DEVICE_ERROR_NO_RESPONSE;
         }
     }
-    // Re-try command
-    for (int i = 0; i < SD_COMMAND_RETRIES; i++) {
+    for (unsigned i = 0; i < sd_timeouts.sd_command_retries; i++) {
         // Send CMD55 for APP command first
         if (isAcmd) {
             response = sd_cmd_spi(sd_card_p, CMD55_APP_CMD, 0x0);
             // Wait for card to be ready after CMD55
-            if (false == sd_wait_ready(sd_card_p, SD_COMMAND_TIMEOUT)) {
+            if (false == sd_wait_ready(sd_card_p, sd_timeouts.sd_command)) {
                 DBG_PRINTF("Card not ready yet\n");
             }
         }
@@ -553,6 +578,7 @@ static block_dev_err_t sd_cmd(sd_card_t *sd_card_p, const cmdSupported cmd, uint
         response = sd_cmd_spi(sd_card_p, cmd, arg);
         if (R1_NO_RESPONSE == response) {
             DBG_PRINTF("No response CMD:%d\n", cmd);
+            // Re-try command
             continue;
         }
         break;
@@ -597,19 +623,19 @@ static block_dev_err_t sd_cmd(sd_card_t *sd_card_p, const cmdSupported cmd, uint
             sd_card_p->state.card_type = SDCARD_V2;  // fallthrough
             // Note: No break here, need to read rest of the response
         case CMD58_READ_OCR:  // Response R3
-            response = (sd_spi_write(sd_card_p, SPI_FILL_CHAR) << 24);
-            response |= (sd_spi_write(sd_card_p, SPI_FILL_CHAR) << 16);
-            response |= (sd_spi_write(sd_card_p, SPI_FILL_CHAR) << 8);
-            response |= sd_spi_write(sd_card_p, SPI_FILL_CHAR);
+            response = (sd_spi_read(sd_card_p) << 24);
+            response |= (sd_spi_read(sd_card_p) << 16);
+            response |= (sd_spi_read(sd_card_p) << 8);
+            response |= sd_spi_read(sd_card_p);
             DBG_PRINTF("R3/R7: 0x%" PRIx32 "\n", response);
             break;
         case CMD12_STOP_TRANSMISSION:  // Response R1b
         case CMD38_ERASE:
-            sd_wait_ready(sd_card_p, SD_COMMAND_TIMEOUT);
+            sd_wait_ready(sd_card_p, sd_timeouts.sd_command);
             break;
         case CMD13_SEND_STATUS:  // Response R2
             response <<= 8;
-            response |= sd_spi_write(sd_card_p, SPI_FILL_CHAR);
+            response |= sd_spi_read(sd_card_p);
             if (response) status = chk_CMD13_response(response);
         default:;
     }
@@ -659,7 +685,7 @@ static block_dev_err_t sd_cmd8(sd_card_t *sd_card_p) {
     return status;
 }
 
-static block_dev_err_t sd_read_bytes(sd_card_t *sd_card_p, uint8_t *buffer, uint32_t length);
+static block_dev_err_t read_bytes(sd_card_t *sd_card_p, uint8_t *buffer, uint32_t length);
 
 /**
  * @brief Get the number of sectors on an SD card.
@@ -677,7 +703,7 @@ static uint32_t in_sd_spi_sectors(sd_card_t *sd_card_p) {
         DBG_PRINTF("Didn't get a response from the disk\n");
         return 0;
     }
-    if (sd_read_bytes(sd_card_p, sd_card_p->state.CSD, 16) != 0) {
+    if (read_bytes(sd_card_p, sd_card_p->state.CSD, 16) != 0) {
         DBG_PRINTF("Couldn't read CSD response from disk\n");
         return 0;
     }
@@ -714,14 +740,14 @@ uint32_t sd_spi_sectors(sd_card_t *sd_card_p) {
  *          the function returns false.
  */
 static bool sd_wait_token(sd_card_t *sd_card_p, uint8_t token) {
-    TRACE_PRINTF("%s(0x%02x)\n", __FUNCTION__, token);
+    //TRACE_PRINTF("%s(0x%02x)\n", __FUNCTION__, token);
 
     uint32_t start = millis();
     do {
-        if (token == sd_spi_write(sd_card_p, SPI_FILL_CHAR)) {
+        if (token == sd_spi_read(sd_card_p)) {
             return true;
         }
-    } while (millis() - start < SD_COMMAND_TIMEOUT);
+    } while (millis() - start < sd_timeouts.sd_command);
 
     DBG_PRINTF("sd_wait_token: timeout\n");
     return false;
@@ -744,20 +770,20 @@ static bool chk_crc16(uint8_t *buffer, size_t length, uint16_t crc) {
 
 static block_dev_err_t stop_wr_tran(sd_card_t *sd_card_p);
 
-static block_dev_err_t sd_read_bytes(sd_card_t *sd_card_p, uint8_t *buffer, uint32_t length) {
+static block_dev_err_t read_bytes(sd_card_t *sd_card_p, uint8_t *buffer, uint32_t length) {
     uint16_t crc;
 
     // read until start byte (0xFE)
     if (false == sd_wait_token(sd_card_p, SPI_START_BLOCK)) {
-        DBG_PRINTF("%s:%d Read timeout\n", __FILE__, __LINE__);
+        DBG_PRINTF("%s:%d Read timeout\n", __func__, __LINE__);
         return SD_BLOCK_DEVICE_ERROR_NO_RESPONSE;
     }
     bool ok = sd_spi_transfer(sd_card_p, NULL, buffer, length);
     if (!ok) return SD_BLOCK_DEVICE_ERROR_NO_RESPONSE;
 
     // Read the CRC16 checksum for the data block
-    crc = (sd_spi_write(sd_card_p, SPI_FILL_CHAR) << 8);
-    crc |= sd_spi_write(sd_card_p, SPI_FILL_CHAR);
+    crc = (sd_spi_read(sd_card_p) << 8);
+    crc |= sd_spi_read(sd_card_p);
 
     if (!chk_crc16(buffer, length, crc)) {
         DBG_PRINTF("%s: Invalid CRC received: 0x%" PRIx16 "\n", __func__, crc);
@@ -803,7 +829,6 @@ static block_dev_err_t in_sd_read_blocks(sd_card_t *sd_card_p, uint8_t *buffer,
     if (sd_card_p->spi_if_p->state.ongoing_mlt_blk_wrt) {
         status = stop_wr_tran(sd_card_p);
         if (SD_BLOCK_DEVICE_ERROR_NONE != status) return status;
-        sd_spi_deselect_pulse(sd_card_p);
     }
 
     // Send command to receive data
@@ -826,12 +851,13 @@ static block_dev_err_t in_sd_read_blocks(sd_card_t *sd_card_p, uint8_t *buffer,
     while (blk_cnt) {
         // read until start byte (0xFE)
         if (!sd_wait_token(sd_card_p, SPI_START_BLOCK)) {
-            DBG_PRINTF("%s:%d Read timeout\n", __FILE__, __LINE__);
+            DBG_PRINTF("%s:%d Read timeout\n", __func__, __LINE__);
             return SD_BLOCK_DEVICE_ERROR_NO_RESPONSE;
         }
         // read data
         sd_spi_transfer_start(sd_card_p, NULL, buffer, sd_block_size);
 
+        // Check the CRC16 checksum for the previous data block
         if (prev_buffer_addr) {
             // Check previous block's CRC:
             if (!chk_crc16(prev_buffer_addr, sd_block_size, prev_block_crc)) {
@@ -840,12 +866,14 @@ static block_dev_err_t in_sd_read_blocks(sd_card_t *sd_card_p, uint8_t *buffer,
                 return SD_BLOCK_DEVICE_ERROR_CRC;
             }
         }
-        bool ok = sd_spi_transfer_wait_complete(sd_card_p, 1000);
+        
+        uint32_t timeout = calculate_transfer_time_ms(sd_card_p->spi_if_p->spi, sd_block_size);
+        bool ok = sd_spi_transfer_wait_complete(sd_card_p, timeout);
         if (!ok) return SD_BLOCK_DEVICE_ERROR_NO_RESPONSE;
 
         // Read the CRC16 checksum for the data block
-        prev_block_crc = (sd_spi_write(sd_card_p, SPI_FILL_CHAR) << 8);
-        prev_block_crc |= sd_spi_write(sd_card_p, SPI_FILL_CHAR);
+        prev_block_crc = sd_spi_read(sd_card_p) << 8;
+        prev_block_crc |= sd_spi_read(sd_card_p);
         prev_buffer_addr = buffer;
         buffer += sd_block_size;
         --blk_cnt;
@@ -865,10 +893,18 @@ static block_dev_err_t in_sd_read_blocks(sd_card_t *sd_card_p, uint8_t *buffer,
 }
 static block_dev_err_t sd_read_blocks(sd_card_t *sd_card_p, uint8_t *buffer,
                                       uint32_t data_address, uint32_t num_rd_blks) {
-    TRACE_PRINTF("sd_read_blocks(0x%p, 0x%lx, 0x%lx)\n", buffer, data_address,
-                 num_rd_blks);
+    TRACE_PRINTF("sd_read_blocks(0x%p, 0x%lx, 0x%lx)\n", buffer, data_address, num_rd_blks);
     sd_acquire(sd_card_p);
-    int status = in_sd_read_blocks(sd_card_p, buffer, data_address, num_rd_blks);
+    unsigned retries = sd_timeouts.sd_command_retries;
+    block_dev_err_t status;
+    do {
+        status = in_sd_read_blocks(sd_card_p, buffer, data_address, num_rd_blks);
+        if (status != SD_BLOCK_DEVICE_ERROR_NONE) {
+            if (SD_BLOCK_DEVICE_ERROR_NONE !=
+                sd_cmd(sd_card_p, CMD12_STOP_TRANSMISSION, 0x0, false, 0))
+                return SD_BLOCK_DEVICE_ERROR_NO_RESPONSE;
+        }
+    } while (--retries && status != SD_BLOCK_DEVICE_ERROR_NONE);
     sd_release(sd_card_p);
     return status;
 }
@@ -888,7 +924,7 @@ static block_dev_err_t sd_read_blocks(sd_card_t *sd_card_p, uint8_t *buffer,
  *         SD_BLOCK_DEVICE_ERROR_CRC if there was a CRC error reading the response,
  *         SD_BLOCK_DEVICE_ERROR_PARAMETER if an invalid parameter was passed.
  */
-static block_dev_err_t sd_SEND_NUM_WR_BLOCKS(sd_card_t *sd_card_p, uint32_t *num_p) {
+static block_dev_err_t get_num_wr_blocks(sd_card_t *sd_card_p, uint32_t *num_p) {
     // Send the ACMD22 command to get the number of written blocks
     block_dev_err_t err = sd_cmd(sd_card_p, ACMD22_SEND_NUM_WR_BLOCKS, 0, true, NULL);
     
@@ -899,7 +935,7 @@ static block_dev_err_t sd_SEND_NUM_WR_BLOCKS(sd_card_t *sd_card_p, uint32_t *num
     }
     
     // Read the response from the SD card and store it in the num_p variable
-    err = sd_read_bytes(sd_card_p, (uint8_t *)num_p, sizeof(uint32_t));
+    err = read_bytes(sd_card_p, (uint8_t *)num_p, sizeof(uint32_t));
     *num_p = __builtin_bswap32(*num_p);
     
     // If there was an error reading the response, return the error code
@@ -929,13 +965,13 @@ static block_dev_err_t sd_SEND_NUM_WR_BLOCKS(sd_card_t *sd_card_p, uint32_t *num
  * transfer is complete, the function writes the CRC16 checksum to the SD card. Finally, the function
  * checks the response token and returns an error code if the data was not accepted.
  */
-static block_dev_err_t sd_send_block(sd_card_t *sd_card_p, const uint8_t *buffer, uint8_t token,
+static block_dev_err_t send_block(sd_card_t *sd_card_p, const uint8_t *buffer, uint8_t token,
                                      uint32_t length)
 {
     uint8_t response;
 
     /* Indicate start of block - Start Block Token */
-    response = sd_spi_write(sd_card_p, token);
+    response = sd_spi_write_read(sd_card_p, token);
     if (!response) {
         DBG_PRINTF("Start Block Token not accepted. Response: 0x%x\n", response);
         return SD_BLOCK_DEVICE_ERROR_WRITE;
@@ -957,8 +993,8 @@ static block_dev_err_t sd_send_block(sd_card_t *sd_card_p, const uint8_t *buffer
         // Compute CRC
         crc = crc16((void *)buffer, length);
     }
-
-    bool ok = sd_spi_transfer_wait_complete(sd_card_p, 1000);
+    uint32_t timeout = calculate_transfer_time_ms(sd_card_p->spi_if_p->spi, length);
+    bool ok = sd_spi_transfer_wait_complete(sd_card_p, timeout);
     if (!ok) return SD_BLOCK_DEVICE_ERROR_WRITE;
 
     // Write the checksum CRC16
@@ -968,7 +1004,7 @@ static block_dev_err_t sd_send_block(sd_card_t *sd_card_p, const uint8_t *buffer
     block_dev_err_t rc = SD_BLOCK_DEVICE_ERROR_NONE;
 
     // Check the response token
-    response = sd_spi_write(sd_card_p, SPI_FILL_CHAR);
+    response = sd_spi_read(sd_card_p);
 
     // Only CRC and general write error are communicated via response token
     if ((response & SPI_DATA_RESPONSE_MASK) != SPI_DATA_ACCEPTED) {
@@ -995,8 +1031,8 @@ static block_dev_err_t sd_send_block(sd_card_t *sd_card_p, const uint8_t *buffer
         rc = SD_BLOCK_DEVICE_ERROR_WRITE;
     }
     // Wait while card is busy programming
-    if (false == sd_wait_ready(sd_card_p, SD_COMMAND_TIMEOUT)) {
-        DBG_PRINTF("%s:%d: Card not ready yet\n", __FILE__, __LINE__);
+    if (false == sd_wait_ready(sd_card_p, sd_timeouts.sd_command)) {
+        DBG_PRINTF("%s:%d: Card not ready yet\n", __func__, __LINE__);
         rc = SD_BLOCK_DEVICE_ERROR_WRITE;
     }
     return rc;
@@ -1005,7 +1041,7 @@ static block_dev_err_t sd_send_block(sd_card_t *sd_card_p, const uint8_t *buffer
  * @brief Send all blocks of data, one block at a time.
  * 
  * The function performs the following steps:
- *  - Sends each block of data using the sd_send_block() function
+ *  - Sends each block of data using the send_block() function
  *  - Checks the status of each send operation and stop if there is an error
  *  - Updates the buffer pointer and data address after each send operation
  *  - Sets the ongoing_mlt_blk_wrt flag to true if all blocks are sent successfully
@@ -1022,13 +1058,13 @@ static block_dev_err_t sd_send_block(sd_card_t *sd_card_p, const uint8_t *buffer
  * @return SD_BLOCK_DEVICE_ERROR_NONE if all blocks are sent successfully,
  *         otherwise an error code.
  */
-static block_dev_err_t sd_send_all_blocks(sd_card_t *sd_card_p, const uint8_t *buffer_p[],
+static block_dev_err_t send_all_blocks(sd_card_t *sd_card_p, const uint8_t *buffer_p[],
         uint32_t * const data_address_p,
         uint32_t * const num_wrt_blks_p)
 {
     block_dev_err_t status;
     do {
-        status = sd_send_block(sd_card_p, *buffer_p, SPI_START_BLK_MUL_WRITE, sd_block_size);
+        status = send_block(sd_card_p, *buffer_p, SPI_START_BLK_MUL_WRITE, sd_block_size);
         if (SD_BLOCK_DEVICE_ERROR_NONE != status) break;
         *buffer_p += sd_block_size;
         ++*data_address_p;
@@ -1041,9 +1077,8 @@ static block_dev_err_t sd_send_all_blocks(sd_card_t *sd_card_p, const uint8_t *b
         // sd_card_p->spi_if_p->state.n_wrt_blks_reqd cleared in stop_wr_tran
         uint32_t n_wrt_blks_reqd = sd_card_p->spi_if_p->state.n_wrt_blks_reqd;
         stop_wr_tran(sd_card_p); // Ignore return value
-        sd_spi_deselect_pulse(sd_card_p);
         uint32_t nw;
-        block_dev_err_t err = sd_SEND_NUM_WR_BLOCKS(sd_card_p, &nw);
+        block_dev_err_t err = get_num_wr_blocks(sd_card_p, &nw);
         if (SD_BLOCK_DEVICE_ERROR_NONE == err) {
             DBG_PRINTF("blocks_requested: %lu, NUM_WR_BLOCKS: %lu\n",
                     n_wrt_blks_reqd, nw);
@@ -1068,7 +1103,8 @@ static block_dev_err_t sd_send_all_blocks(sd_card_t *sd_card_p, const uint8_t *b
  *                       write.
  * @return block_dev_err_t Error code indicating the status of the write operation.
  */
-static block_dev_err_t in_sd_write_blocks(sd_card_t *sd_card_p, const uint8_t *buffer_p[],
+static block_dev_err_t in_sd_write_blocks(sd_card_t *sd_card_p, 
+                                          const uint8_t *buffer_p[],
                                           uint32_t * const data_address_p,
                                           uint32_t * const num_wrt_blks_p)
 {
@@ -1080,14 +1116,13 @@ static block_dev_err_t in_sd_write_blocks(sd_card_t *sd_card_p, const uint8_t *b
         // Update the number of blocks requested for write
         sd_card_p->spi_if_p->state.n_wrt_blks_reqd += *num_wrt_blks_p;
         // Send all blocks of data
-        return sd_send_all_blocks(sd_card_p, buffer_p, data_address_p, num_wrt_blks_p);
+        return send_all_blocks(sd_card_p, buffer_p, data_address_p, num_wrt_blks_p);
     }
 
     // Stop any ongoing write transmission
     if (sd_card_p->spi_if_p->state.ongoing_mlt_blk_wrt) {
         status = stop_wr_tran(sd_card_p);
         if (SD_BLOCK_DEVICE_ERROR_NONE != status) return status;
-        sd_spi_deselect_pulse(sd_card_p);
     }
 
     // Send command to perform write operation
@@ -1097,7 +1132,7 @@ static block_dev_err_t in_sd_write_blocks(sd_card_t *sd_card_p, const uint8_t *b
     // Update the number of blocks requested for write
     sd_card_p->spi_if_p->state.n_wrt_blks_reqd = *num_wrt_blks_p;
     // Send all blocks of data
-    return sd_send_all_blocks(sd_card_p, buffer_p, data_address_p, num_wrt_blks_p);
+    return send_all_blocks(sd_card_p, buffer_p, data_address_p, num_wrt_blks_p);
     /* Optimization:
     To optimize large contiguous writes,
     postpone stopping transmission until it is
@@ -1126,13 +1161,15 @@ static block_dev_err_t stop_wr_tran(sd_card_t *sd_card_p) {
     the host via the data-response token is CRC.
     */
 
-    // Some SD cards want to be deselected between every command:
-    sd_spi_deselect_pulse(sd_card_p);
+    if (false == sd_wait_ready(sd_card_p, sd_timeouts.sd_command)) {
+        DBG_PRINTF("Card not ready yet\n");
+    }
 
     uint32_t stat = 0;
     sd_card_p->spi_if_p->state.n_wrt_blks_reqd = 0;
     return sd_cmd(sd_card_p, CMD13_SEND_STATUS, 0, false, &stat);
 }
+
 /**
  * @brief Writes a single block to the SD card
  *
@@ -1144,7 +1181,7 @@ static block_dev_err_t stop_wr_tran(sd_card_t *sd_card_p) {
  * - SD_BLOCK_DEVICE_ERROR_NONE on success
  * - error code on failure
  */
-static block_dev_err_t in_sd_write_block(sd_card_t *sd_card_p, const uint8_t *buffer,
+static block_dev_err_t write_block(sd_card_t *sd_card_p, const uint8_t *buffer,
                                           uint32_t const address)
 {
     // Stop any ongoing multiple block write transmission
@@ -1152,7 +1189,6 @@ static block_dev_err_t in_sd_write_block(sd_card_t *sd_card_p, const uint8_t *bu
     if (sd_card_p->spi_if_p->state.ongoing_mlt_blk_wrt) {
         status = stop_wr_tran(sd_card_p);
         if (SD_BLOCK_DEVICE_ERROR_NONE != status) return status;
-        sd_spi_deselect_pulse(sd_card_p);
     }
 
     // Send command to perform the write operation
@@ -1160,7 +1196,7 @@ static block_dev_err_t in_sd_write_block(sd_card_t *sd_card_p, const uint8_t *bu
     if (SD_BLOCK_DEVICE_ERROR_NONE != status) return status;
 
     // Write data
-    sd_send_block(sd_card_p, buffer, SPI_START_BLOCK, sd_block_size);
+    send_block(sd_card_p, buffer, SPI_START_BLOCK, sd_block_size);
 
     /*
     Once the programming operation is completed, the
@@ -1172,9 +1208,6 @@ static block_dev_err_t in_sd_write_block(sd_card_t *sd_card_p, const uint8_t *bu
     performed on the data block and communicated to
     the host via the data-response token is CRC.
     */
-
-    // Some SD cards want to be deselected between every command:
-    sd_spi_deselect_pulse(sd_card_p);
 
     // Send command to get the status of the card
     uint32_t stat = 0;
@@ -1203,6 +1236,7 @@ static block_dev_err_t in_sd_write_block(sd_card_t *sd_card_p, const uint8_t *bu
 static block_dev_err_t sd_write_blocks(sd_card_t *sd_card_p, uint8_t const buffer[],
                                        uint32_t data_address, uint32_t num_wrt_blks) 
 {
+        TRACE_PRINTF("%s(0x%p, 0x%lx, 0x%lx)\n", __func__, buffer, data_address, num_wrt_blks);
     // Check if the SD card pointer is valid
     if (NULL == sd_card_p)
         return SD_BLOCK_DEVICE_ERROR_PARAMETER;
@@ -1228,15 +1262,15 @@ static block_dev_err_t sd_write_blocks(sd_card_t *sd_card_p, uint8_t const buffe
 
     // If writing only one block, use the optimized function
     if (1 == num_wrt_blks) {
-        status = in_sd_write_block(sd_card_p, buffer, data_address);
+        status = write_block(sd_card_p, buffer, data_address);
     } else {
         // If writing multiple blocks, retry the operation until it succeeds or reaches the maximum number of retries
-        unsigned retries = SD_COMMAND_RETRIES;
+        unsigned retries = sd_timeouts.sd_command_retries;
         do {
-            if (retries < SD_COMMAND_RETRIES) DBG_PRINTF("Retrying\n");
+            if (retries < sd_timeouts.sd_command_retries) DBG_PRINTF("Retrying\n");
             status = in_sd_write_blocks(sd_card_p, &buffer, &data_address, &num_wrt_blks);
             if (SD_BLOCK_DEVICE_ERROR_WRITE == status)
-                DBG_PRINTF("status=0x%x data_address=%p num_wrt_blks=%lu\n", status, data_address, num_wrt_blks);
+                DBG_PRINTF("%s status=0x%x data_address=%lu num_wrt_blks=%lu\n", sd_get_drive_prefix(sd_card_p), status, data_address, num_wrt_blks);
         } while (SD_BLOCK_DEVICE_ERROR_WRITE == status && --retries && num_wrt_blks);
     }
 
@@ -1417,7 +1451,7 @@ static block_dev_err_t sd_init_medium(sd_card_t *sd_card_p) {
     uint32_t start = millis();
     do {
         status = sd_cmd(sd_card_p, ACMD41_SD_SEND_OP_COND, arg, true, &response);
-    } while (response & R1_IDLE_STATE && millis() - start < SD_COMMAND_TIMEOUT);
+    } while (response & R1_IDLE_STATE && millis() - start < sd_timeouts.sd_command);
     // Initialization complete: ACMD41 successful
     if ((SD_BLOCK_DEVICE_ERROR_NONE != status) || (0x00 != response)) {
         sd_card_p->state.card_type = CARD_UNKNOWN;
@@ -1492,7 +1526,7 @@ static bool sd_spi_test_com(sd_card_t *sd_card_p) {
         if (sd_wait_ready(sd_card_p, 0)) {
             // DO has been released, try to get status
             uint32_t response;
-            for (int i = 0; i < SD_COMMAND_RETRIES; i++) {
+            for (unsigned i = 0; i < sd_timeouts.sd_command_retries; i++) {
                 // Send command over SPI interface
                 response = sd_cmd_spi(sd_card_p, CMD13_SEND_STATUS, 0);
                 if (R1_NO_RESPONSE != response) {
@@ -1523,7 +1557,7 @@ static bool sd_spi_test_com(sd_card_t *sd_card_p) {
         if (sd_wait_ready(sd_card_p, 0)) {
             // DO has been released, try to make SD card go idle
             uint32_t response;
-            for (int i = 0; i < SD_COMMAND_RETRIES; i++) {
+            for (unsigned i = 0; i < sd_timeouts.sd_command_retries; i++) {
                 // Send command over SPI interface
                 response = sd_cmd_spi(sd_card_p, CMD0_GO_IDLE_STATE, 0);
                 if (R1_NO_RESPONSE != response) {
@@ -1545,10 +1579,7 @@ static bool sd_spi_test_com(sd_card_t *sd_card_p) {
 }
 
 /**
- * Initializes the SD card over SPI.
- *
- * @param sd_card_p Pointer to the SD card object.
- * @return The status of the SD card.
+ * @brief Initializes the SD card over SPI.
  *
  * This function initializes the SD card over SPI. It first checks if the SD card is already
  * initialized, and if so, it returns the current status. If the card is not initialized, it
@@ -1556,39 +1587,47 @@ static bool sd_spi_test_com(sd_card_t *sd_card_p) {
  * initialized by sending the initializing sequence, checking the card type, setting the SCK
  * for data transfer, and setting the block length to 512. The card is now considered initialized
  * and its status is returned.
+ *
+ * @param sd_card_p Pointer to the SD card object.
+ * @return The status of the SD card:
+ *  STA_NOINIT = 0x01, // Drive not initialized 
+ *  STA_NODISK = 0x02, // No medium in the drive
+ *  STA_PROTECT = 0x04 // Write protected
  */
-DSTATUS sd_spi_init(sd_card_t *sd_card_p) {
+DSTATUS sd_card_spi_init(sd_card_t *sd_card_p) {
     TRACE_PRINTF("> %s\n", __FUNCTION__);
 
-    //	STA_NOINIT = 0x01, /* Drive not initialized */
-    //	STA_NODISK = 0x02, /* No medium in the drive */
-    //	STA_PROTECT = 0x04 /* Write protected */
-
+    // Acquire the lock
     sd_lock(sd_card_p);
 
-    // Make sure there's a card in the socket before proceeding
+    // Check if there's a card in the socket before proceeding
     sd_card_detect(sd_card_p);
     if (sd_card_p->state.m_Status & STA_NODISK) {
+        // Release the lock and return the current status
         sd_unlock(sd_card_p);
         return sd_card_p->state.m_Status;
     }
-    // Make sure we're not already initialized before proceeding
+    // Check if we're not already initialized before proceeding
     if (!(sd_card_p->state.m_Status & STA_NOINIT)) {
+        // Release the lock and return the current status
         sd_unlock(sd_card_p);
         return sd_card_p->state.m_Status;
     }
+
     // Initialize the member variables
     sd_card_p->state.card_type = SDCARD_NONE;
 
+    // Acquire the SD card
     sd_spi_acquire(sd_card_p);
 
+    // Initialize the medium
     int err = sd_init_medium(sd_card_p);
     if (SD_BLOCK_DEVICE_ERROR_NONE != err) {
         EMSG_PRINTF("Failed to initialize card\n");
         sd_release(sd_card_p);
         return sd_card_p->state.m_Status;
     }
-    // No support for SDSC Card (CCS=0) with byte unit address:
+    // No support for SDSC Card (CCS=0) with byte unit address
     if (SDCARD_V2HC != sd_card_p->state.card_type) {
         EMSG_PRINTF("SD Standard Capacity Memory Card unsupported\n");
         sd_release(sd_card_p);
@@ -1600,25 +1639,26 @@ DSTATUS sd_spi_init(sd_card_t *sd_card_p) {
     // Set SCK for data transfer
     sd_spi_go_high_frequency(sd_card_p);
 
+    // Get the number of sectors on the card
     sd_card_p->state.sectors = in_sd_spi_sectors(sd_card_p);
     if (0 == sd_card_p->state.sectors) {
         // CMD9 failed
         sd_release(sd_card_p);
         return sd_card_p->state.m_Status;
     }
-    // CMD10, Response R2 (R1 byte + 16-byte block read)
+    // Get the CID of the card
     if (SD_BLOCK_DEVICE_ERROR_NONE != sd_cmd(sd_card_p, CMD10_SEND_CID, 0x0, false, 0)) {
         DBG_PRINTF("Didn't get a response from the disk\n");
         sd_release(sd_card_p);
         return sd_card_p->state.m_Status;
     }
-    if (sd_read_bytes(sd_card_p, (uint8_t *)&sd_card_p->state.CID, sizeof(CID_t)) != 0) {
+    if (read_bytes(sd_card_p, (uint8_t *)&sd_card_p->state.CID, sizeof(CID_t)) != 0) {
         DBG_PRINTF("Couldn't read CID response from disk\n");
         sd_release(sd_card_p);
         return sd_card_p->state.m_Status;
     }
 
-    // Set block length to 512 (CMD16)
+    // Set the block length to 512 (CMD16)
     if (SD_BLOCK_DEVICE_ERROR_NONE !=
         sd_cmd(sd_card_p, CMD16_SET_BLOCKLEN, sd_block_size, false, 0)) {
         DBG_PRINTF("Set %u-byte block timed out\n", sd_block_size);
@@ -1629,6 +1669,7 @@ DSTATUS sd_spi_init(sd_card_t *sd_card_p) {
     // The card is now initialized
     sd_card_p->state.m_Status &= ~STA_NOINIT;
 
+    // Release the SD card
     sd_release(sd_card_p);
 
     // Return the disk status
@@ -1668,7 +1709,7 @@ void sd_spi_ctor(sd_card_t *sd_card_p) {
     sd_card_p->write_blocks = sd_write_blocks;
     sd_card_p->read_blocks = sd_read_blocks;
     sd_card_p->sync = sd_sync;
-    sd_card_p->init = sd_spi_init;
+    sd_card_p->init = sd_card_spi_init;
     sd_card_p->deinit = sd_deinit;
     sd_card_p->get_num_sectors = sd_spi_sectors;
     sd_card_p->sd_test_com = sd_spi_test_com;

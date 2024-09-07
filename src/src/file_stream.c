@@ -31,7 +31,7 @@ static ssize_t cookie_read_function(void *vcookie_p, char *buf, size_t n) {
     UINT br;
     FRESULT fr = f_read(file_p, buf, n, &br);
     if (FR_OK != fr) {
-        printf("f_read error: %s\n", FRESULT_str(fr));
+        DBG_PRINTF("f_read error: %s\n", FRESULT_str(fr));
         return -1;
     }
     return br;
@@ -45,7 +45,7 @@ static ssize_t cookie_write_function(void *vcookie_p, const char *buf, size_t n)
     UINT bw;
     FRESULT fr = f_write(file_p, buf, n, &bw);
     if (FR_OK != fr) {
-        printf("f_read error: %s\n", FRESULT_str(fr));
+        DBG_PRINTF("f_read error: %s\n", FRESULT_str(fr));
         return -1;
     }
     return bw;
@@ -74,7 +74,7 @@ static int cookie_seek_function(void *vcookie_p, off_t *off, int whence) {
             ASSERT_CASE_NOT(whence);
     }
     if (FR_OK != fr) {
-        printf("f_lseek error: %s\n", FRESULT_str(fr));
+        DBG_PRINTF("f_lseek error: %s\n", FRESULT_str(fr));
         return -1;
     } else {
         *off = f_tell(file_p);
@@ -91,7 +91,7 @@ static int cookie_close_function(void *vcookie_p) {
     FRESULT fr = f_close(file_p);
     free(vcookie_p);
     if (FR_OK != fr) {
-        printf("f_close error: %s\n", FRESULT_str(fr));
+        DBG_PRINTF("f_close error: %s\n", FRESULT_str(fr));
         return -1;
     } else {
         return 0;
@@ -126,7 +126,7 @@ FILE *open_file_stream(const char *pathname, const char *pcMode) {
 
     FRESULT fr = f_open(&cookie_p->file, pathname, mode);
     if (FR_OK != fr) {
-        printf("f_lseek error: %s\n", FRESULT_str(fr));
+        DBG_PRINTF("f_lseek error: %s\n", FRESULT_str(fr));
         return NULL;
     }
     cookie_io_functions_t iofs = {cookie_read_function, cookie_write_function,

@@ -46,8 +46,10 @@ typedef enum {
     CARD_UNKNOWN = 4 /**< Unknown or unsupported card */
 } card_type_t;
 
+/* On the wire, convert to hex and add 0x40 for transmitter bit.
+e.g.: CMD17_READ_SINGLE_BLOCK: 17 = 0x11; 0x11 | 0x40 = 0x51 */
 // Supported SD Card Commands
-typedef enum {
+typedef enum {                          /* Number on wire in parens */
     CMD_NOT_SUPPORTED = -1,             /* Command not supported error */
     CMD0_GO_IDLE_STATE = 0,             /* Resets the SD Memory Card */
     CMD1_SEND_OP_COND = 1,              /* Sends host capacity support */
@@ -59,13 +61,13 @@ typedef enum {
     CMD9_SEND_CSD = 9,                  /* Provides Card Specific data */
     CMD10_SEND_CID = 10,                /* Provides Card Identification */
     CMD12_STOP_TRANSMISSION = 12,       /* Forces the card to stop transmission */
-    CMD13_SEND_STATUS = 13,             /* Card responds with status */
+    CMD13_SEND_STATUS = 13,             /* (0x4D) Card responds with status */
     CMD16_SET_BLOCKLEN = 16,            /* Length for SC card is set */
-    CMD17_READ_SINGLE_BLOCK = 17,       /* Read single block of data */
-    CMD18_READ_MULTIPLE_BLOCK = 18,     /* Card transfers data blocks to host
+    CMD17_READ_SINGLE_BLOCK = 17,       /* (0x51) Read single block of data */
+    CMD18_READ_MULTIPLE_BLOCK = 18,     /* (0x52) Continuously Card transfers data blocks to host
          until interrupted by a STOP_TRANSMISSION command */
-    CMD24_WRITE_BLOCK = 24,             /* Write single block of data */
-    CMD25_WRITE_MULTIPLE_BLOCK = 25,    /* Continuously writes blocks of data
+    CMD24_WRITE_BLOCK = 24,             /* (0x58) Write single block of data */
+    CMD25_WRITE_MULTIPLE_BLOCK = 25,    /* (0x59) Continuously writes blocks of data
         until    'Stop Tran' token is sent */
     CMD27_PROGRAM_CSD = 27,             /* Programming bits of CSD */
     CMD32_ERASE_WR_BLK_START_ADDR = 32, /* Sets the address of the first write

@@ -22,12 +22,6 @@ specific language governing permissions and limitations under the License.
 extern "C" {
 #endif
 
-#ifdef ANALYZER
-#define TRIG() gpio_put(15, 1)  // DEBUG
-#else
-#define TRIG()
-#endif
-
 /* USE_PRINTF
 If this is defined and not zero,
 these message output functions will use the Pico SDK's stdout.
@@ -60,7 +54,7 @@ int error_message_printf_plain(const char *fmt, ...) __attribute__((format(__pri
 int debug_message_printf(const char *func, int line, const char *fmt, ...)
     __attribute__((format(__printf__, 3, 4)));
 #ifndef DBG_PRINTF
-#  if defined(USE_DBG_PRINTF) && USE_DBG_PRINTF && !defined(NDEBUG)
+#  if defined(USE_DBG_PRINTF) && USE_DBG_PRINTF // && !defined(NDEBUG)
 #    define DBG_PRINTF(fmt, ...) debug_message_printf(__func__, __LINE__, fmt, ##__VA_ARGS__)
 #  else
 #    define DBG_PRINTF(fmt, ...) (void)0
@@ -77,8 +71,12 @@ void unlock_printf();
 
 void my_assert_func(const char *file, int line, const char *func, const char *pred)
     __attribute__((noreturn));
-#define myASSERT(__e) \
+#ifdef NDEBUG           /* required by ANSI standard */
+#  define myASSERT(__e) ((void)0)
+#else
+#  define myASSERT(__e) \
     { ((__e) ? (void)0 : my_assert_func(__func__, __LINE__, __func__, #__e)); }
+#endif    
 
 void assert_always_func(const char *file, int line, const char *func, const char *pred)
     __attribute__((noreturn));
@@ -100,10 +98,8 @@ void assert_case_not_func(const char *file, int line, const char *func, int v)
 #define DBG_ASSERT_CASE_NOT(__v) (assert_case_not_func(__FILE__, __LINE__, __func__, __v))
 #endif
 static inline void dump_bytes(size_t num, uint8_t bytes[]) {
-#if !DBG_PRINTF
     (void)num;
     (void)bytes;
-#else
     DBG_PRINTF("     ");
     for (size_t j = 0; j < 16; ++j) {
         DBG_PRINTF("%02hhx", j);
@@ -125,7 +121,6 @@ static inline void dump_bytes(size_t num, uint8_t bytes[]) {
         }
     }
     DBG_PRINTF("\n");
-#endif
 }
 
 void dump8buf(char *buf, size_t buf_sz, uint8_t *pbytes, size_t nbytes);

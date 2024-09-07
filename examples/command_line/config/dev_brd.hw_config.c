@@ -40,6 +40,8 @@ tab "Dev Brd", for pin assignments assumed in this configuration file.
 
 #include <assert.h>
 //
+#include "my_debug.h"
+//
 #include "hw_config.h"
 
 // Hardware Configuration of SPI "objects"

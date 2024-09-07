@@ -27,6 +27,7 @@
 #include "rp2040_sdio.pio.h"
 #include "delays.h"
 #include "sd_card.h"
+#include "sd_timeouts.h"
 #include "my_debug.h"
 #include "util.h"
 //
@@ -86,7 +87,7 @@ static const uint8_t crc7_table[256] = {
 // When the SDIO bus operates in 4-bit mode, the CRC16 algorithm
 // is applied to each line separately and generates total of
 // 4 x 16 = 64 bits of checksum.
-__attribute__((optimize("O3")))
+__attribute__((optimize("Ofast")))
 uint64_t sdio_crc16_4bit_checksum(uint32_t *data, uint32_t num_words)
 {
     uint64_t crc = 0;
@@ -171,7 +172,7 @@ sdio_status_t rp2040_sdio_command_R1(sd_card_t *sd_card_p, uint8_t command, uint
     uint32_t wait_words = response ? 2 : 1;
     while (pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_CMD_SM) < wait_words)
     {
-        if ((uint32_t)(millis() - start) > 5)
+        if ((uint32_t)(millis() - start) > sd_timeouts.rp2040_sdio_command_R1)
         {
             if (command != 8) // Don't log for missing SD card
             {
@@ -248,7 +249,7 @@ sdio_status_t rp2040_sdio_command_R2(const sd_card_t *sd_card_p, uint8_t command
     uint32_t start = millis();
     while (dma_channel_is_busy(SDIO_DMA_CH))
     {
-        if ((uint32_t)(millis() - start) > 2)
+        if ((uint32_t)(millis() - start) > sd_timeouts.rp2040_sdio_command_R2)
         {
             azdbg("Timeout waiting for response in rp2040_sdio_command_R2(", (int)command, "), ",
                   "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_CMD_SM) - (int)STATE.pio_cmd_clk_offset,
@@ -315,7 +316,7 @@ sdio_status_t rp2040_sdio_command_R3(sd_card_t *sd_card_p, uint8_t command, uint
     uint32_t start = millis();
     while (pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_CMD_SM) < 2)
     {
-        if ((uint32_t)(millis() - start) > 2)
+        if ((uint32_t)(millis() - start) > sd_timeouts.rp2040_sdio_command_R3)
         {
             azdbg("Timeout waiting for response in rp2040_sdio_command_R3(", (int)command, "), ",
                   "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_CMD_SM) - (int)STATE.pio_cmd_clk_offset,
@@ -470,7 +471,7 @@ sdio_status_t rp2040_sdio_rx_poll(sd_card_t *sd_card_p, size_t block_size_words)
         else
             return SDIO_ERR_DATA_CRC;
     }
-    else if (millis() - STATE.transfer_start_time >= 1000)
+    else if (millis() - STATE.transfer_start_time >= sd_timeouts.rp2040_sdio_rx_poll)
     {
         azdbg("rp2040_sdio_rx_poll() timeout, "
             "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_DATA_SM) - (int)STATE.pio_data_rx_offset,
@@ -701,7 +702,7 @@ sdio_status_t rp2040_sdio_tx_poll(sd_card_t *sd_card_p, uint32_t *bytes_complete
         rp2040_sdio_stop(sd_card_p);
         return STATE.wr_status;
     }
-    else if (millis() - STATE.transfer_start_time >= 5000)  // CK3: increased timeout
+    else if (millis() - STATE.transfer_start_time >= sd_timeouts.rp2040_sdio_tx_poll)
     {
         EMSG_PRINTF("rp2040_sdio_tx_poll() timeout\n");
         DBG_PRINTF("rp2040_sdio_tx_poll() timeout, "

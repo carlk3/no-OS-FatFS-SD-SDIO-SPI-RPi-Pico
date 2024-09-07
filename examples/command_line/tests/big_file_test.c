@@ -21,6 +21,7 @@ specific language governing permissions and limitations under the License.
 #include <string.h>
 //
 #include "pico/stdlib.h"
+#include "pico/types.h"
 //
 #include "f_util.h"
 #include "my_debug.h"
@@ -185,6 +186,7 @@ void big_file_test(char *pathname, size_t size_MiB, uint32_t seed) {
     //  /* Working buffer */
     DWORD *buff = malloc(BUFFSZ);
     myASSERT(buff);
+    if (!buff) abort();
     myASSERT(size_MiB);
     if (4095 < size_MiB) {
         EMSG_PRINTF("Warning: Maximum file size: 2^32 - 1 bytes on FAT volume\n");
