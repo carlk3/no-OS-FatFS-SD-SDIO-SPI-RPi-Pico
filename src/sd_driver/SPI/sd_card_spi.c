@@ -1690,8 +1690,10 @@ static void sd_deinit(sd_card_t *sd_card_p) {
     sd_card_p->state.card_type = SDCARD_NONE;
 
     // Chip select is active-low
-    gpio_deinit(sd_card_p->spi_if_p->ss_gpio);
-    gpio_set_dir(sd_card_p->spi_if_p->ss_gpio, GPIO_IN);
+    if ((uint)-1 != sd_card_p->spi_if_p->ss_gpio) {
+        gpio_deinit(sd_card_p->spi_if_p->ss_gpio);
+        gpio_set_dir(sd_card_p->spi_if_p->ss_gpio, GPIO_IN);
+    }
 }
 
 /**
@@ -1716,6 +1718,7 @@ void sd_spi_ctor(sd_card_t *sd_card_p) {
 
     // Chip select is active-low, so we'll initialise it to a
     // driven-high state.
+    if ((uint)-1 == sd_card_p->spi_if_p->ss_gpio) return;
     gpio_init(sd_card_p->spi_if_p->ss_gpio);
     gpio_put(sd_card_p->spi_if_p->ss_gpio, 1);  // Avoid any glitches when enabling output
     gpio_set_dir(sd_card_p->spi_if_p->ss_gpio, GPIO_OUT);

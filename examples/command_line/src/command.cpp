@@ -678,6 +678,7 @@ static cmd_def_t cmds[] = {
      " Specify <size in MiB> in units of mebibytes (2^20, or 1024*1024 bytes)\n"
      "\te.g.: big_file_test 0:/bf 1 1\n"
      "\tor: big_file_test 1:big3G-3 3072 3"},
+    {"bft", run_big_file_test,"bft: Alias for big_file_test"},
     {"cdef", run_cdef,
      "cdef:\n Create Disk and Example Files\n"
      " Expects card to be already formatted and mounted"},

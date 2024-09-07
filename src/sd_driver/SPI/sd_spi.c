@@ -49,6 +49,7 @@ This sequence is a contiguous stream of logical ‘1’s. The sequence length is
 provided to eliminate power-up synchronization problems. 
 */
 void sd_spi_send_initializing_sequence(sd_card_t *sd_card_p) {
+    if ((uint)-1 == sd_card_p->spi_if_p->ss_gpio) return; 
     bool old_ss = gpio_get(sd_card_p->spi_if_p->ss_gpio);
     // Set DI and CS high and apply 74 or more clock pulses to SCLK:
     gpio_put(sd_card_p->spi_if_p->ss_gpio, 1);
