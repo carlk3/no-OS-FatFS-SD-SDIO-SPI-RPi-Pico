@@ -37,8 +37,8 @@ target_include_directories(no-OS-FatFS-SD-SDIO-SPI-RPi-Pico INTERFACE
 target_link_libraries(no-OS-FatFS-SD-SDIO-SPI-RPi-Pico INTERFACE
     hardware_dma
     hardware_pio
-    hardware_rtc
     hardware_spi
+    pico_aon_timer
     pico_stdlib
     cmsis_core
 )
