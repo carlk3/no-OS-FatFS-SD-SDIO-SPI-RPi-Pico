@@ -81,6 +81,7 @@ static inline uint8_t sd_spi_write_read(sd_card_t *sd_card_p, const uint8_t valu
 
 // Would do nothing if sd_card_p->spi_if_p->ss_gpio were set to GPIO_FUNC_SPI.
 static inline void sd_spi_select(sd_card_t *sd_card_p) {
+    if ((uint)-1 == sd_card_p->spi_if_p->ss_gpio) return;
     gpio_put(sd_card_p->spi_if_p->ss_gpio, 0);
     // See http://elm-chan.org/docs/mmc/mmc_e.html#spibus
     sd_spi_write(sd_card_p, SPI_FILL_CHAR);
@@ -88,6 +89,7 @@ static inline void sd_spi_select(sd_card_t *sd_card_p) {
 }
 
 static inline void sd_spi_deselect(sd_card_t *sd_card_p) {
+    if ((uint)-1 == sd_card_p->spi_if_p->ss_gpio) return;
     gpio_put(sd_card_p->spi_if_p->ss_gpio, 1);
     LED_OFF();
     /*
