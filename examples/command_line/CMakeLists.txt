@@ -1,14 +1,13 @@
 cmake_minimum_required(VERSION 3.5)
 
+set(PICO_BOARD $ENV{PICO_BOARD})
+set(PICO_SDK_PATH $ENV{PICO_SDK_PATH})
 set(PROGRAM_NAME command_line)
 
 # Pull in Pico SDK (must be before project)
-include(pico_sdk_import.cmake)
+include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
 project(${PROGRAM_NAME} C CXX ASM)
-
-set(CMAKE_C_STANDARD 17)
-set(CMAKE_CXX_STANDARD 17)
 
 # add_compile_options(-Os) # Optimize for size (place before pico_sdk_init)
 
@@ -41,6 +40,7 @@ target_compile_definitions(${PROGRAM_NAME} PRIVATE
 target_compile_options(${PROGRAM_NAME} PUBLIC 
   -Wall 
   -Wextra 
+  -Wshadow 
   -Wstack-usage=2048 
   -fanalyzer 
 )
@@ -68,7 +68,7 @@ set_property(TARGET ${PROGRAM_NAME} APPEND_STRING PROPERTY LINK_FLAGS
 )
 
 pico_set_program_name(${PROGRAM_NAME} "${PROGRAM_NAME}")
-pico_set_program_version(${PROGRAM_NAME} "1.2.2")
+pico_set_program_version(${PROGRAM_NAME} "3.3.1")
 
 if ("${PICO_BOARD}" STREQUAL "pico")
     pico_set_linker_script(${PROGRAM_NAME} ${CMAKE_SOURCE_DIR}/linker/memmap.ld)
@@ -76,7 +76,7 @@ endif()
 
 # See 4.1. Serial input and output on Raspberry Pi Pico in Getting started with Raspberry Pi Pico (https://datasheets.raspberrypi.org/pico/getting-started-with-pico.pdf)
 # and 2.7.1. Standard Input/Output (stdio) Support in Raspberry Pi Pico C/C++ SDK (https://datasheets.raspberrypi.org/pico/raspberry-pi-pico-c-sdk.pdf):
-pico_enable_stdio_uart(${PROGRAM_NAME} 1)
+#pico_enable_stdio_uart(${PROGRAM_NAME} 1)
 pico_enable_stdio_usb(${PROGRAM_NAME} 1)
 
 target_include_directories(${PROGRAM_NAME} PUBLIC 
