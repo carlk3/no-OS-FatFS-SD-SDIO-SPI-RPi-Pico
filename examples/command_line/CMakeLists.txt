@@ -70,7 +70,9 @@ set_property(TARGET ${PROGRAM_NAME} APPEND_STRING PROPERTY LINK_FLAGS
 pico_set_program_name(${PROGRAM_NAME} "${PROGRAM_NAME}")
 pico_set_program_version(${PROGRAM_NAME} "1.2.2")
 
-pico_set_linker_script(${PROGRAM_NAME} ${CMAKE_SOURCE_DIR}/linker/memmap.ld)
+if ("${PICO_BOARD}" STREQUAL "pico")
+    pico_set_linker_script(${PROGRAM_NAME} ${CMAKE_SOURCE_DIR}/linker/memmap.ld)
+endif()
 
 # See 4.1. Serial input and output on Raspberry Pi Pico in Getting started with Raspberry Pi Pico (https://datasheets.raspberrypi.org/pico/getting-started-with-pico.pdf)
 # and 2.7.1. Standard Input/Output (stdio) Support in Raspberry Pi Pico C/C++ SDK (https://datasheets.raspberrypi.org/pico/raspberry-pi-pico-c-sdk.pdf):

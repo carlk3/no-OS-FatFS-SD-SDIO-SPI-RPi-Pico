@@ -1,9 +1,9 @@
 #include <stdio.h>
+#include <stdlib.h>
 //
 #include "hardware/clocks.h"
 #include "hardware/gpio.h"
 #include "pico/stdio.h"
-#include "pico/stdlib.h"
 #include "pico/stdlib.h"
 //
 #include "command.h"
@@ -57,9 +57,10 @@ int main() {
     crash_handler_init();
     stdio_init_all();
     setvbuf(stdout, NULL, _IONBF, 1);  // specify that the stream should be unbuffered
-    time_init();
 
     printf("\033[2J\033[H");  // Clear Screen
+
+    time_init();
 
     // Check fault capture from RAM:
     crash_info_t const *const pCrashInfo = crash_handler_get_info();
@@ -72,8 +73,9 @@ int main() {
             if (buf[0]) printf("\t%s", buf);
         } while (n != 0);
     }
+    printf("Command Line Interface -- type \"help\" for help\n");
     printf("\n> ");
-    stdio_flush();
+    fflush(stdout);
 
     // Implicitly called by disk_initialize,
     // but called here to set up the GPIOs

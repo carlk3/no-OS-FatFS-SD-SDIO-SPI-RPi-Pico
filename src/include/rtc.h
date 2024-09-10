@@ -20,7 +20,7 @@ extern "C" {
 #include <time.h>
 
 extern time_t epochtime;
-void time_init();
+bool time_init();
 
 #ifdef __cplusplus
 }
