@@ -10,7 +10,7 @@
 #include "crash.h"
 #include "f_util.h"
 #include "hw_config.h"
-#include "rtc.h"
+#include "my_rtc.h"
 #include "tests.h"
 #include "sd_card.h"
 //

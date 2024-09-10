@@ -19,7 +19,7 @@ specific language governing permissions and limitations under the License.
 //
 #include "crc.h"
 #include "my_debug.h"
-#include "rtc.h"
+#include "my_rtc.h"
 #include "util.h"
 //
 #include "crash.h"

@@ -1191,7 +1191,7 @@ distributed across many small files.
 
 ## Appendix E: Troubleshooting
 * **Check your grounds!** Maybe add some more if you were skimpy with them. The Pico has six of them.
-* Turn on `DBG_PRINTF`. (See #messages-from-the-sd-card-driver.) For example, in `CMakeLists.txt`, 
+* Turn on `DBG_PRINTF`. (See [Messages](#messages).) For example, in `CMakeLists.txt`, 
   ```CMake
   add_compile_definitions(USE_PRINTF USE_DBG_PRINTF)
   ```

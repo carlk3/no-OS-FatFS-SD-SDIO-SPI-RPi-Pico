@@ -17,7 +17,7 @@
 #include "crash.h"
 #include "hw_config.h"
 #include "my_debug.h"
-#include "rtc.h"
+#include "my_rtc.h"
 #include "sd_card.h"
 #include "tests.h"
 //
