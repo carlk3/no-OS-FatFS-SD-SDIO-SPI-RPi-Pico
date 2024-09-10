@@ -11,6 +11,7 @@ under the License is distributed on an AS IS BASIS, WITHOUT WARRANTIES OR
 CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 */
+#include <stdbool.h>
 #include <time.h>
 //
 #include "pico/aon_timer.h"
@@ -43,15 +44,12 @@ static bool get_time(struct timespec *ts) {
 }
 
 static void update_epochtime() {
-    struct tm timeinfo;
     bool ok = get_time(&rtc_save.ts);
     if (!ok) return;
     rtc_save.signature = 0xBABEBABE;
-    localtime_r(&rtc_save.ts.tv_sec, &timeinfo);
     rtc_save.checksum =
         crc7((uint8_t *)&rtc_save, offsetof(rtc_save_t, checksum));
-    epochtime = mktime(&timeinfo);
-    // configASSERT(-1 != epochtime);
+    epochtime = rtc_save.ts.tv_sec;
 }
 
 time_t time(time_t *pxTime) {

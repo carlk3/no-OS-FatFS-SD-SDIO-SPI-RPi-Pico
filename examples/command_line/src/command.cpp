@@ -80,6 +80,7 @@ static void run_date(const size_t argc, const char *argv[]) {
         return;
     }
     struct tm *ptm = localtime(&epoch_secs);
+    assert(ptm);
     size_t n = strftime(buf, sizeof(buf), "%c", ptm);
     assert(n);
     printf("%s\n", buf);
@@ -120,7 +121,12 @@ static void run_setrtc(const size_t argc, const char *argv[]) {
     };
     /* The values of the members tm_wday and tm_yday of timeptr are ignored, and the values of
        the other members are interpreted even if out of their valid ranges */
-    struct timespec ts = {.tv_sec = mktime(&t), .tv_nsec = 0};
+    time_t epoch_secs = mktime(&t);
+    if (-1 == epoch_secs) {
+        printf("The passed in datetime was invalid\n");
+        return;
+    }
+    struct timespec ts = {.tv_sec = epoch_secs, .tv_nsec = 0};
     aon_timer_set_time(&ts);
 }
 static char const *fs_type_string(int fs_type) {
