@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <ctype.h>
 #include <malloc.h>
 #include <stdio.h>
@@ -7,16 +8,16 @@
 //
 #include "hardware/adc.h"
 #include "hardware/clocks.h" 
-#include "hardware/rtc.h"
+#include "pico/aon_timer.h"
 #include "pico/stdio.h"
 #include "pico/stdlib.h"
-#include "RP2040.h"
+#include "pico/time.h"
 //
-
 #include "f_util.h"
 #include "crash.h"
 #include "hw_config.h"
 #include "my_debug.h"
+#include "my_rtc.h"
 #include "sd_card.h"
 #include "tests.h"
 //
@@ -69,7 +70,25 @@ const char *chk_dflt_log_drv(const size_t argc, const char *argv[]) {
     }
     return argv[0];
 }
+static void run_date(const size_t argc, const char *argv[]) {
+    if (!expect_argc(argc, argv, 0)) return;
 
+    char buf[128] = {0};
+    time_t epoch_secs = time(NULL);
+    if (epoch_secs < 1) {
+        printf("RTC not running\n");
+        return;
+    }
+    struct tm *ptm = localtime(&epoch_secs);
+    assert(ptm);
+    size_t n = strftime(buf, sizeof(buf), "%c", ptm);
+    assert(n);
+    printf("%s\n", buf);
+    strftime(buf, sizeof(buf), "%j",
+             ptm);  // The day of the year as a decimal number (range
+                    // 001 to 366).
+    printf("Day of year: %s\n", buf);
+}
 static void run_setrtc(const size_t argc, const char *argv[]) {
     if (!expect_argc(argc, argv, 6)) return;
 
@@ -80,28 +99,35 @@ static void run_setrtc(const size_t argc, const char *argv[]) {
     int min = atoi(argv[4]);
     int sec = atoi(argv[5]);
 
-    datetime_t t = {.year = static_cast<int16_t>(year),
-                    .month = static_cast<int8_t>(month),
-                    .day = static_cast<int8_t>(date),
-                    .dotw = 0,  // 0 is Sunday, so 5 is Friday
-                    .hour = static_cast<int8_t>(hour),
-                    .min = static_cast<int8_t>(min),
-                    .sec = static_cast<int8_t>(sec)};
-    rtc_set_datetime(&t);
-}
-static void run_date(const size_t argc, const char *argv[]) {
-    if (!expect_argc(argc, argv, 0)) return;
-
-    char buf[128] = {0};
-    time_t epoch_secs = time(NULL);
-    struct tm *ptm = localtime(&epoch_secs);
-    size_t n = strftime(buf, sizeof(buf), "%c", ptm);
-    assert(n);
-    printf("%s\n", buf);
-    strftime(buf, sizeof(buf), "%j",
-             ptm);  // The day of the year as a decimal number (range
-                    // 001 to 366).
-    printf("Day of year: %s\n", buf);
+    struct tm t = {
+        // tm_sec	int	seconds after the minute	0-61*
+        .tm_sec = sec,
+        // tm_min	int	minutes after the hour	0-59
+        .tm_min = min,
+        // tm_hour	int	hours since midnight	0-23
+        .tm_hour = hour,
+        // tm_mday	int	day of the month	1-31
+        .tm_mday = date,
+        // tm_mon	int	months since January	0-11
+        .tm_mon = month - 1,
+        // tm_year	int	years since 1900
+        .tm_year = year - 1900,
+        // tm_wday	int	days since Sunday	0-6
+        .tm_wday = 0,
+        // tm_yday	int	days since January 1	0-365
+        .tm_yday = 0,
+        // tm_isdst	int	Daylight Saving Time flag
+        .tm_isdst = 0
+    };
+    /* The values of the members tm_wday and tm_yday of timeptr are ignored, and the values of
+       the other members are interpreted even if out of their valid ranges */
+    time_t epoch_secs = mktime(&t);
+    if (-1 == epoch_secs) {
+        printf("The passed in datetime was invalid\n");
+        return;
+    }
+    struct timespec ts = {.tv_sec = epoch_secs, .tv_nsec = 0};
+    aon_timer_set_time(&ts);
 }
 static char const *fs_type_string(int fs_type) {
     switch (fs_type) {
@@ -526,7 +552,9 @@ static void run_measure_freqs(const size_t argc, const char *argv[]) {
     uint f_clk_peri = frequency_count_khz(CLOCKS_FC0_SRC_VALUE_CLK_PERI);
     uint f_clk_usb = frequency_count_khz(CLOCKS_FC0_SRC_VALUE_CLK_USB);
     uint f_clk_adc = frequency_count_khz(CLOCKS_FC0_SRC_VALUE_CLK_ADC);
+#if PICO_RP2040
     uint f_clk_rtc = frequency_count_khz(CLOCKS_FC0_SRC_VALUE_CLK_RTC);
+#endif
 
     printf("pll_sys  = %dkHz\n", f_pll_sys);
     printf("pll_usb  = %dkHz\n", f_pll_usb);
@@ -535,7 +563,9 @@ static void run_measure_freqs(const size_t argc, const char *argv[]) {
     printf("clk_peri = %dkHz\treported  = %lukHz\n", f_clk_peri, clock_get_hz(clk_peri) / KHZ);
     printf("clk_usb  = %dkHz\treported  = %lukHz\n", f_clk_usb, clock_get_hz(clk_usb) / KHZ);
     printf("clk_adc  = %dkHz\treported  = %lukHz\n", f_clk_adc, clock_get_hz(clk_adc) / KHZ);
+#if PICO_RP2040
     printf("clk_rtc  = %dkHz\treported  = %lukHz\n", f_clk_rtc, clock_get_hz(clk_rtc) / KHZ);
+#endif
 
     // Can't measure clk_ref / xosc as it is the ref
 }
@@ -724,6 +754,8 @@ static void run_help(const size_t argc, const char *argv[]) {
     for (size_t i = 0; i < count_of(cmds); ++i) {
         printf("%s\n\n", cmds[i].help);
     }
+    fflush(stdout);
+    stdio_flush();
 }
 
 // Break command

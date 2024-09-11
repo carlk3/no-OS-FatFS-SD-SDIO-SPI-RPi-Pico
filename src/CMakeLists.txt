@@ -25,7 +25,7 @@ target_sources(no-OS-FatFS-SD-SDIO-SPI-RPi-Pico INTERFACE
     ${CMAKE_CURRENT_LIST_DIR}/src/file_stream.c
     ${CMAKE_CURRENT_LIST_DIR}/src/glue.c
     ${CMAKE_CURRENT_LIST_DIR}/src/my_debug.c
-    ${CMAKE_CURRENT_LIST_DIR}/src/rtc.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/my_rtc.c
     ${CMAKE_CURRENT_LIST_DIR}/src/sd_timeouts.c
     ${CMAKE_CURRENT_LIST_DIR}/src/util.c
 )

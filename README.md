@@ -1,5 +1,5 @@
 # no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
-# v3.3.0
+# v3.3.1
 
 ## C/C++ Library for SD Cards on the Pico
 
@@ -11,8 +11,11 @@ and a 4-bit wide Secure Digital Input Output (SDIO) driver derived from
 It is wrapped up in a complete runnable project, with a little command line interface, some self tests, and an example data logging application.
 
 ## What's new
+### v3.3.1
+* Add support for PICO_BOARD pico2.
+* Fix year and month calculation in `get_fattime`, which is used for file timestamps in FatFs.
 ### v3.3.0
-Add support for running without Chip Select (CS) (formerly Slave Select [SS])
+Add support for running without Chip Select (CS) (formerly Slave Select [SS]). See [Running without Chip Select (CS) (formerly Slave Select [SS])](#running-without-chip-select-cs-formerly-slave-select-ss).
 ### v3.2.0
 * Add `spi_mode` to the hardware configuration.
 For SPI attached cards, SPI Mode 3 can significantly improve performance.
@@ -322,7 +325,10 @@ or polling.
   * Some other form of polling: if the card is periodically accessed at rate faster than the user can swap cards, then the temporary absence of a card will be noticed, so a swap will be detected. For example, if a data logging application writes a log record to the card once per second, it is unlikely that the user could swap cards between accesses.
 
 ## Running without Chip Select (CS) (formerly Slave Select [SS])
-If you have only one SD card, and you are short on GPIOs, you may be able to run without CS/SS.
+If you have only one SD card, and you are short on GPIOs, you may be able to run without CS (SS).
+The idea is that if you have only one SD card, why not leave it permanently selected?
+In this minimal configuration, only three GPIOs are required: CLK (SCK), DI (MOSI), and DO (MISO).
+
 I know of no guarantee that this will work for all SD cards.
 The [Physical Layer Simplified Specification](https://www.sdcard.org/downloads/pls/) says
 > Every command or data block is
@@ -337,7 +343,7 @@ However, it worked for me with:
 * [SanDisk 16GB Ultra microSDHC UHS-I Memory Card ](https://www.amazon.com/gp/product/B089DPCJS1/ref=ppx_yo_dt_b_search_asin_title?th=1)
 * [PNY 16GB Elite Class 10 U1 microSDHC Flash Memory Card](https://www.amazon.com/gp/product/B08QDN7CVN/ref=ppx_yo_dt_b_search_asin_title)
 
-You will need to pull down the CS/SS line on the SD card with hardware. (I.e., connect CS to GND. CS is active low.)
+You will need to pull down the CS line on the SD card with hardware. (I.e., connect CS to GND. CS is active low.)
 
 In the hardware configuration definition, set `ss_gpio` to -1.
 See [An instance of `sd_spi_if_t` describes the configuration of one SPI to SD card interface.](#an-instance-of-sd_spi_if_t-describes-the-configuration-of-one-spi-to-sd-card-interface).
@@ -1186,7 +1192,7 @@ distributed across many small files.
 
 ## Appendix E: Troubleshooting
 * **Check your grounds!** Maybe add some more if you were skimpy with them. The Pico has six of them.
-* Turn on `DBG_PRINTF`. (See #messages-from-the-sd-card-driver.) For example, in `CMakeLists.txt`, 
+* Turn on `DBG_PRINTF`. (See [Messages](#messages).) For example, in `CMakeLists.txt`, 
   ```CMake
   add_compile_definitions(USE_PRINTF USE_DBG_PRINTF)
   ```

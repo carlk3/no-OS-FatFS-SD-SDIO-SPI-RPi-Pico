@@ -1689,7 +1689,6 @@ static void sd_deinit(sd_card_t *sd_card_p) {
     sd_card_p->state.m_Status |= STA_NOINIT;
     sd_card_p->state.card_type = SDCARD_NONE;
 
-    // Chip select is active-low
     if ((uint)-1 != sd_card_p->spi_if_p->ss_gpio) {
         gpio_deinit(sd_card_p->spi_if_p->ss_gpio);
         gpio_set_dir(sd_card_p->spi_if_p->ss_gpio, GPIO_IN);
