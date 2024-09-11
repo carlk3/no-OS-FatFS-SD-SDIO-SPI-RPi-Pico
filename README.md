@@ -12,7 +12,8 @@ It is wrapped up in a complete runnable project, with a little command line inte
 
 ## What's new
 ### v3.3.1
-Add support for PICO_BOARD pico2
+* Add support for PICO_BOARD pico2.
+* Fix year and month calculation in `get_fattime`, which is used for file timestamps in FatFs.
 ### v3.3.0
 Add support for running without Chip Select (CS) (formerly Slave Select [SS]). See [Running without Chip Select (CS) (formerly Slave Select [SS])](#running-without-chip-select-cs-formerly-slave-select-ss).
 ### v3.2.0
