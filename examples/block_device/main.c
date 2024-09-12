@@ -25,7 +25,6 @@
 #include "pico/stdlib.h"
 //
 #include "diskio.h" /* Declarations of disk functions */
-#include "ff.h"
 
 #ifdef NDEBUG 
 #   warning "This test relies on asserts to verify test results!"
