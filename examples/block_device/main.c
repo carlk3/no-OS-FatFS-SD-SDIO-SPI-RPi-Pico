@@ -25,7 +25,10 @@
 #include "pico/stdlib.h"
 //
 #include "diskio.h" /* Declarations of disk functions */
-#include "ff.h"
+
+#ifdef NDEBUG 
+#   warning "This test relies on asserts to verify test results!"
+#endif
 
 int main() {
     stdio_init_all();
@@ -55,21 +58,21 @@ int main() {
     snprintf(blocks[0], sizeof blocks[0], "Hello");
     snprintf(blocks[1], sizeof blocks[1], "World!");
 
+    LBA_t const lba = 0; // Arbitrary
+
     // Write the blocks
-    for (LBA_t lba = 0; lba < count_of(blocks); lba++) {
-        dr = disk_write(pdrv, (BYTE*)blocks[lba], lba, 1);
-        assert(RES_OK == dr);
-    }
+    dr = disk_write(pdrv, (BYTE*)blocks[lba], lba, count_of(blocks));
+    assert(RES_OK == dr);
 
     // Sync the disk
     dr = disk_ioctl(pdrv, CTRL_SYNC, 0);
     assert(RES_OK == dr);
 
+    memset(blocks, 0xA5, sizeof blocks);
+
     // Read the blocks
-    for (LBA_t lba = 0; lba < count_of(blocks); lba++) {
-        dr = disk_read(pdrv, (BYTE*)blocks[lba], lba, 1);
-        assert(RES_OK == dr);
-    }
+    dr = disk_read(pdrv, (BYTE*)blocks[lba], lba, count_of(blocks));
+    assert(RES_OK == dr);
 
     // Verify the data
     assert(0 == strcmp(blocks[0], "Hello"));
