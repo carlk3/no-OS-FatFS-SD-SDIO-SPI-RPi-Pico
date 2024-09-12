@@ -40,13 +40,11 @@ specific language governing permissions and limitations under the License.
 
 #include <stdlib.h>     // malloc
 #include <string.h>
+//
 #include "ff.h"         /* Declarations of sector size */
 #include "diskio.h"     /* Declarations of disk functions */
 //
-#include "hardware/gpio.h" // gpio_put
-//
-#include <my_debug.h>
-
+#include "my_debug.h"
 
 static DWORD pn (       /* Pseudo random number generator */
     DWORD pns   /* !0:Initialize, 0:Read */
@@ -355,4 +353,3 @@ int lliot(size_t pnum)
     free(buff);
     return rc;
 }
-
