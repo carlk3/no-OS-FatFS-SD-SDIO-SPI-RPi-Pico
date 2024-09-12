@@ -32,8 +32,6 @@ specific language governing permissions and limitations under the License.
 extern "C" {
 #endif
 
-/* Transfer tx to SPI while receiving SPI to rx. 
-tx or rx can be NULL if not important. */
 void sd_spi_go_low_frequency(sd_card_t *this);
 void sd_spi_go_high_frequency(sd_card_t *this);
 
@@ -45,6 +43,8 @@ what the card should be ready for communication) is provided to eliminate power-
 synchronization problems.
 */
 void sd_spi_send_initializing_sequence(sd_card_t *sd_card_p);
+
+//FIXME: sd_spi_read, sd_spi_write, and sd_spi_write_read should return an error code on timeout.
 
 static inline uint8_t sd_spi_read(sd_card_t *sd_card_p) {
     uint8_t received = SPI_FILL_CHAR;
@@ -114,8 +114,6 @@ static inline void sd_spi_release(sd_card_t *sd_card_p) {
     sd_spi_unlock(sd_card_p);
 }
 
-/* Transfer tx to SPI while receiving SPI to rx.
-tx or rx can be NULL if not important. */
 static inline void sd_spi_transfer_start(sd_card_t *sd_card_p, const uint8_t *tx, uint8_t *rx,
                                          size_t length) {
     return spi_transfer_start(sd_card_p->spi_if_p->spi, tx, rx, length);
@@ -123,6 +121,8 @@ static inline void sd_spi_transfer_start(sd_card_t *sd_card_p, const uint8_t *tx
 static inline bool sd_spi_transfer_wait_complete(sd_card_t *sd_card_p, uint32_t timeout_ms) {
     return spi_transfer_wait_complete(sd_card_p->spi_if_p->spi, timeout_ms);
 }
+/* Transfer tx to SPI while receiving SPI to rx. 
+tx or rx can be NULL if not important. */
 static inline bool sd_spi_transfer(sd_card_t *sd_card_p, const uint8_t *tx, uint8_t *rx,
                                    size_t length) {
 	return spi_transfer(sd_card_p->spi_if_p->spi, tx, rx, length);

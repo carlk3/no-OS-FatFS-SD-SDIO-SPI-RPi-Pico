@@ -1,5 +1,5 @@
 # no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
-# v3.3.1
+# v3.4.0
 
 ## C/C++ Library for SD Cards on the Pico
 
@@ -11,6 +11,8 @@ and a 4-bit wide Secure Digital Input Output (SDIO) driver derived from
 It is wrapped up in a complete runnable project, with a little command line interface, some self tests, and an example data logging application.
 
 ## What's new
+### v3.4.0
+Add example of direct use of the block device API. See [Block Device API](#block-device-api) and `examples/block_device`.
 ### v3.3.1
 * Add support for PICO_BOARD pico2.
 * Fix year and month calculation in `get_fattime`, which is used for file timestamps in FatFs.
@@ -829,6 +831,18 @@ It is currently running with
 platform = https://github.com/maxgerhardt/platform-raspberrypi.git
 board_build.core = earlephilhower
 ```
+
+## Block Device API
+If you don't require a filesystem on an SD card,
+or if you want to use a different filesystem,
+you can operate at the block device level.
+At the block device interface, the SD card appears to contain a long sequence of
+numbered blocks of 512 bytes each. I.e., the smallest addressable unit is a block of 512 bytes.
+The address of a block is its "logical block address" (LBA).
+Blocks can be addressed by their LBA and read and written individually or as sequences with a starting address and length.
+
+This API implements the *Media Access Interface* described in [FatFs - Generic FAT Filesystem Module](http://elm-chan.org/fsw/ff/00index_e.html) (also see *Required Functions* in [FatFs Module Application Note](http://elm-chan.org/fsw/ff/doc/appnote.html)).
+The declarations are in `src/ff15/source/diskio.h`.
 
 ## Next Steps
 * There is a example data logging application in `data_log_demo.c`. 
