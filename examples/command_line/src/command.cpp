@@ -767,7 +767,7 @@ static void chars_available_callback(void *ptr) {
         SYSTEM_RESET();
         break;
     case 27: // Esc
-        __BKPT();
+        __breakpoint();
         break;
     case '\r':
         die = true;

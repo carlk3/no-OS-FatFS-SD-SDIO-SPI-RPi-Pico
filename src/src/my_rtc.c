@@ -64,7 +64,7 @@ static void update_epochtime() {
 
 /**
  * @brief Get the current time in seconds since the Epoch.
- * *
+ *
  * @param[in] pxTime If not NULL, the current time is copied here.
  * @return The current time in seconds since the Epoch.
  */

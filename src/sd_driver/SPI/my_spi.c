@@ -17,8 +17,8 @@ specific language governing permissions and limitations under the License.
 #include <stdio.h>
 //
 #include "hardware/clocks.h"
-#include "hardware/structs/clocks.h"
 #include "hardware/spi.h"
+#include "hardware/structs/clocks.h"
 #include "pico.h"
 #include "pico/mutex.h"
 #include "pico/platform.h"
@@ -106,8 +106,7 @@ static bool chk_dmas(spi_t *spi_p) {
  * @param rx Pointer to the receive buffer. If NULL, data will be ignored.
  * @param length Length of the transfer.
  */
-void __not_in_flash_func(spi_transfer_start)(spi_t *spi_p, const uint8_t *tx, uint8_t *rx,
-                                             size_t length) {
+void spi_transfer_start(spi_t *spi_p, const uint8_t *tx, uint8_t *rx, size_t length) {
     myASSERT(spi_p);
     myASSERT(tx || rx);
 
@@ -235,6 +234,7 @@ bool __not_in_flash_func(spi_transfer_wait_complete)(spi_t *spi_p, uint32_t time
         DBG_PRINTF("SPI_SSPSR: 0b%s\n", uint_binary_str(spi_get_const_hw(spi_p->hw_inst)->sr));
         DBG_PRINTF("SPI_SSPDMACR: 0b%s\n",
                    uint_binary_str(spi_get_const_hw(spi_p->hw_inst)->dmacr));
+
         dma_channel_abort(spi_p->rx_dma);
         dma_channel_abort(spi_p->tx_dma);
     }

@@ -13,11 +13,11 @@ specific language governing permissions and limitations under the License.
 */
 #pragma once
 
+#include <time.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <time.h>
 
 extern time_t epochtime;
 void time_init();
