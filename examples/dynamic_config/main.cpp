@@ -18,7 +18,7 @@
 #include "f_util.h"
 #include "ff.h"
 #include "pico/stdlib.h"
-#include "rtc.h"
+#include "my_rtc.h"
 //
 #include "hw_config.h"
 
