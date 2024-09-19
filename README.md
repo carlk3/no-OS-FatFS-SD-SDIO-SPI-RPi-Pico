@@ -844,6 +844,8 @@ Blocks can be addressed by their LBA and read and written individually or as seq
 This API implements the *Media Access Interface* described in [FatFs - Generic FAT Filesystem Module](http://elm-chan.org/fsw/ff/00index_e.html) (also see *Required Functions* in [FatFs Module Application Note](http://elm-chan.org/fsw/ff/doc/appnote.html)).
 The declarations are in `src/ff15/source/diskio.h`.
 
+For an example of the use of this API, see `examples/block_device`.
+
 ## Next Steps
 * There is a example data logging application in `data_log_demo.c`. 
 It can be launched from the `examples/command_line` CLI with the `start_logger` command.
