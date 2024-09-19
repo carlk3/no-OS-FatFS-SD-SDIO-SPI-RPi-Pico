@@ -22,7 +22,7 @@ specific language governing permissions and limitations under the License.
 //
 #include "../src/ff15/source/diskio.h" /* Declarations of disk functions */
 #include "../src/include/f_util.h"
-#include "../src/include/rtc.h"
+#include "../src/include/my_rtc.h"
 #include "../src/sd_driver/sd_card.h"
 #include "../src/sd_driver/SDIO/rp2040_sdio.h"
 #include "../src/sd_driver/SPI/my_spi.h"
