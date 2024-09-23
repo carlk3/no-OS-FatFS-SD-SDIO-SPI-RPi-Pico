@@ -12,6 +12,8 @@ CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 */
 
+#include <stdlib.h>
+//
 #include "FatFsSd_C.h"
 //
 #include "SerialUART.h"
@@ -97,23 +99,23 @@ void setup() {
     FRESULT fr = f_mount(&pSD->state.fatfs, "", 1);
     if (FR_OK != fr) {
         printf("f_mount error: %s (%d)\n", FRESULT_str(fr), fr);
-        for (;;) __BKPT(1);
+        abort();
     }
     FIL fil;
     const char* const filename = "filename.txt";
     fr = f_open(&fil, filename, FA_OPEN_APPEND | FA_WRITE);
     if (FR_OK != fr && FR_EXIST != fr) {
         printf("f_open(%s) error: %s (%d)\n", filename, FRESULT_str(fr), fr);
-        for (;;) __BKPT(2);
+        abort();
     }
     if (f_printf(&fil, "Hello, world!\n") < 0) {
         printf("f_printf failed\n");
-        for (;;) __BKPT(3);
+        abort();
     }
     fr = f_close(&fil);
     if (FR_OK != fr) {
         printf("f_close error: %s (%d)\n", FRESULT_str(fr), fr);
-        for (;;) __BKPT(4);
+        abort();
     }
     f_unmount("");
 

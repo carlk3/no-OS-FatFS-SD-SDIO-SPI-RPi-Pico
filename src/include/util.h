@@ -18,12 +18,6 @@ specific language governing permissions and limitations under the License.
 #include <stdint.h>
 #include <string.h>
 //
-#if PICO_RP2040
-#include "RP2040.h"
-#else
-#include "RP2350.h"
-#endif
-//
 #include "my_debug.h"
 
 #ifdef __cplusplus

@@ -64,7 +64,7 @@ static void update_epochtime() {
 
 /**
  * @brief Get the current time in seconds since the Epoch.
- * *
+ *
  * @param[in] pxTime If not NULL, the current time is copied here.
  * @return The current time in seconds since the Epoch.
  */
@@ -141,19 +141,19 @@ DWORD get_fattime(void) {
     // Hour (0..23)
     // tm_hour	int	hours since midnight 0-23
     uint8_t hr = t.tm_hour;
-    assert(hr >= 0 && hr <= 23);
+    assert(hr <= 23);
     fattime |= (0b00011111 & hr) << 11;
     // bit10:5
     // Minute (0..59)
     // tm_min	int	minutes after the hour 0-59
     uint8_t mi = t.tm_min;
-    assert(mi >= 0 && mi <= 59);
+    assert(mi <= 59);
     fattime |= (0b00111111 & mi) << 5;
     // bit4:0
     // Second / 2 (0..29, e.g. 25 for 50)
     // tm_sec	int	seconds after the minute 0-61*
     uint8_t sd = t.tm_sec / 2;
-    assert(sd >= 0 && sd <= 30);  // The extra range is to accommodate for leap seconds
+    assert(sd <= 30);  // The extra range is to accommodate for leap seconds
     fattime |= (0b00011111 & sd);
     return fattime;
 }

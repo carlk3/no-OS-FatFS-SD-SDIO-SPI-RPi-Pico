@@ -28,7 +28,7 @@ these message output functions will use the Pico SDK's stdout.
 */
 
 /* USE_DBG_PRINTF
-If this is not defined or is zero or NDEBUG is defined,
+If this is not defined or is zero
 DBG_PRINTF statements will be effectively stripped from the code.
 */
 
@@ -74,8 +74,7 @@ void my_assert_func(const char *file, int line, const char *func, const char *pr
 #ifdef NDEBUG           /* required by ANSI standard */
 #  define myASSERT(__e) ((void)0)
 #else
-#  define myASSERT(__e) \
-    { ((__e) ? (void)0 : my_assert_func(__func__, __LINE__, __func__, #__e)); }
+#  define myASSERT(__e) ((__e) ? (void)0 : my_assert_func(__FILE__, __LINE__, __func__, #__e))
 #endif    
 
 void assert_always_func(const char *file, int line, const char *func, const char *pred)

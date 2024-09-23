@@ -76,6 +76,7 @@
           "+<ff15/source/ffunicode.c>",
           "+<sd_driver/dma_interrupts.c>",
           "+<sd_driver/sd_card.c>",
+          "+<sd_driver/sd_timeouts.c>",
           "+<sd_driver/SDIO/rp2040_sdio.c>",
           "+<sd_driver/SDIO/sd_card_sdio.c>",
           "+<sd_driver/SPI/crc.c>",
@@ -88,8 +89,7 @@
           "+<src/FatFsSd.cpp>",
           "+<src/glue.c>",
           "+<src/my_debug.c>",
-          "+<src/rtc.c>",
-          "+<src/rtc.c>",
+          "+<src/my_rtc.c>",
           "+<src/util.c>"
       ],
       "flags": [

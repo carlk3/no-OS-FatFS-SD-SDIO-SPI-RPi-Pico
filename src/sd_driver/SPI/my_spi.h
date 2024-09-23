@@ -85,7 +85,6 @@ bool spi_transfer_wait_complete(spi_t *spi_p, uint32_t timeout_ms);
 bool spi_transfer(spi_t *spi_p, const uint8_t *tx, uint8_t *rx, size_t length);
 bool my_spi_init(spi_t *spi_p);
 
-
 static inline void spi_lock(spi_t *spi_p) {
     myASSERT(mutex_is_initialized(&spi_p->mutex));
     mutex_enter_blocking(&spi_p->mutex);

@@ -18,10 +18,11 @@ This example reads analog input A0 and logs the voltage
 
 It also demonstates a way to do static configuration.
 */
+#include <stdlib.h>
 #include <time.h>
 //
 #include "hardware/adc.h"
-#include "hardware/rtc.h"
+#include "pico/aon_timer.h"
 #include "pico/stdlib.h"
 //
 #include "FatFsSd.h"
@@ -175,15 +176,35 @@ void setup() {
     time_init();
     // You might want to ask the user for the time,
     //   but it is hardcoded here for simplicity:
-    datetime_t t = {
-        .year = 2023,
-        .month = 2,
-        .day = 10,
-        .dotw = 5,  // 0 is Sunday, so 5 is Friday
-        .hour = 17,
-        .min = 5,
-        .sec = 0};
-    rtc_set_datetime(&t);
+    struct tm t = {
+        // tm_sec	int	seconds after the minute	0-61*
+        .tm_sec = 0,
+        // tm_min	int	minutes after the hour	0-59
+        .tm_min = 31,
+        // tm_hour	int	hours since midnight	0-23
+        .tm_hour = 16,
+        // tm_mday	int	day of the month	1-31
+        .tm_mday = 22,
+        // tm_mon	int	months since January	0-11
+        .tm_mon = 9 - 1,
+        // tm_year	int	years since 1900
+        .tm_year = 2024 - 1900,
+        // tm_wday	int	days since Sunday	0-6
+        .tm_wday = 0,
+        // tm_yday	int	days since January 1	0-365
+        .tm_yday = 0,
+        // tm_isdst	int	Daylight Saving Time flag
+        .tm_isdst = 0
+    };
+    /* The values of the members tm_wday and tm_yday of timeptr are ignored, and the values of
+       the other members are interpreted even if out of their valid ranges */
+    time_t epoch_secs = mktime(&t);
+    if (-1 == epoch_secs) {
+        printf("The passed in datetime was invalid\n");
+        abort();
+    }
+    struct timespec ts = {.tv_sec = epoch_secs, .tv_nsec = 0};
+    aon_timer_set_time(&ts);
 
     /* This example assumes the following wiring:
     | GPIO | SPI1     | SD Card |

@@ -50,15 +50,15 @@ int main() {
     // Create a type for a 512-byte block
     typedef char block_t[512];
 
-    // Declare a couple of blocks
+    // Define a couple of blocks
     block_t blocks[2];
-    assert(count_of(blocks) <= sz_drv);
 
     // Initialize the blocks
     snprintf(blocks[0], sizeof blocks[0], "Hello");
     snprintf(blocks[1], sizeof blocks[1], "World!");
 
     LBA_t const lba = 0; // Arbitrary
+    assert(lba + count_of(blocks) < sz_drv);
 
     // Write the blocks
     dr = disk_write(pdrv, (BYTE*)blocks[lba], lba, count_of(blocks));

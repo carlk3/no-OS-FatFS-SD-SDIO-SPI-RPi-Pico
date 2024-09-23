@@ -1,5 +1,5 @@
 # no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
-# v3.4.0
+# v3.5.0
 
 ## C/C++ Library for SD Cards on the Pico
 
@@ -11,6 +11,8 @@ and a 4-bit wide Secure Digital Input Output (SDIO) driver derived from
 It is wrapped up in a complete runnable project, with a little command line interface, some self tests, and an example data logging application.
 
 ## What's new
+### v3.5.0
+Porting to Pico 2.
 ### v3.4.0
 Add example of direct use of the block device API. See [Block Device API](#block-device-api) and `examples/block_device`.
 ### v3.3.1
@@ -372,7 +374,7 @@ See [An instance of `sd_spi_if_t` describes the configuration of one SPI to SD c
    make
 ```   
   * Program the device
-  * See [Appendix B: Operation of `command_line` example](#appendix-b-operation-of-command_line-example) for operation.
+  * See [examples/command_line/README.md](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/tree/main/examples/command_line/README.md) for operation.
 <!--
 ![image](https://github.com/carlk3/FreeRTOS-FAT-CLI-for-RPi-Pico/blob/master/images/IMG_1481.JPG "Prototype")
 -->
@@ -626,8 +628,9 @@ Mode 3 can be around 15% faster than mode 0, probably due to quirks of the ARM P
 * `no_miso_gpio_pull_up` According to the standard, an SD card's DO MUST be pulled up (at least for the old MMC cards). 
 However, it might be done externally. If `no_miso_gpio_pull_up` is false, the library will set the RP2040 GPIO internal pull up.
 * `set_drive_strength` Specifies whether or not to set the RP2040 GPIO pin drive strength.
-If `set_drive_strength` is false, all will be implicitly set to 4 mA. 
-If `set_drive_strength` is true, each GPIO's drive strength can be set individually. Note that if it is not explicitly set, it will default to 0, which equates to `GPIO_DRIVE_STRENGTH_2MA` (2 mA nominal drive strength).
+If `set_drive_strength` is false, all will left at the reset default of 4 mA.
+If `set_drive_strength` is true, each GPIO's drive strength can be set individually.
+Note that any not explicitly set will default to 0, which equates to `GPIO_DRIVE_STRENGTH_2MA` (2 mA nominal drive strength).
 * `mosi_gpio_drive_strength` SPI Master Out, Slave In (MOSI) drive strength, 
 * and `sck_gpio_drive_strength` SPI Serial Clock (SCK) drive strength:
   Ignored if `set_drive_strength` is false. Otherwise, these can be set to one of the following:
@@ -844,6 +847,8 @@ Blocks can be addressed by their LBA and read and written individually or as seq
 This API implements the *Media Access Interface* described in [FatFs - Generic FAT Filesystem Module](http://elm-chan.org/fsw/ff/00index_e.html) (also see *Required Functions* in [FatFs Module Application Note](http://elm-chan.org/fsw/ff/doc/appnote.html)).
 The declarations are in `src/ff15/source/diskio.h`.
 
+For an example of the use of this API, see `examples/block_device`.
+
 ## Next Steps
 * There is a example data logging application in `data_log_demo.c`. 
 It can be launched from the `examples/command_line` CLI with the `start_logger` command.
@@ -967,118 +972,6 @@ static sd_card_t sd_cards[] = {  // One for each SD card
         //...           
 ```
 For details, see [Customizing for the Hardware Configuration](#customizing-for-the-hardware-configuration). 
-
-## Appendix B: Operation of `command_line` example:
-* Connect a terminal. [PuTTY](https://www.putty.org/) or `tio` work OK. For example:
-  * `tio -m ODELBS /dev/ttyACM0`
-* Press Enter to start the CLI. You should see a prompt like:
-```
-    > 
-```    
-* The `help` command describes the available commands:
-```    
-setrtc <DD> <MM> <YY> <hh> <mm> <ss>:
- Set Real Time Clock
- Parameters: new date (DD MM YY) new time in 24-hour format (hh mm ss)
-        e.g.:setrtc 16 3 21 0 4 0
-
-date:
- Print current date and time
-
-format [<drive#:>]:
- Creates an FAT/exFAT volume on the logical drive.
-        e.g.: format 0:
-
-mount [<drive#:>]:
- Register the work area of the volume
-        e.g.: mount 0:
-
-unmount <drive#:>:
- Unregister the work area of the volume
-
-chdrive <drive#:>:
- Changes the current directory of the logical drive.
- <path> Specifies the directory to be set as current directory.
-        e.g.: chdrive 1:
-
-info [<drive#:>]:
- Print information about an SD card
-
-cd <path>:
- Changes the current directory of the logical drive.
- <path> Specifies the directory to be set as current directory.
-        e.g.: cd /dir1
-
-mkdir <path>:
- Make a new directory.
- <path> Specifies the name of the directory to be created.
-        e.g.: mkdir /dir1
-
-rm [options] <pathname>:
- Removes (deletes) a file or directory
- <pathname> Specifies the path to the file or directory to be removed
- Options:
-  -d Remove an empty directory
-  -r Recursively remove a directory and its contents
-
-cp <source file> <dest file>:
- Copies <source file> to <dest file>
-
-mv <source file> <dest file>:
- Moves (renames) <source file> to <dest file>
-
-pwd:
- Print Working Directory
-
-ls [pathname]:
- List directory
-
-cat <filename>:
- Type file contents
-
-simple:
- Run simple FS tests
-
-lliot <physical drive#>:
- !DESTRUCTIVE! Low Level I/O Driver Test
-The SD card will need to be reformatted after this test.
-        e.g.: lliot 1
-
-bench <drive#:>:
- A simple binary write/read benchmark
-
-big_file_test <pathname> <size in MiB> <seed>:
- Writes random data to file <pathname>.
- Specify <size in MiB> in units of mebibytes (2^20, or 1024*1024 bytes)
-        e.g.: big_file_test 0:/bf 1 1
-        or: big_file_test 1:big3G-3 3072 3
-
-cdef:
- Create Disk and Example Files
- Expects card to be already formatted and mounted
-
-swcwdt:
- Stdio With CWD Test
-Expects card to be already formatted and mounted.
-Note: run cdef first!
-
-loop_swcwdt:
- Run Create Disk and Example Files and Stdio With CWD Test in a loop.
-Expects card to be already formatted and mounted.
-Note: Type any key to quit.
-
-start_logger:
- Start Data Log Demo
-
-stop_logger:
- Stop Data Log Demo
-
-mem-stats:
- Print memory statistics
-
-help:
- Shows this command help.
-```
 
 ## Appendix C: Adding Additional Cards
 When you're dealing with information storage, it's always nice to have redundancy. There are many possible combinations of SPIs and SD cards. One of these is putting multiple SD cards on the same SPI bus, at a cost of one (or two) additional Pico I/O pins (depending on whether or you care about Card Detect). I will illustrate that example here. 

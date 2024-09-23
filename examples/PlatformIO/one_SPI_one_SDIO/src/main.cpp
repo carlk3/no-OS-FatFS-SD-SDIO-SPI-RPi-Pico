@@ -13,14 +13,13 @@ specific language governing permissions and limitations under the License.
 */
 
 #include <assert.h>
+#include <stdlib.h>
 #include <vector>
 //
 #include "FatFsSd.h"
 //
 #include "SerialUART.h"
 #include "iostream/ArduinoStream.h"
-
-static const uint led_pin = PICO_DEFAULT_LED_PIN;
 
 // Serial output stream
 ArduinoOutStream cout(Serial1);
@@ -48,12 +47,12 @@ void test(FatFsNs::SdCard* SdCard_p) {
     FRESULT fr = SdCard_p->mount();
     if (FR_OK != fr) {
         cout << "mount error: " << FRESULT_str(fr) << " (" << fr << ")" << endl;
-        for (;;) __BKPT(1);
+        abort();
     }
     fr = FatFsNs::FatFs::chdrive(SdCard_p->get_name());
     if (FR_OK != fr) {
         cout << "chdrive error: " << FRESULT_str(fr) << " (" << fr << ")" << endl;
-        for (;;) __BKPT(2);
+        abort();
     }
 
     FatFsNs::File file;
@@ -61,16 +60,16 @@ void test(FatFsNs::SdCard* SdCard_p) {
     fr = file.open(filename, FA_OPEN_APPEND | FA_WRITE);
     if (FR_OK != fr && FR_EXIST != fr) {
         cout << "open(" << filename << ") error: " << FRESULT_str(fr) << " (" << fr << ")" << endl;
-        for (;;) __BKPT(3);
+        abort();
     }
     if (file.printf("Hello, world!\n") < 0) {
         cout << "printf failed" << endl;
-        for (;;) __BKPT(4);
+        abort();
     }
     fr = file.close();
     if (FR_OK != fr) {
         cout << "close error: " << FRESULT_str(fr) << " (" << fr << ")" << endl;
-        for (;;) __BKPT(5);
+        abort();
     }
     SdCard_p->unmount();
 }
@@ -105,9 +104,7 @@ void setup() {
     cout << "\033[2J\033[H";  // Clear Screen
     cout << "Hello, world!" << endl;
 
-    gpio_init(led_pin);
-    gpio_set_dir(led_pin, GPIO_OUT);
-
+    pinMode(LED_BUILTIN, OUTPUT);
     time_init();
 
     // Hardware Configuration of SPI "object"
@@ -173,9 +170,9 @@ void setup() {
 }
 void loop() {
     while (true) {
-        gpio_put(led_pin, 1);
+        digitalWrite(LED_BUILTIN, HIGH);
         sleep_ms(250);
-        gpio_put(led_pin, 0);
+        digitalWrite(LED_BUILTIN, LOW);  
         sleep_ms(250);
     }
 }

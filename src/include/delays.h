@@ -52,9 +52,10 @@ call to millis() returns 0xFFFFFFFF:
 //
 #include "pico/stdlib.h"
 #if PICO_RP2040
-#include "RP2040.h"
-#else
-#include "RP2350.h"
+#  include "RP2040.h"
+#endif
+#if PICO_RP2350
+#  include "RP2350.h"
 #endif
 
 #ifdef __cplusplus

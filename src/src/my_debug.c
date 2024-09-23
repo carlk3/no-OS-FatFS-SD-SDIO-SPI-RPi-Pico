@@ -13,14 +13,17 @@ specific language governing permissions and limitations under the License.
 */
 
 #include <stdarg.h>
+#include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
+#include <time.h>
 //
 #if PICO_RP2040
-#include "RP2040.h"
-#else
-#include "RP2350.h"
+#  include "RP2040.h"
+#endif
+#if PICO_RP2350
+#  include "RP2350.h"
 #endif
 #include "pico/stdlib.h"
 //
@@ -79,10 +82,8 @@ int __attribute__((weak))
 debug_message_printf(const char *func, int line, 
         const char *fmt, ...) 
 {
-#if defined(NDEBUG) || !USE_DBG_PRINTF
     (void) func;
     (void) line;
-#endif
     va_list args;
     va_start(args, fmt);
     int cw = vprintf(fmt, args);
