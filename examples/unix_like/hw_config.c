@@ -58,6 +58,10 @@ static sd_sdio_if_t sdio_ifs[] = {
     {   // sdio_ifs[0]
         .CMD_gpio = 3,
         .D0_gpio = 4,
+        /* GPIO reset drive strength is 4 mA.
+         * When set_drive_strength is true,
+         * the drive strength is set to 2 mA unless otherwise specified. */
+        .set_drive_strength = true,
         .CLK_gpio_drive_strength = GPIO_DRIVE_STRENGTH_12MA,
         .CMD_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
         .D0_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
@@ -75,6 +79,7 @@ static sd_sdio_if_t sdio_ifs[] = {
     {   // sdio_ifs[1]
         .CMD_gpio = 17,
         .D0_gpio = 18,
+        .set_drive_strength = true,
         .CLK_gpio_drive_strength = GPIO_DRIVE_STRENGTH_12MA,
         .CMD_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
         .D0_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
@@ -126,6 +131,13 @@ const char *VolumeStr[FF_VOLUMES] = {"sd0", "sd1"};	/* Pre-defined volume ID */
 
 size_t sd_get_num() { return count_of(sd_cards); }
 
+/**
+ * @brief Get a pointer to an SD card object by its number.
+ *
+ * @param[in] num The number of the SD card to get.
+ *
+ * @return A pointer to the SD card object, or @c NULL if the number is invalid.
+ */
 sd_card_t *sd_get_by_num(size_t num) {
     assert(num < sd_get_num());
     if (num < sd_get_num()) {

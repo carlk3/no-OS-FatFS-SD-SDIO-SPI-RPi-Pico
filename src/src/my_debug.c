@@ -82,10 +82,8 @@ int __attribute__((weak))
 debug_message_printf(const char *func, int line, 
         const char *fmt, ...) 
 {
-#if defined(NDEBUG) || !USE_DBG_PRINTF
     (void) func;
     (void) line;
-#endif
     va_list args;
     va_start(args, fmt);
     int cw = vprintf(fmt, args);

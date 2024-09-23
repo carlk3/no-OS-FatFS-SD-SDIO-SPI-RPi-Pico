@@ -16,15 +16,15 @@ specific language governing permissions and limitations under the License.
 //
 #include "pico/stdlib.h"
 //
-#include "hw_config.h"
 #include "f_util.h"
 #include "ff.h"
+#include "hw_config.h"
 
 /*
 
 This file should be tailored to match the hardware design.
 
-See 
+See
 https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/tree/main#customizing-for-the-hardware-configuration
 
 */
@@ -44,27 +44,46 @@ static sd_sdio_if_t sdio_if = {
         D2_gpio = D0_gpio + 2;
         D3_gpio = D0_gpio + 3;
     */
-    .CMD_gpio = 17,
-    .D0_gpio = 18,
-    .baud_rate = 15 * 1000 * 1000  // 15 MHz
+    .CMD_gpio = 3,
+    .D0_gpio = 4,
+    .baud_rate = 125 * 1000 * 1000 / 6  // 20833333 Hz
 };
 
 /* Hardware Configuration of the SD Card socket "object" */
-static sd_card_t sd_card = {
-    .type = SD_IF_SDIO,
-    .sdio_if_p = &sdio_if
-};
+static sd_card_t sd_card = {.type = SD_IF_SDIO, .sdio_if_p = &sdio_if};
 
-/* Callbacks used by the library: */
+/**
+ * @brief Get the number of SD cards.
+ *
+ * @return The number of SD cards, which is 1 in this case.
+ */
 size_t sd_get_num() { return 1; }
 
-sd_card_t *sd_get_by_num(size_t num) {
-    if (0 == num)
+/**
+ * @brief Get a pointer to an SD card object by its number.
+ *
+ * @param[in] num The number of the SD card to get.
+ *
+ * @return A pointer to the SD card object, or @c NULL if the number is invalid.
+ */
+sd_card_t* sd_get_by_num(size_t num) {
+    if (0 == num) {
+        // The number 0 is a valid SD card number.
+        // Return a pointer to the sd_card object.
         return &sd_card;
-    else
+    } else {
+        // The number is invalid. Return @c NULL.
         return NULL;
+    }
 }
 
+/**
+ * @brief The main function of the program.
+ *
+ * @details This function initializes the stdio interface, prints a greeting to the
+ * console, mounts the SD card, writes a message to a file, and unmounts the SD card.
+ *
+ */
 int main() {
     stdio_init_all();
 
@@ -74,19 +93,28 @@ int main() {
     // http://elm-chan.org/fsw/ff/00index_e.html
     FATFS fs;
     FRESULT fr = f_mount(&fs, "", 1);
-    if (FR_OK != fr) panic("f_mount error: %s (%d)\n", FRESULT_str(fr), fr);
+    if (FR_OK != fr) {
+        panic("f_mount error: %s (%d)\n", FRESULT_str(fr), fr);
+        return -1;
+    }
+
     FIL fil;
     const char* const filename = "filename.txt";
     fr = f_open(&fil, filename, FA_OPEN_APPEND | FA_WRITE);
-    if (FR_OK != fr && FR_EXIST != fr)
+    if (FR_OK != fr && FR_EXIST != fr) {
         panic("f_open(%s) error: %s (%d)\n", filename, FRESULT_str(fr), fr);
+        return -1;
+    }
+
     if (f_printf(&fil, "Hello, world!\n") < 0) {
         printf("f_printf failed\n");
     }
+
     fr = f_close(&fil);
     if (FR_OK != fr) {
         printf("f_close error: %s (%d)\n", FRESULT_str(fr), fr);
     }
+
     f_unmount("");
 
     puts("Goodbye, world!");

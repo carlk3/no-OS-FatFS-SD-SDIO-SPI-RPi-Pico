@@ -1,13 +1,25 @@
+# == DO NEVER EDIT THE NEXT LINES for Raspberry Pi Pico VS Code Extension to work ==
+if(WIN32)
+    set(USERHOME $ENV{USERPROFILE})
+else()
+    set(USERHOME $ENV{HOME})
+endif()
+set(sdkVersion 2.0.0)
+set(toolchainVersion 13_2_Rel1)
+set(picotoolVersion 2.0.0)
+set(picoVscode ${USERHOME}/.pico-sdk/cmake/pico-vscode.cmake)
+if (EXISTS ${picoVscode})
+    include(${picoVscode})
+endif()
+# ====================================================================================
 cmake_minimum_required(VERSION 3.5)
 
-set(PICO_BOARD $ENV{PICO_BOARD})
 set(PICO_SDK_PATH $ENV{PICO_SDK_PATH})
-set(PROGRAM_NAME command_line)
 
 # Pull in Pico SDK (must be before project)
 include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
-project(${PROGRAM_NAME} C CXX ASM)
+project(command_line C CXX ASM)
 
 # add_compile_options(-Os) # Optimize for size (place before pico_sdk_init)
 
@@ -17,7 +29,7 @@ pico_sdk_init()
 add_subdirectory(../../src build)
 
 # Add executable. Default name is the project name, version 0.1
-add_executable(${PROGRAM_NAME} 
+add_executable(command_line
     config/hw_config.c
     main.cpp 
     src/command.cpp
@@ -31,13 +43,13 @@ add_executable(${PROGRAM_NAME}
 )
 
 # https://datasheets.raspberrypi.com/pico/raspberry-pi-pico-c-sdk.pdf
-target_compile_definitions(${PROGRAM_NAME} PRIVATE
+target_compile_definitions(command_line PRIVATE
   PICO_STACK_SIZE=0x1000
   PICO_CORE1_STACK_SIZE=0x800
 #   PICO_HEAP_SIZE=0x20000
 )
 
-target_compile_options(${PROGRAM_NAME} PUBLIC 
+target_compile_options(command_line PUBLIC 
   -Wall 
   -Wextra 
   -Wshadow 
@@ -63,29 +75,29 @@ add_compile_definitions(
 # Note that Pico W uses GPIO 25 for SPI communication to the CYW43439.
 # add_compile_definitions(USE_LED=1)
 
-set_property(TARGET ${PROGRAM_NAME} APPEND_STRING PROPERTY LINK_FLAGS 
+set_property(TARGET command_line APPEND_STRING PROPERTY LINK_FLAGS 
   "-Wl,--print-memory-usage"
 )
 
-pico_set_program_name(${PROGRAM_NAME} "${PROGRAM_NAME}")
-pico_set_program_version(${PROGRAM_NAME} "3.3.1")
+pico_set_program_name(command_line "command_line")
+pico_set_program_version(command_line "3.3.5")
 
 if ("${PICO_BOARD}" STREQUAL "pico")
-    pico_set_linker_script(${PROGRAM_NAME} ${CMAKE_SOURCE_DIR}/linker/memmap.ld)
+    pico_set_linker_script(command_line ${CMAKE_SOURCE_DIR}/linker/memmap.ld)
 endif()
 
 # See 4.1. Serial input and output on Raspberry Pi Pico in Getting started with Raspberry Pi Pico (https://datasheets.raspberrypi.org/pico/getting-started-with-pico.pdf)
 # and 2.7.1. Standard Input/Output (stdio) Support in Raspberry Pi Pico C/C++ SDK (https://datasheets.raspberrypi.org/pico/raspberry-pi-pico-c-sdk.pdf):
-#pico_enable_stdio_uart(${PROGRAM_NAME} 1)
-pico_enable_stdio_usb(${PROGRAM_NAME} 1)
+#pico_enable_stdio_uart(command_line 1)
+pico_enable_stdio_usb(command_line 1)
 
-target_include_directories(${PROGRAM_NAME} PUBLIC 
+target_include_directories(command_line PUBLIC 
         include/ 
 )
-target_link_libraries(${PROGRAM_NAME}
+target_link_libraries(command_line
     no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
     hardware_clocks
     hardware_adc
 )
 
-pico_add_extra_outputs(${PROGRAM_NAME})
+pico_add_extra_outputs(command_line)

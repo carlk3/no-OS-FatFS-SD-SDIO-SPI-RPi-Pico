@@ -19,6 +19,7 @@ specific language governing permissions and limitations under the License.
 #include "hardware/clocks.h"
 #include "hardware/spi.h"
 #include "hardware/structs/clocks.h"
+//#include "hardware/structs/dma_debug.h"
 #include "pico.h"
 #include "pico/mutex.h"
 #include "pico/platform.h"
@@ -81,12 +82,12 @@ static bool chk_dma(uint chn) {
         DBG_PRINTF("\tDMA is busy\n");
         ok = false;
     }
-    if (!ok) {
-        dma_debug_channel_hw_t *dbg_ch_p = &dma_debug_hw->ch[chn];
-        DBG_PRINTF("\tTRANSFER_COUNT: %lu\n", channel->transfer_count);
-        DBG_PRINTF("\tTRANS_COUNT reload value (DBG_TCR): %lu\n", dbg_ch_p->dbg_tcr);
-        DBG_PRINTF("\tDREQ counter: %lu\n", dbg_ch_p->dbg_ctdreq);
-    }
+    //if (!ok) {
+    //    dma_debug_channel_hw_t *dbg_ch_p = &dma_debug_hw->ch[chn];
+    //    DBG_PRINTF("\tTRANSFER_COUNT: %lu\n", channel->transfer_count);
+    //    DBG_PRINTF("\tTRANS_COUNT reload value (DBG_TCR): %lu\n", dbg_ch_p->dbg_tcr);
+    //    DBG_PRINTF("\tDREQ counter: %lu\n", dbg_ch_p->dbg_ctdreq);
+    //}
     return ok;
 }
 

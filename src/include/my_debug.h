@@ -28,7 +28,7 @@ these message output functions will use the Pico SDK's stdout.
 */
 
 /* USE_DBG_PRINTF
-If this is not defined or is zero or NDEBUG is defined,
+If this is not defined or is zero
 DBG_PRINTF statements will be effectively stripped from the code.
 */
 

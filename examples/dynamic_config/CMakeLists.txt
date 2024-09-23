@@ -1,16 +1,25 @@
+# == DO NEVER EDIT THE NEXT LINES for Raspberry Pi Pico VS Code Extension to work ==
+if(WIN32)
+    set(USERHOME $ENV{USERPROFILE})
+else()
+    set(USERHOME $ENV{HOME})
+endif()
+set(sdkVersion 2.0.0)
+set(toolchainVersion 13_2_Rel1)
+set(picotoolVersion 2.0.0)
+set(picoVscode ${USERHOME}/.pico-sdk/cmake/pico-vscode.cmake)
+if (EXISTS ${picoVscode})
+    include(${picoVscode})
+endif()
+# ====================================================================================
 # Generated Cmake Pico project file
 
 cmake_minimum_required(VERSION 3.5)
 
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 17)
+set(PICO_SDK_PATH $ENV{PICO_SDK_PATH})
 
-# initalize pico_sdk from installed location
-# (note this can come from environment, CMake cache etc)
-#set(PICO_SDK_PATH "/home/carlk/pi/pico/pico-sdk")
-
-# Pull in Raspberry Pi Pico SDK (must be before project)
-include(pico_sdk_import.cmake)
+# Pull in Pico SDK (must be before project)
+include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
 project(dynamic_config_example C CXX ASM)
 
@@ -24,9 +33,29 @@ add_executable(dynamic_config_example
     main.cpp 
 )
 
-# Can leave these off for silent mode:
-#add_compile_definitions(USE_PRINTF USE_DBG_PRINTF)
-#add_compile_definitions(USE_PRINTF)
+target_compile_options(dynamic_config_example PUBLIC 
+  -Wall 
+  -Wextra 
+  -Wshadow 
+  -Wstack-usage=2048 
+  -fanalyzer 
+)
+
+add_compile_definitions(
+    PARAM_ASSERTIONS_ENABLE_ALL=1 
+    PICO_MALLOC_PANIC=1
+    PICO_USE_STACK_GUARDS=1
+
+    # This program is useless without standard input and output.
+    USE_PRINTF
+    #USE_DBG_PRINTF
+)
+
+
+
+set_property(TARGET dynamic_config_example APPEND_STRING PROPERTY LINK_FLAGS 
+  "-Wl,--print-memory-usage"
+)
 
 pico_set_program_name(dynamic_config_example "dynamic_config_example")
 pico_set_program_version(dynamic_config_example "0.1")
