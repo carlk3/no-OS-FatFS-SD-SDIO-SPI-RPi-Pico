@@ -1,5 +1,5 @@
 # no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
-# v3.5.0
+# v3.5.1
 
 ## C/C++ Library for SD Cards on the Pico
 
@@ -11,6 +11,8 @@ and a 4-bit wide Secure Digital Input Output (SDIO) driver derived from
 It is wrapped up in a complete runnable project, with a little command line interface, some self tests, and an example data logging application.
 
 ## What's new
+### v3.5.1
+Fix PlatformIO examples for earlephilhower / arduino-pico [Add new Pico SDK AON_Timer module #2489](https://github.com/earlephilhower/arduino-pico/issues/2489).
 ### v3.5.0
 Porting to Pico 2.
 ### v3.4.0
