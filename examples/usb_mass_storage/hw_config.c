@@ -66,19 +66,8 @@ static sd_card_t sd_card = {
 
 /* ********************************************************************** */
 
-/**
- * @brief Returns the number of sd_card_t objects that are available.
- * @return The number of sd_card_t objects.
- */
-size_t sd_get_num(void) {
-    return 1;
-}
+size_t sd_get_num() { return 1; }
 
-/**
- * @brief Return the sd_card_t object at the given index (0-based).
- * @param num The index of the sd_card_t object.
- * @return Pointer to the sd_card_t object at the given index if it exists, NULL otherwise.
- */
 sd_card_t *sd_get_by_num(size_t num) {
     if (0 == num)
         return &sd_card;

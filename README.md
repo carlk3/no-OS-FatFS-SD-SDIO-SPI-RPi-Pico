@@ -1,5 +1,5 @@
 # no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
-# v3.5.1
+# v3.6.0
 
 ## C/C++ Library for SD Cards on the Pico
 
@@ -11,6 +11,9 @@ and a 4-bit wide Secure Digital Input Output (SDIO) driver derived from
 It is wrapped up in a complete runnable project, with a little command line interface, some self tests, and an example data logging application.
 
 ## What's new
+### v3.6.0
+Add `examples/usb_mass_storage` example which connects a Pico's USB mass storage (MSC) interface to an SD card,
+effectively turning it into an SD card USB dongle.
 ### v3.5.1
 Fix PlatformIO examples for earlephilhower / arduino-pico [Add new Pico SDK AON_Timer module #2489](https://github.com/earlephilhower/arduino-pico/issues/2489).
 ### v3.5.0

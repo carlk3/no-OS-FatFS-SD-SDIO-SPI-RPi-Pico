@@ -18,4 +18,3 @@ It initializes the standard input/output, mounts an SD card, writes to a file, a
 * You will need to
 [customize](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico#customizing-for-the-hardware-configuration)
 the `hw_config.c` file to match your hardware.
-* PICO_SDK_PATH must be set in the Cmake: Configure Environment
