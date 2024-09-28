@@ -16,7 +16,7 @@ specific language governing permissions and limitations under the License.
 /*
 This file should be tailored to match the hardware design.
 
-See 
+See
   https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/tree/main#customizing-for-the-hardware-configuration
 
 */
@@ -27,17 +27,17 @@ See https://oshwlab.com/carlk3/rpi-pico-sd-card-expansion-module-1
 
 #include "hw_config.h"
 
-    /*
-    Pins CLK_gpio, D1_gpio, D2_gpio, and D3_gpio are at offsets from pin D0_gpio.
-    The offsets are determined by sd_driver\SDIO\rp2040_sdio.pio.
-        CLK_gpio = (D0_gpio + SDIO_CLK_PIN_D0_OFFSET) % 32;
-        As of this writing, SDIO_CLK_PIN_D0_OFFSET is 30,
-            which is -2 in mod32 arithmetic, so:
-        CLK_gpio = D0_gpio -2.
-        D1_gpio = D0_gpio + 1;
-        D2_gpio = D0_gpio + 2;
-        D3_gpio = D0_gpio + 3;
-    */
+/*
+Pins CLK_gpio, D1_gpio, D2_gpio, and D3_gpio are at offsets from pin D0_gpio.
+The offsets are determined by sd_driver\SDIO\rp2040_sdio.pio.
+    CLK_gpio = (D0_gpio + SDIO_CLK_PIN_D0_OFFSET) % 32;
+    As of this writing, SDIO_CLK_PIN_D0_OFFSET is 30,
+        which is -2 in mod32 arithmetic, so:
+    CLK_gpio = D0_gpio -2.
+    D1_gpio = D0_gpio + 1;
+    D2_gpio = D0_gpio + 2;
+    D3_gpio = D0_gpio + 3;
+*/
 
 /* `baud_rate` setting:
 The `baud_rate` is derived from the system core clock (`clk_sys`).
@@ -91,7 +91,7 @@ static sd_sdio_if_t sdio_if = {
 #endif
 #if PICO_RP2350
     //◦The default system clock on RP2350 is 150Mhz.
-    .baud_rate = 150 * 1000 * 1000 / 6  // 25000000 Hz
+    .baud_rate = 150 * 1000 * 1000 / 6  // 25000000 Hz, clk_div = 1.5
 #endif
 };
 

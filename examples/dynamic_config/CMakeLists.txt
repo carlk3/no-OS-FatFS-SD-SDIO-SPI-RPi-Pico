@@ -16,10 +16,10 @@ endif()
 
 cmake_minimum_required(VERSION 3.5)
 
-set(PICO_SDK_PATH $ENV{PICO_SDK_PATH})
+set(PICO_BOARD pico2 CACHE STRING "Board type")
 
 # Pull in Pico SDK (must be before project)
-include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
+include(pico_sdk_import.cmake)
 
 project(dynamic_config_example C CXX ASM)
 

@@ -12,17 +12,12 @@ if (EXISTS ${picoVscode})
     include(${picoVscode})
 endif()
 # ====================================================================================
-# Generated Cmake Pico project file
+cmake_minimum_required(VERSION 3.5)
 
-cmake_minimum_required(VERSION 3.13)
-
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 17)
-
-set(PICO_SDK_PATH $ENV{PICO_SDK_PATH})
+set(PICO_BOARD pico2 CACHE STRING "Board type")
 
 # Pull in Pico SDK (must be before project)
-include(${PICO_SDK_PATH}/external/pico_sdk_import.cmake)
+include(pico_sdk_import.cmake)
 
 project(simple_example C CXX ASM)
 

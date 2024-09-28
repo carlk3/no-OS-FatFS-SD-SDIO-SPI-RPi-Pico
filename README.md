@@ -1,5 +1,5 @@
 # no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
-# v3.5.1
+# v3.6.0
 
 ## C/C++ Library for SD Cards on the Pico
 
@@ -11,6 +11,9 @@ and a 4-bit wide Secure Digital Input Output (SDIO) driver derived from
 It is wrapped up in a complete runnable project, with a little command line interface, some self tests, and an example data logging application.
 
 ## What's new
+### v3.6.0
+Add `examples/usb_mass_storage` example which connects a Pico's USB mass storage (MSC) interface to an SD card,
+effectively turning it into an SD card USB dongle.
 ### v3.5.1
 Fix PlatformIO examples for earlephilhower / arduino-pico [Add new Pico SDK AON_Timer module #2489](https://github.com/earlephilhower/arduino-pico/issues/2489).
 ### v3.5.0
@@ -485,25 +488,50 @@ If you try to use multiple SDIO-attached SD cards simultaneously on the same PIO
 contention might lead to timeouts.
 * `DMA_IRQ_num` Which IRQ to use for DMA. Defaults to DMA_IRQ_0. Set this to avoid conflicts with any exclusive DMA IRQ handlers that might be elsewhere in the system.
 * `use_exclusive_DMA_IRQ_handler` If true, the IRQ handler is added with the SDK's `irq_set_exclusive_handler`. The default is to add the handler with `irq_add_shared_handler`, so it's not exclusive. 
-* `baud_rate` The frequency of the SDIO clock in Hertz. This may be no higher than the system clock frequency divided by `CLKDIV` in `sd_driver\SDIO\rp2040_sdio.pio`, which is currently four. For example, if the system clock frequency is 125 MHz, `baud_rate` cannot exceed 31250000 (31.25 MHz). The default is 10 MHz.
-This is used to divide the system clock frequency (`clk_sys`) to get a ratio to pass to the SDK's [sm_config_set_clkdiv](https://www.raspberrypi.com/documentation//pico-sdk/hardware.html#gae8c09c7a4372da95ad777faae51c5a24). As it says there, "An integer clock divisor of n will cause the state machine to run 1 cycle in every n. Note that for small n, the jitter introduced by a fractional divider (e.g. 2.5) may be unacceptable although it will depend on the use case."
-In this case, n can be as little as four (which I would consider small).
-The fractional divider essentially causes the frequency to vary in a range,
-with the average being the requested frequency.
-If the hardware is capable of running at the high end of the range,
-you might as well run at that frequency all the time.
-Therefore, I recommend choosing a baud rate that is some factor of the system clock frequency.
-For example, if the system clock frequency is the default 125 MHz:
-  ```C
-      .baud_rate = 125 * 1000 * 1000 / 10,  // 12500000 Hz
-  ```
-  or
-  ```C
-      .baud_rate = 125 * 1000 * 1000 / 4  // 31250000 Hz
-  ```
+* `baud_rate` The frequency of the SDIO clock in Hertz.
+  This may be no higher than the system clock frequency divided by `CLKDIV` in `sd_driver\SDIO\rp2040_sdio.pio`, which is currently four.
+  For example, if the system clock frequency is 125 MHz,
+  `baud_rate` cannot exceed 31250000 (31.25 MHz). The default is `clk_sys` / 12. 
+  
+  The `baud_rate` is derived from the system core clock (`clk_sys`).
+  `sm_config_set_clkdiv` sets the state machine clock divider
+  in a PIO state machine configuration
+  from a floating point value we'll call "clk_div".
+  This is used to divide the system clock frequency (`clk_sys`) to get a ratio to pass to the SDK's
+  [sm_config_set_clkdiv](https://www.raspberrypi.com/documentation//pico-sdk/hardware.html#group_sm_config_1ga365abc6d25301810ca5ee11e5b36c763).
+  The state machine clock divider is a fractional divider,
+  and the jitter introduced by a fractional divisor may be unacceptable.
+  "An integer clock divisor of n will cause the state machine to run 1 cycle in every n. 
+  Note that for small n, the jitter introduced by a fractional divider (e.g. 2.5) may be unacceptable although it will depend on the use case."
+  See the datasheet for details.
+  The fractional divider essentially causes the frequency to vary in a range,
+  with the average being the requested frequency.
+  If the hardware is capable of running at the high end of the range,
+  you might as well run at that frequency all the time.
   The higher the baud rate, the faster the data transfer.
   However, the hardware might limit the usable baud rate.
   See [Pull Up Resistors and other electrical considerations](#pull-up-resistors-and-other-electrical-considerations).
+  
+  The PIO state machine itself divides by `CLKDIV`,
+  defined in `sd_driver\SDIO\rp2040_sdio.pio`, currently 4.
+  
+        baud_rate = clk_sys / (CLKDIV * clk_div)
+  
+  Preferrably, choose `baud_rate` for an integer clk_div.
+  
+  Baud rates for different `clk_sys`s and `clk_div`s:
+    |         | clk_sys      | clk_sys      | clk_sys      |
+    | ------- | ------------ | ------------ | ------------ |
+    | clk_div | 125000000    | 133000000 | 150000000 |
+    | 1.00    | 31,250,000.0 | 33,250,000.0 | 37,500,000.0 |
+    | 1.25    | 25,000,000.0 | 26,600,000.0 | 30,000,000.0 |
+    | 1.50    | 20,833,333.3 | 22,166,666.7 | 25,000,000.0 |
+    | 1.75    | 17,857,142.9 | 19,000,000.0 | 21,428,571.4 |
+    | 2.00    | 15,625,000.0 | 16,625,000.0 | 18,750,000.0 |
+    | 2.25    | 13,888,888.9 | 14,777,777.8 | 16,666,666.7 |
+    | 2.50    | 12,500,000.0 | 13,300,000.0 | 15,000,000.0 |
+    | 2.75    | 11,363,636.4 | 12,090,909.1 | 13,636,363.6 |
+    | 3.00    | 10,416,666.7 | 11,083,333.3 | 12,500,000.0 |
 * `set_drive_strength` If true, enable explicit specification of output drive strengths on `CLK_gpio`, `CMD_gpio`, and `D0_gpio` - `D3_gpio`. 
 The GPIOs on RP2040 have four different output drive strengths, which are nominally 2, 4, 8 and 12mA modes.
 If `set_drive_strength` is false, all will be implicitly set to 4 mA.
