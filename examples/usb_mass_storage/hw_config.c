@@ -43,15 +43,15 @@ static sd_sdio_if_t sdio_if = {
     .CMD_gpio = 3,
     .D0_gpio = 4,
     .set_drive_strength = true,
-    .CLK_gpio_drive_strength = GPIO_DRIVE_STRENGTH_12MA,
+    .CLK_gpio_drive_strength = GPIO_DRIVE_STRENGTH_8MA,
     .CMD_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
-    .D0_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
-    .D1_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
-    .D2_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
-    .D3_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
+    .D0_gpio_drive_strength = GPIO_DRIVE_STRENGTH_2MA,
+    .D1_gpio_drive_strength = GPIO_DRIVE_STRENGTH_2MA,
+    .D2_gpio_drive_strength = GPIO_DRIVE_STRENGTH_2MA,
+    .D3_gpio_drive_strength = GPIO_DRIVE_STRENGTH_2MA,
     .SDIO_PIO = pio1,
     .DMA_IRQ_num = DMA_IRQ_1,
-    .baud_rate = 125 * 1000 * 1000 / 4  // 31250000 Hz
+    .baud_rate = 125 * 1000 * 1000 / 5  // 25000000 Hz
 };
 
 // Hardware Configuration of the SD Card socket "object"

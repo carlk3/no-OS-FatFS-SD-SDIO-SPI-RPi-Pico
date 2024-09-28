@@ -158,12 +158,12 @@ int32_t tud_msc_read10_cb(uint8_t lun, uint32_t lba, uint32_t offset, void* buff
     assert(!offset);
     assert(!(bufsize % 512));
 
-    if (ejected) return 0;
-    if (!tud_msc_test_unit_ready_cb(lun)) return 0;
+    if (ejected) return -1;
+    if (!tud_msc_test_unit_ready_cb(lun)) return -1;
 
     // Read data from the disk.
     DRESULT dr = disk_read(lun, (BYTE*)buffer, lba, bufsize / 512);
-    if (RES_OK != dr) return 0;
+    if (RES_OK != dr) return -1;
 
     return (int32_t)bufsize;
 }
@@ -202,12 +202,12 @@ int32_t tud_msc_write10_cb(uint8_t lun, uint32_t lba, uint32_t offset, uint8_t* 
     assert(!offset);
     assert(!(bufsize % 512));
 
-    if (ejected) return 0;
-    if (!tud_msc_test_unit_ready_cb(lun)) return 0;
+    if (ejected) return -1;
+    if (!tud_msc_test_unit_ready_cb(lun)) return -1;
 
     // Write data to the disk.
     DRESULT dr = disk_write(lun, (BYTE*)buffer, lba, bufsize / 512);
-    if (RES_OK != dr) return 0;
+    if (RES_OK != dr) return -1;
 
     return bufsize;
 }
