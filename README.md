@@ -234,6 +234,13 @@ Then, there are the facilities used for mutual exclusion and various ways of wai
 
 FreeRTOS-FAT-CLI-for-RPi-Pico is designed to maximize parallelism. So, if you have two cores and multiple SD card buses (SPI or SDIO), multiple FreeRTOS tasks can keep them all busy simultaneously.
 
+## Notes about Arduino / PlatformIO
+What you're probably looking for is [SdFat](https://github.com/greiman/SdFat).
+[Also, see [SdFat-beta](https://github.com/greiman/SdFat-beta)].
+
+However, this library can be used with Arduino / PlatformIO. 
+See [examples/PlatformIO](https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/tree/main/examples/PlatformIO).
+
 ## Hardware
 ### My boards
 * [Pico SD Card Development Board](https://forums.raspberrypi.com/viewtopic.php?p=2123146#p2123146)
@@ -522,16 +529,10 @@ contention might lead to timeouts.
   Baud rates for different `clk_sys`s and `clk_div`s:
     |         | clk_sys      | clk_sys      | clk_sys      |
     | ------- | ------------ | ------------ | ------------ |
-    | clk_div | 125000000    | 133000000 | 150000000 |
-    | 1.00    | 31,250,000.0 | 33,250,000.0 | 37,500,000.0 |
-    | 1.25    | 25,000,000.0 | 26,600,000.0 | 30,000,000.0 |
-    | 1.50    | 20,833,333.3 | 22,166,666.7 | 25,000,000.0 |
-    | 1.75    | 17,857,142.9 | 19,000,000.0 | 21,428,571.4 |
-    | 2.00    | 15,625,000.0 | 16,625,000.0 | 18,750,000.0 |
-    | 2.25    | 13,888,888.9 | 14,777,777.8 | 16,666,666.7 |
-    | 2.50    | 12,500,000.0 | 13,300,000.0 | 15,000,000.0 |
-    | 2.75    | 11,363,636.4 | 12,090,909.1 | 13,636,363.6 |
-    | 3.00    | 10,416,666.7 | 11,083,333.3 | 12,500,000.0 |
+    | clk_div | 125000000    | 133000000    | 150000000  |
+    | 1.00    | 31,250,000   | 33,250,000   | 37,500,000 |
+    | 2.00    | 15,625,000   | 16,625,000   | 18,750,000 |
+    | 3.00    | 10,416,667   | 11,083,333   | 12,500,000 |
 * `set_drive_strength` If true, enable explicit specification of output drive strengths on `CLK_gpio`, `CMD_gpio`, and `D0_gpio` - `D3_gpio`. 
 The GPIOs on RP2040 have four different output drive strengths, which are nominally 2, 4, 8 and 12mA modes.
 If `set_drive_strength` is false, all will be implicitly set to 4 mA.
