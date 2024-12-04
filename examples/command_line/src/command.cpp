@@ -371,6 +371,8 @@ static void run_cat(const size_t argc, const char *argv[]) {
     while (f_gets(buf, sizeof buf, &fil)) {
         printf("%s", buf);
     }
+    if f_error(&fil)
+        printf("f_gets error\n");
     fr = f_close(&fil);
     if (FR_OK != fr) printf("f_close error: %s (%d)\n", FRESULT_str(fr), fr);
 }

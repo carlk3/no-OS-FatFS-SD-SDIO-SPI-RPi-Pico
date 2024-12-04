@@ -901,8 +901,8 @@ static block_dev_err_t sd_read_blocks(sd_card_t *sd_card_p, uint8_t *buffer,
         status = in_sd_read_blocks(sd_card_p, buffer, data_address, num_rd_blks);
         if (status != SD_BLOCK_DEVICE_ERROR_NONE) {
             if (SD_BLOCK_DEVICE_ERROR_NONE !=
-                sd_cmd(sd_card_p, CMD12_STOP_TRANSMISSION, 0x0, false, 0))
-                return SD_BLOCK_DEVICE_ERROR_NO_RESPONSE;
+                    sd_cmd(sd_card_p, CMD12_STOP_TRANSMISSION, 0x0, false, 0))
+                break;
         }
     } while (--retries && status != SD_BLOCK_DEVICE_ERROR_NONE);
     sd_release(sd_card_p);
