@@ -19,13 +19,8 @@ specific language governing permissions and limitations under the License.
 #include <string.h>
 #include <time.h>
 //
-#if PICO_RP2040
-#  include "RP2040.h"
-#endif
-#if PICO_RP2350
-#  include "RP2350.h"
-#endif
 #include "pico/stdlib.h"
+#include "hardware/sync.h"
 //
 #include "crash.h"
 //
@@ -145,7 +140,7 @@ void __attribute__((weak)) my_assert_func(const char *file, int line, const char
                                           const char *pred) {
     error_message_printf_plain("assertion \"%s\" failed: file \"%s\", line %d, function: %s\n",
                                pred, file, line, func);
-    __disable_irq(); /* Disable global interrupts. */
+    (void)save_and_disable_interrupts(); /* Disable global interrupts. */
     capture_assert(file, line, func, pred);
 }
 

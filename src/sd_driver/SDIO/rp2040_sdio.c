@@ -15,10 +15,13 @@
 #include "hardware/dma.h"
 #include "hardware/gpio.h"
 #include "hardware/pio.h"
-#if PICO_RP2040
-#include "RP2040.h"
-#else
-#include "RP2350.h"
+#if !PICO_RISCV
+#  if PICO_RP2040
+#    include "RP2040.h"
+#  endif
+#  if PICO_RP2350
+#    include "RP2350.h"
+#  endif
 #endif
 //
 #include "dma_interrupts.h"
@@ -686,11 +689,13 @@ void sdio_irq_handler(sd_card_t *sd_card_p) {
 // Check if transmission is complete
 sdio_status_t rp2040_sdio_tx_poll(sd_card_t *sd_card_p, uint32_t *bytes_complete)
 {
+#if !PICO_RISCV
     if (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk)
     {
         // Verify that IRQ handler gets called even if we are in hardfault handler
         sdio_irq_handler(sd_card_p);
     }
+#endif
 
     if (bytes_complete)
     {
