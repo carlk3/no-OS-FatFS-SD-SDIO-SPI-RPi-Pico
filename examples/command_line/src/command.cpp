@@ -127,7 +127,7 @@ static void run_setrtc(const size_t argc, const char *argv[]) {
         return;
     }
     struct timespec ts = {.tv_sec = epoch_secs, .tv_nsec = 0};
-    aon_timer_set_time(&ts);
+    aon_timer_start(&ts);
 }
 static char const *fs_type_string(int fs_type) {
     switch (fs_type) {
