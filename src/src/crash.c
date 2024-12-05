@@ -16,11 +16,16 @@ specific language governing permissions and limitations under the License.
 #include <time.h>
 //
 #include "pico/stdlib.h"
-#if PICO_RP2040
-#  include "RP2040.h"
-#endif
-#if PICO_RP2350
-#  include "RP2350.h"
+#include "hardware/sync.h"
+#if !PICO_RISCV
+#  if PICO_RP2040
+#    include "RP2040.h"
+#  endif
+#  if PICO_RP2350
+#    include "RP2350.h"
+#  endif
+#else
+#  include "hardware/watchdog.h"
 #endif
 //
 #include "crc.h"
@@ -46,7 +51,14 @@ static inline void reset() {
 //    if (debugger_connected()) {
         __breakpoint();
 //    } else {
+#if !PICO_RISCV
         NVIC_SystemReset();
+#else
+        watchdog_reboot(0, 0, 0);
+        for (;;) {
+            __nop();
+        }
+#endif
 //    }
     __builtin_unreachable();
 }
@@ -85,7 +97,7 @@ void system_reset_func(char const *const func) {
              func);
     crash_info_ram.xor_checksum =
         crc7((uint8_t *)&crash_info_ram, offsetof(crash_info_t, xor_checksum));
-    __DSB();
+    __dsb();
 
     reset();
     __builtin_unreachable();
@@ -110,10 +122,13 @@ void capture_assert(const char *file, int line, const char *func, const char *pr
     crash_info_ram.assert.line = line;
     crash_info_ram.xor_checksum =
         crc7((uint8_t *)&crash_info_ram, offsetof(crash_info_t, xor_checksum));
-    __DSB();   
+    __dsb();
+
     reset();
     __builtin_unreachable();
 }
+
+#if !PICO_RISCV
 
 __attribute__((used)) extern void DebugMon_HandlerC(uint32_t const *faultStackAddr) {
     memset((void *)crash_info_ram_p, 0, sizeof crash_info_ram);
@@ -150,8 +165,9 @@ __attribute__((used)) extern void DebugMon_HandlerC(uint32_t const *faultStackAd
     //}
     crash_info_ram.xor_checksum =
         crc7((uint8_t *)&crash_info_ram, offsetof(crash_info_t, xor_checksum));
-    __DSB();  // make sure all data is really written into the memory before
+    __dsb();  // make sure all data is really written into the memory before
               // doing a reset
+
     reset();
 }
 
@@ -188,7 +204,7 @@ void Hardfault_HandlerC(uint32_t const *faultStackAddr) {
 
     crash_info_ram.xor_checksum =
         crc7((uint8_t *)&crash_info_ram, offsetof(crash_info_t, xor_checksum));
-    __DSB();  // make sure all data is really written into the memory before
+    __dsb();  // make sure all data is really written into the memory before
               // doing a reset
 
     reset();
@@ -207,6 +223,8 @@ __attribute__((naked)) void isr_hardfault(void) {
         " ldr r1,[r0,#20] \n"
         " b Hardfault_HandlerC \n");
 }
+
+#endif // !PICO_RISCV
 
 enum {
     crash_info_magic,
