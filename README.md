@@ -1,5 +1,5 @@
 # no-OS-FatFS-SD-SDIO-SPI-RPi-Pico
-# v3.6.1
+# v3.7.0
 
 ## C/C++ Library for SD Cards on the Pico
 
@@ -11,6 +11,10 @@ and a 4-bit wide Secure Digital Input Output (SDIO) driver derived from
 It is wrapped up in a complete runnable project, with a little command line interface, some self tests, and an example data logging application.
 
 ## What's new
+### v3.7.0
+ RISC-V compatibility
+### v3.6.2
+Fix `setrtc` command in `examples/command_line` CLI to start the timer.
 ### v3.6.1
 Fix failure to release locks when an error occurs while reading blocks and CMD12_STOP_TRANSMISSION also fails.
 This could happen, for example, if the SD card falls out after it has been mounted.
