@@ -61,17 +61,17 @@ bool sd_sdio_erase(sd_card_t *sd_card_p, uint32_t firstSector, uint32_t lastSect
 /**
  * \return code for the last error. See SdCardInfo.h for a list of error codes.
  */
-uint8_t sd_sdio_errorCode() /* const */;
+uint8_t sd_sdio_errorCode(sd_card_t *sd_card_p) /* const */;
 /** \return error data for last error. */
 uint32_t sd_sdio_errorData() /* const */;
 /** \return error line for last error. Tmp function for debug. */
-uint32_t sd_sdio_errorLine() /* const */;
+uint32_t sd_sdio_errorLine(sd_card_t *sd_card_p) /* const */;
 /**
  * Check for busy with CMD13.
  *
  * \return true if busy else false.
  */
-bool sd_sdio_isBusy();
+bool sd_sdio_isBusy(sd_card_t *sd_card_p);
 /** \return the SD clock frequency in kHz. */
 //uint32_t sd_sdio_kHzSdClk();
 /**
