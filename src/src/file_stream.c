@@ -126,7 +126,8 @@ FILE *open_file_stream(const char *pathname, const char *pcMode) {
 
     FRESULT fr = f_open(&cookie_p->file, pathname, mode);
     if (FR_OK != fr) {
-        DBG_PRINTF("f_lseek error: %s\n", FRESULT_str(fr));
+        DBG_PRINTF("f_open error: %s\n", FRESULT_str(fr));
+        free( cookie_p);
         return NULL;
     }
     cookie_io_functions_t iofs = {cookie_read_function, cookie_write_function,
