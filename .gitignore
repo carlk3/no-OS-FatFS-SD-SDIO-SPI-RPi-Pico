@@ -1,4 +1,5 @@
 **/build
+**/cppcheck_project-cppcheck-build-dir
 *.html
 *.png
 *.zip
@@ -7,3 +8,4 @@
 **/.vscode
 *.tar.gz
 PlatformIO.notes.txt
+examples/command_line/cppcheck_project.cppcheck
