@@ -95,6 +95,8 @@ int __attribute__((weak))
 error_message_printf(const char *func, int line, 
         const char *fmt, ...) 
 {
+    (void) func;
+    (void) line;
     char buf[256] = {0};
     va_list args;
     va_start(args, fmt);
@@ -125,6 +127,8 @@ int __attribute__((weak))
 debug_message_printf(const char *func, int line, 
         const char *fmt, ...) 
 {
+    (void) func;
+    (void) line;
     char buf[256] = {0};
     va_list args;
     va_start(args, fmt);
