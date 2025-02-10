@@ -1052,6 +1052,8 @@ Obviously, if possible, use 4-bit SDIO instead of 1-bit SPI.
 Obviously, set the baud rate as high as you can. (See
 [Customizing for the Hardware Configuration](#customizing-for-the-hardware-configuration)).
 
+Consider increasing the system clock frequency (clk_sys).
+
 If you are using SPI, try SPI mode 3 (CPOL=1, CPHA=1) instead of 0 (CPOL=0, CPHA=0). (See
 [SPI Controller Configuration](#spi-controller-configuration).) This could buy a 15% speed boost.
 
