@@ -179,10 +179,6 @@ sdio_status_t rp2040_sdio_command_R1(sd_card_t *sd_card_p, uint8_t command, uint
         {
             if (command != 8) // Don't log for missing SD card
             {
-                azdbg("Timeout waiting for response in rp2040_sdio_command_R1(", (int)command, "), ",
-                    "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_CMD_SM) - (int)STATE.pio_cmd_clk_offset,
-                    " RXF: ", (int)pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_CMD_SM),
-                    " TXF: ", (int)pio_sm_get_tx_fifo_level(SDIO_PIO, SDIO_CMD_SM));
                 EMSG_PRINTF("%s: Timeout waiting for response in rp2040_sdio_command_R1(0x%hx)\n", __func__, command);
             }
 
@@ -237,9 +233,10 @@ sdio_status_t rp2040_sdio_command_R1(sd_card_t *sd_card_p, uint8_t command, uint
 
 sdio_status_t rp2040_sdio_command_R2(const sd_card_t *sd_card_p, uint8_t command, uint32_t arg, uint8_t *response)
 {
+    assert(response);
     // The response is too long to fit in the PIO FIFO, so use DMA to receive it.
     pio_sm_clear_fifos(SDIO_PIO, SDIO_CMD_SM);
-    uint32_t response_buf[5];
+    uint32_t response_buf[5] = {};
     dma_channel_config dmacfg = dma_channel_get_default_config(SDIO_DMA_CH);
     channel_config_set_transfer_data_size(&dmacfg, DMA_SIZE_32);
     channel_config_set_read_increment(&dmacfg, false);
@@ -321,10 +318,14 @@ sdio_status_t rp2040_sdio_command_R3(sd_card_t *sd_card_p, uint8_t command, uint
     {
         if ((uint32_t)(millis() - start) > sd_timeouts.rp2040_sdio_command_R3)
         {
-            azdbg("Timeout waiting for response in rp2040_sdio_command_R3(", (int)command, "), ",
-                  "PIO PC: ", (int)pio_sm_get_pc(SDIO_PIO, SDIO_CMD_SM) - (int)STATE.pio_cmd_clk_offset,
-                  " RXF: ", (int)pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_CMD_SM),
-                  " TXF: ", (int)pio_sm_get_tx_fifo_level(SDIO_PIO, SDIO_CMD_SM));
+            EMSG_PRINTF(
+                "Timeout waiting for response in rp2040_sdio_command_R3(%d), "
+                "PIO PC: %d,"
+                " RXF: %d,"
+                " TXF: %d\n",
+                (int)command,
+                (int)pio_sm_get_pc(SDIO_PIO, SDIO_CMD_SM) - (int)STATE.pio_cmd_clk_offset,
+                (int)pio_sm_get_rx_fifo_level(SDIO_PIO, SDIO_CMD_SM), (int)pio_sm_get_tx_fifo_level(SDIO_PIO, SDIO_CMD_SM));
 
             // Reset the state machine program
             pio_sm_clear_fifos(SDIO_PIO, SDIO_CMD_SM);
@@ -336,8 +337,9 @@ sdio_status_t rp2040_sdio_command_R3(sd_card_t *sd_card_p, uint8_t command, uint
     // Read out response packet
     uint32_t resp0 = pio_sm_get(SDIO_PIO, SDIO_CMD_SM);
     uint32_t resp1 = pio_sm_get(SDIO_PIO, SDIO_CMD_SM);
+    // Extract 32-bit OCR from R3 Response [39:8]:
     *response = ((resp0 & 0xFFFFFF) << 8) | ((resp1 >> 8) & 0xFF);
-    // azdbg("SDIO R3 response: ", resp0, " ", resp1);
+    DBG_PRINTF("SDIO R3 response: 0x%08lX 0x%08lX, OCR: 0x%08lX\n", resp0, resp1, *response);
 
     return SDIO_OK;
 }
@@ -359,7 +361,7 @@ sdio_status_t rp2040_sdio_rx_start(sd_card_t *sd_card_p, uint8_t *buffer, uint32
     STATE.blocks_checksumed = 0;
     STATE.checksum_errors = 0;
 
-    // Create DMA block descriptors to store each block of 512 bytes of data to buffer
+    // Create DMA block descriptors to store each block of block_size bytes of data to buffer
     // and then 8 bytes to STATE.received_checksums.
     for (uint32_t i = 0; i < num_blocks; i++)
     {
@@ -740,7 +742,7 @@ static sdio_status_t rp2040_sdio_stop(sd_card_t *sd_card_p)
             dma_channel_set_irq1_enabled(SDIO_DMA_CHB, false);
         break;
     default:
-        myASSERT(false);
+        assert(false);
     }
 
     pio_sm_set_enabled(SDIO_PIO, SDIO_DATA_SM, false);
@@ -750,8 +752,14 @@ static sdio_status_t rp2040_sdio_stop(sd_card_t *sd_card_p)
 }
 
 bool rp2040_sdio_init(sd_card_t *sd_card_p, float clk_div) {
+
+    // TODO: For pins > 31:
+    //  pio_set_gpio_base(SDIO_PIO, 16);
+
     // Mark resources as being in use, unless it has been done already.
     if (!STATE.resources_claimed) {
+
+        memset(&STATE, 0, sizeof(STATE));
 
         if (!SDIO_PIO)
             SDIO_PIO = pio0; // Default

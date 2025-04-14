@@ -4,17 +4,17 @@ if(WIN32)
 else()
     set(USERHOME $ENV{HOME})
 endif()
-set(sdkVersion 2.1.0)
-set(toolchainVersion RISCV_RPI_2_0_0_5)
-set(picotoolVersion 2.1.0)
+set(sdkVersion 2.1.1)
+set(toolchainVersion 14_2_Rel1)
+set(picotoolVersion 2.1.1)
 set(picoVscode ${USERHOME}/.pico-sdk/cmake/pico-vscode.cmake)
 if (EXISTS ${picoVscode})
     include(${picoVscode})
 endif()
 # ====================================================================================
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.13)
 
-set(PICO_BOARD pico2 CACHE STRING "Board type")
+set(PICO_BOARD pico CACHE STRING "Board type")
 
 # Pull in Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
@@ -58,13 +58,14 @@ target_compile_options(command_line PUBLIC
 )
 
 add_compile_definitions(
+    PICO_USE_FASTEST_SUPPORTED_CLOCK=1
     PARAM_ASSERTIONS_ENABLE_ALL=1 
     PICO_MALLOC_PANIC=1
     PICO_USE_STACK_GUARDS=1
 
     # This program is useless without standard input and output.
     USE_PRINTF
-    #USE_DBG_PRINTF
+    USE_DBG_PRINTF
 )
 
 # Disable CRC checking for SPI-attached cards.
