@@ -66,7 +66,7 @@ extern const char m_Crc7Table[];
  * @param length The length of the data block in bytes.
  * @return The calculated checksum.
  */
-uint16_t crc16(uint8_t const *data, int const length);
+uint16_t crc16(uint8_t const *data, size_t length);
 
 #endif
 

@@ -368,7 +368,7 @@ static uint16_t crc16ibm_3740_word(uint16_t crc, void const *mem, size_t len) {
     return crc;
 }
 
-uint16_t crc16(uint8_t const *data, int const length)
+uint16_t crc16(uint8_t const *data, size_t length)
 {
 	//Calculate the CRC16 checksum for the specified data block
 	unsigned short crc = 0;
