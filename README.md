@@ -865,7 +865,7 @@ Static Public Member Functions:
 * `static FRESULT       chdrive (const TCHAR *path)` Change current drive
 * `static FRESULT       getcwd (TCHAR *buff, UINT len)` Retrieve the current directory and drive
 
-## PlatformIO Libary
+## PlatformIO Library
 This library is available at https://registry.platformio.org/libraries/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico.
 It is currently running with 
 ```
@@ -907,7 +907,7 @@ Use this as a starting point for your own data logging application!
 You might also need to pick up the library in CMakeLists.txt:
 ```CMake
 add_subdirectory(no-OS-FatFS-SD-SDIO-SPI-RPi-Pico/src build)
-target_link_libaries(${PROGRAM_NAME} no-OS-FatFS-SD-SDIO-SPI-RPi-Pico) 
+target_link_libraries(${PROGRAM_NAME} no-OS-FatFS-SD-SDIO-SPI-RPi-Pico) 
 ```
 (where `${PROGRAM_NAME}` is your target `project`)
 and `#include "ff.h"`.
