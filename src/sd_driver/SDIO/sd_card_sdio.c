@@ -128,7 +128,8 @@ bool sd_sdio_begin(sd_card_t *sd_card_p)
             !checkReturnOk(rp2040_sdio_command_R3(sd_card_p, ACMD41_SD_SEND_OP_COND, 0xD0040000, &STATE.ocr))) // 3.0V voltage
             // !checkReturnOk(rp2040_sdio_command_R1(sd_card_p, ACMD41, 0xC0100000, &STATE.ocr)))
         {
-            return false;
+            delay_ms(1);
+            continue;
         }
 
         if ((uint32_t)(millis() - start) > sd_timeouts.sd_sdio_begin)
