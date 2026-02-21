@@ -697,7 +697,15 @@ static block_dev_err_t read_bytes(sd_card_t *sd_card_p, uint8_t *buffer, uint32_
  * @details This function sends a CMD9 command to the card to get the Card Specific
  * Data (CSD) and then extracts the number of sectors from the CSD.
  */
+static block_dev_err_t stop_wr_tran(sd_card_t *sd_card_p);
+
 static uint32_t in_sd_spi_sectors(sd_card_t *sd_card_p) {
+    // Stop any ongoing multiblock write before reading CSD via CMD9.
+    // Without this, CMD9 times out because the card is still expecting
+    // data/stop tokens from the write transaction.
+    if (sd_card_p->spi_if_p->state.ongoing_mlt_blk_wrt) {
+        stop_wr_tran(sd_card_p);
+    }
     // CMD9, Response R2 (R1 byte + 16-byte block read)
     if (sd_cmd(sd_card_p, CMD9_SEND_CSD, 0x0, false, 0) != 0x0) {
         DBG_PRINTF("Didn't get a response from the disk\n");
@@ -767,8 +775,6 @@ static bool chk_crc16(uint8_t *buffer, size_t length, uint16_t crc) {
 }
 
 #define SPI_START_BLOCK (0xFE) /* For Single Block Read/Write and Multiple Block Read */
-
-static block_dev_err_t stop_wr_tran(sd_card_t *sd_card_p);
 
 static block_dev_err_t read_bytes(sd_card_t *sd_card_p, uint8_t *buffer, uint32_t length) {
     uint16_t crc;
