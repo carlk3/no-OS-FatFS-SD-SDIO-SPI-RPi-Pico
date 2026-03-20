@@ -33,6 +33,7 @@
 #include "sd_timeouts.h"
 #include "my_debug.h"
 #include "util.h"
+#include "crc.h"
 //
 #include "rp2040_sdio.h"
 
@@ -395,10 +396,10 @@ sdio_status_t rp2040_sdio_rx_start(sd_card_t *sd_card_p, uint8_t *buffer, uint32
 
     // Initialize PIO state machine
     pio_sm_init(SDIO_PIO, SDIO_DATA_SM, STATE.pio_data_rx_offset, &STATE.pio_cfg_data_rx);
-    pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_DATA_SM, SDIO_D0, 4, false);
+    pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_DATA_SM, SDIO_D0, sd_card_p->sdio_if_p->use_only_D0_for_data ? 1 : 4 , false);
 
     // Write number of nibbles to receive to Y register
-    pio_sm_put(SDIO_PIO, SDIO_DATA_SM, block_size * 2 + 16 - 1);
+    pio_sm_put(SDIO_PIO, SDIO_DATA_SM, ( sd_card_p->sdio_if_p->use_only_D0_for_data ? ( block_size * 8 + 64 ) : ( block_size * 2 + 16 ) ) - 1 );
     pio_sm_exec(SDIO_PIO, SDIO_DATA_SM, pio_encode_out(pio_y, 32));
 
     // Enable RX FIFO join because we don't need the TX FIFO during transfer.
@@ -419,15 +420,14 @@ static void sdio_verify_rx_checksums(sd_card_t *sd_card_p, uint32_t maxcount, si
     {
         // Calculate checksum from received data
         int blockidx = STATE.blocks_checksumed++;
-        uint64_t checksum = sdio_crc16_4bit_checksum(STATE.data_buf + blockidx * block_size_words,
-                                                     block_size_words);
-
+        uint64_t checksum = sd_card_p->sdio_if_p->use_only_D0_for_data  ? crc16( (uint8_t*) ( STATE.data_buf + blockidx * block_size_words ) ,  block_size_words * 4 )
+                                                                        : sdio_crc16_4bit_checksum(STATE.data_buf + blockidx * block_size_words , block_size_words);
         // Convert received checksum to little-endian format
         uint32_t top = __builtin_bswap32(STATE.received_checksums[blockidx].top);
         uint32_t bottom = __builtin_bswap32(STATE.received_checksums[blockidx].bottom);
         uint64_t expected = ((uint64_t)top << 32) | bottom;
 
-        if (checksum != expected)
+        if( checksum != ( sd_card_p->sdio_if_p->use_only_D0_for_data ? ( ( expected >> 48 ) & 0xFFFFu ) : expected ) )
         {
             STATE.checksum_errors++;
             if (STATE.checksum_errors == 1)
@@ -513,7 +513,8 @@ static void sdio_start_next_block_tx(sd_card_t *sd_card_p)
         SDIO_WORDS_PER_BLOCK, false);
 
     // Prepare second DMA channel to send the CRC and block end marker
-    uint64_t crc = STATE.next_wr_block_checksum;
+    uint64_t crc = sd_card_p->sdio_if_p->use_only_D0_for_data   ? ( STATE.next_wr_block_checksum << 48 ) | 0x0000FFFFFFFFFFFFULL
+                                                                : STATE.next_wr_block_checksum;
     STATE.end_token_buf[0] = (uint32_t)(crc >> 32);
     STATE.end_token_buf[1] = (uint32_t)(crc >>  0);
     STATE.end_token_buf[2] = 0xFFFFFFFF;
@@ -538,17 +539,17 @@ static void sdio_start_next_block_tx(sd_card_t *sd_card_p)
     }
 
     // Initialize register X with nibble count and register Y with response bit count
-    pio_sm_put(SDIO_PIO, SDIO_DATA_SM, 1048);
+    pio_sm_put(SDIO_PIO, SDIO_DATA_SM, sd_card_p->sdio_if_p->use_only_D0_for_data ? ( 32 /* 0xFFFFFFFE */ + 512 * 8 /*DATA*/ + 16 /*CRC*/ ) : 1048 );
     pio_sm_exec(SDIO_PIO, SDIO_DATA_SM, pio_encode_out(pio_x, 32));
     pio_sm_put(SDIO_PIO, SDIO_DATA_SM, 31);
     pio_sm_exec(SDIO_PIO, SDIO_DATA_SM, pio_encode_out(pio_y, 32));
     
     // Initialize pins to output and high
-    pio_sm_exec(SDIO_PIO, SDIO_DATA_SM, pio_encode_set(pio_pins, 15));
-    pio_sm_exec(SDIO_PIO, SDIO_DATA_SM, pio_encode_set(pio_pindirs, 15));
+    pio_sm_exec(SDIO_PIO, SDIO_DATA_SM, pio_encode_set(pio_pins, sd_card_p->sdio_if_p->use_only_D0_for_data ? 1 : 15 ) );
+    pio_sm_exec(SDIO_PIO, SDIO_DATA_SM, pio_encode_set(pio_pindirs, sd_card_p->sdio_if_p->use_only_D0_for_data ? 1 : 15 ) );
 
     // Write start token and start the DMA transfer.
-    pio_sm_put(SDIO_PIO, SDIO_DATA_SM, 0xFFFFFFF0);
+    pio_sm_put(SDIO_PIO, SDIO_DATA_SM, sd_card_p->sdio_if_p->use_only_D0_for_data ? 0xFFFFFFFE : 0xFFFFFFF0 );
     dma_channel_start(SDIO_DMA_CH);
     
     // Start state machine
@@ -559,8 +560,8 @@ static void sdio_compute_next_tx_checksum(sd_card_t *sd_card_p)
 {
     assert (STATE.blocks_done < STATE.total_blocks && STATE.blocks_checksumed < STATE.total_blocks);
     int blockidx = STATE.blocks_checksumed++;
-    STATE.next_wr_block_checksum = sdio_crc16_4bit_checksum(STATE.data_buf + blockidx * SDIO_WORDS_PER_BLOCK,
-                                                             SDIO_WORDS_PER_BLOCK);
+    STATE.next_wr_block_checksum = sd_card_p->sdio_if_p->use_only_D0_for_data   ? crc16( (uint8_t*) ( STATE.data_buf + blockidx * SDIO_WORDS_PER_BLOCK ) , SDIO_WORDS_PER_BLOCK * 4 )
+                                                                                : sdio_crc16_4bit_checksum( STATE.data_buf + blockidx * SDIO_WORDS_PER_BLOCK , SDIO_WORDS_PER_BLOCK );
 }
 
 // Start transferring data from memory to SD card
@@ -746,7 +747,7 @@ static sdio_status_t rp2040_sdio_stop(sd_card_t *sd_card_p)
     }
 
     pio_sm_set_enabled(SDIO_PIO, SDIO_DATA_SM, false);
-    pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_DATA_SM, SDIO_D0, 4, false);    
+    pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_DATA_SM, SDIO_D0, sd_card_p->sdio_if_p->use_only_D0_for_data ? 1 : 4 , false);    
     STATE.transfer_state = SDIO_IDLE;
     return SDIO_OK;
 }
@@ -809,19 +810,21 @@ bool rp2040_sdio_init(sd_card_t *sd_card_p, float clk_div) {
     pio_sm_set_enabled(SDIO_PIO, SDIO_CMD_SM, true);
 
     // Data reception program
-    STATE.pio_data_rx_offset = pio_add_program(SDIO_PIO, &sdio_data_rx_program);
-    STATE.pio_cfg_data_rx = sdio_data_rx_program_get_default_config(STATE.pio_data_rx_offset);
+    STATE.pio_data_rx_offset = pio_add_program(SDIO_PIO, sd_card_p->sdio_if_p->use_only_D0_for_data ? &sdio_data_1_bit_rx_program : &sdio_data_4_bit_rx_program );
+    STATE.pio_cfg_data_rx = sd_card_p->sdio_if_p->use_only_D0_for_data  ? sdio_data_1_bit_rx_program_get_default_config(STATE.pio_data_rx_offset )
+                                                                        : sdio_data_4_bit_rx_program_get_default_config(STATE.pio_data_rx_offset);
     sm_config_set_in_pins(&STATE.pio_cfg_data_rx, SDIO_D0);
     sm_config_set_in_shift(&STATE.pio_cfg_data_rx, false, true, 32);
     sm_config_set_out_shift(&STATE.pio_cfg_data_rx, false, true, 32);
     sm_config_set_clkdiv(&STATE.pio_cfg_data_rx, clk_div);
 
     // Data transmission program
-    STATE.pio_data_tx_offset = pio_add_program(SDIO_PIO, &sdio_data_tx_program);
-    STATE.pio_cfg_data_tx = sdio_data_tx_program_get_default_config(STATE.pio_data_tx_offset);
+    STATE.pio_data_tx_offset = pio_add_program(SDIO_PIO, sd_card_p->sdio_if_p->use_only_D0_for_data ? &sdio_data_1_bit_tx_program : &sdio_data_4_bit_tx_program );
+    STATE.pio_cfg_data_tx = sd_card_p->sdio_if_p->use_only_D0_for_data  ? sdio_data_1_bit_tx_program_get_default_config(STATE.pio_data_tx_offset)
+                                                                        : sdio_data_4_bit_tx_program_get_default_config(STATE.pio_data_tx_offset);
     sm_config_set_in_pins(&STATE.pio_cfg_data_tx, SDIO_D0);
-    sm_config_set_set_pins(&STATE.pio_cfg_data_tx, SDIO_D0, 4);
-    sm_config_set_out_pins(&STATE.pio_cfg_data_tx, SDIO_D0, 4);
+    sm_config_set_set_pins(&STATE.pio_cfg_data_tx, SDIO_D0, sd_card_p->sdio_if_p->use_only_D0_for_data ? 1 : 4 );
+    sm_config_set_out_pins(&STATE.pio_cfg_data_tx, SDIO_D0, sd_card_p->sdio_if_p->use_only_D0_for_data ? 1 : 4 );
     sm_config_set_in_shift(&STATE.pio_cfg_data_tx, false, false, 32);
     sm_config_set_out_shift(&STATE.pio_cfg_data_tx, false, true, 32);
     sm_config_set_clkdiv(&STATE.pio_cfg_data_tx, clk_div);
@@ -830,7 +833,8 @@ bool rp2040_sdio_init(sd_card_t *sd_card_p, float clk_div) {
     // This reduces input delay.
     // Because the CLK is driven synchronously to CPU clock,
     // there should be no metastability problems.
-    SDIO_PIO->input_sync_bypass |= (1 << SDIO_CLK) | (1 << SDIO_CMD) | (1 << SDIO_D0) | (1 << SDIO_D1) | (1 << SDIO_D2) | (1 << SDIO_D3);
+    SDIO_PIO->input_sync_bypass |= (1 << SDIO_CLK) | (1 << SDIO_CMD) | (1 << SDIO_D0);
+    if( !sd_card_p->sdio_if_p->use_only_D0_for_data ) SDIO_PIO->input_sync_bypass |= (1 << SDIO_D1) | (1 << SDIO_D2) | (1 << SDIO_D3);
 
     // Redirect GPIOs to PIO
 #if PICO_SDK_VERSION_MAJOR < 2
@@ -844,24 +848,30 @@ bool rp2040_sdio_init(sd_card_t *sd_card_p, float clk_div) {
     gpio_set_function(SDIO_CMD, fn);
     gpio_set_function(SDIO_CLK, fn);
     gpio_set_function(SDIO_D0, fn);
-    gpio_set_function(SDIO_D1, fn);
-    gpio_set_function(SDIO_D2, fn);
-    gpio_set_function(SDIO_D3, fn);
+    if( !sd_card_p->sdio_if_p->use_only_D0_for_data ) {
+        gpio_set_function(SDIO_D1, fn);
+        gpio_set_function(SDIO_D2, fn);
+        gpio_set_function(SDIO_D3, fn);
+    }
 
     gpio_set_slew_rate(SDIO_CMD, GPIO_SLEW_RATE_FAST);
     gpio_set_slew_rate(SDIO_CLK, GPIO_SLEW_RATE_FAST);
     gpio_set_slew_rate(SDIO_D0, GPIO_SLEW_RATE_FAST);
-    gpio_set_slew_rate(SDIO_D1, GPIO_SLEW_RATE_FAST);
-    gpio_set_slew_rate(SDIO_D2, GPIO_SLEW_RATE_FAST);
-    gpio_set_slew_rate(SDIO_D3, GPIO_SLEW_RATE_FAST);
+    if( !sd_card_p->sdio_if_p->use_only_D0_for_data ) {
+        gpio_set_slew_rate(SDIO_D1, GPIO_SLEW_RATE_FAST);
+        gpio_set_slew_rate(SDIO_D2, GPIO_SLEW_RATE_FAST);
+        gpio_set_slew_rate(SDIO_D3, GPIO_SLEW_RATE_FAST);
+    }
 
     if (sd_card_p->sdio_if_p->set_drive_strength) {
         gpio_set_drive_strength(SDIO_CMD, sd_card_p->sdio_if_p->CMD_gpio_drive_strength);
         gpio_set_drive_strength(SDIO_CLK, sd_card_p->sdio_if_p->CLK_gpio_drive_strength);
         gpio_set_drive_strength(SDIO_D0, sd_card_p->sdio_if_p->D0_gpio_drive_strength);
-        gpio_set_drive_strength(SDIO_D1, sd_card_p->sdio_if_p->D1_gpio_drive_strength);
-        gpio_set_drive_strength(SDIO_D2, sd_card_p->sdio_if_p->D2_gpio_drive_strength);
-        gpio_set_drive_strength(SDIO_D3, sd_card_p->sdio_if_p->D3_gpio_drive_strength);
+        if( !sd_card_p->sdio_if_p->use_only_D0_for_data ) {
+            gpio_set_drive_strength(SDIO_D1, sd_card_p->sdio_if_p->D1_gpio_drive_strength);
+            gpio_set_drive_strength(SDIO_D2, sd_card_p->sdio_if_p->D2_gpio_drive_strength);
+            gpio_set_drive_strength(SDIO_D3, sd_card_p->sdio_if_p->D3_gpio_drive_strength);
+        }
     }
 
     return true;

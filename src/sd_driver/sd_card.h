@@ -73,6 +73,7 @@ typedef struct sd_sdio_if_t {
     PIO SDIO_PIO;      // either pio0 or pio1
     uint DMA_IRQ_num;  // DMA_IRQ_0 or DMA_IRQ_1
     bool use_exclusive_DMA_IRQ_handler;
+    bool use_only_D0_for_data;
     uint baud_rate;
     // Drive strength levels for GPIO outputs:
     // GPIO_DRIVE_STRENGTH_2MA
