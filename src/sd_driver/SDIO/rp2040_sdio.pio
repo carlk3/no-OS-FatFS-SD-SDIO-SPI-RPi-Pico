@@ -105,11 +105,23 @@ resp_done:
 ; - IN / OUT: SDIO_D0-D3
 ; - GPIO defined at beginning of this file: SDIO_CLK
 
-; Data reception program
+; Data reception program for 1 bit
 ; This program will wait for initial start of block token and then
 ; receive a data block. The application must set number of nibbles
 ; to receive minus 1 to Y register before running this program.
-.program sdio_data_rx
+.program sdio_data_1_bit_rx
+
+wait_start:
+    mov X, Y                               ; Reinitialize number of nibbles to receive
+    wait 0 pin 0                           ; Wait for zero state on D0
+    wait 1 pin SDIO_CLK_PIN_D0_OFFSET  [CLKDIV-1]  ; Wait for rising edge and then whole clock cycle
+
+rx_data:
+    in PINS, 1                 [CLKDIV-2]  ; Read nibble
+    jmp X--, rx_data
+
+; Data reception program for 4 bit
+.program sdio_data_4_bit_rx
 
 wait_start:
     mov X, Y                               ; Reinitialize number of nibbles to receive
@@ -120,23 +132,55 @@ rx_data:
     in PINS, 4                 [CLKDIV-2]  ; Read nibble
     jmp X--, rx_data
 
-; Data transmission program
+; Data transmission program for 1 bit
+;
+; Before running this program, pindirs should be set as output
+; and register X should be initialized with the number of nibbles
+; to send minus 1 (typically 32 + 512 * 8 + 16 + 1 - 1)
+; and register Y with the number of response bits minus 1 (typically 31).
+;
+; Words written to TX FIFO must be:
+; - Word 0: start token 0xFFFFFFFE
+; - Word 1-128: transmitted data (512 bytes)
+; - Word 129-130: CRC checksum (16bit filled up with 1's)
+; - Word 131: end token 0xFFFFFFFF
+;
+; After the card reports idle status, RX FIFO will get a word that
+; contains the D0 line response from card.
+
+.program sdio_data_1_bit_tx
+    wait 0 pin SDIO_CLK_PIN_D0_OFFSET  
+    wait 1 pin SDIO_CLK_PIN_D0_OFFSET  [CLKDIV + D1 - 1]; Synchronize so that write occurs on falling edge
+
+tx_loop:
+    out PINS, 1                [D0]    ; Write nibble and wait for whole clock cycle
+    jmp X-- tx_loop            [D1]
+
+    set pindirs, 0x00          [D0]    ; Set data bus as input
+
+.wrap_target
+response_loop:
+    in PINS, 1                 [D1]    ; Read D0 on rising edge
+    jmp Y--, response_loop     [D0]
+
+wait_idle:
+    wait 1 pin 0               [D1]    ; Wait for card to indicate idle condition
+    push                       [D0]    ; Push the response token
+.wrap
+
+; Data transmission program for 4 bit
 ;
 ; Before running this program, pindirs should be set as output
 ; and register X should be initialized with the number of nibbles
 ; to send minus 1 (typically 8 + 1024 + 16 + 1 - 1 = 1048)
-; and register Y with the number of response bits minus 1 (typically 31).
 ;
 ; Words written to TX FIFO must be:
 ; - Word 0: start token 0xFFFFFFF0
 ; - Word 1-128: transmitted data (512 bytes)
 ; - Word 129-130: CRC checksum
 ; - Word 131: end token 0xFFFFFFFF
-;
-; After the card reports idle status, RX FIFO will get a word that
-; contains the D0 line response from card.
 
-.program sdio_data_tx
+.program sdio_data_4_bit_tx
     wait 0 pin SDIO_CLK_PIN_D0_OFFSET  
     wait 1 pin SDIO_CLK_PIN_D0_OFFSET  [CLKDIV + D1 - 1]; Synchronize so that write occurs on falling edge
 

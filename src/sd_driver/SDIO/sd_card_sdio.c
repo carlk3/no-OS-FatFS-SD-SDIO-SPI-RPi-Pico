@@ -191,10 +191,10 @@ bool sd_sdio_begin(sd_card_t *sd_card_p)
         return false;
     }
 
-    // Set 4-bit bus mode
+    // Set 1-bit or 4-bit bus mode
     // Valid in "tran" state; stays in "tran" state
     if (!checkReturnOk(rp2040_sdio_command_R1(sd_card_p, CMD55_APP_CMD, STATE.rca, &reply)) ||
-        !checkReturnOk(rp2040_sdio_command_R1(sd_card_p, ACMD6_SET_BUS_WIDTH, 2, &reply)))
+        !checkReturnOk(rp2040_sdio_command_R1(sd_card_p, ACMD6_SET_BUS_WIDTH,  sd_card_p->sdio_if_p->use_only_D0_for_data ? 0 : 2 , &reply)))
     {
         azdbg("SDIO failed to set bus width");
         return false;
@@ -554,9 +554,12 @@ static DSTATUS sd_sdio_init(sd_card_t *sd_card_p) {
     gpio_conf(sd_card_p->sdio_if_p->CLK_gpio, GPIO_FUNC_PIO1, true, false, true,  true);
     gpio_conf(sd_card_p->sdio_if_p->CMD_gpio, GPIO_FUNC_PIO1, true, false, true,  true);
     gpio_conf(sd_card_p->sdio_if_p->D0_gpio,  GPIO_FUNC_PIO1, true, false, false, true);
-    gpio_conf(sd_card_p->sdio_if_p->D1_gpio,  GPIO_FUNC_PIO1, true, false, false, true);
-    gpio_conf(sd_card_p->sdio_if_p->D2_gpio,  GPIO_FUNC_PIO1, true, false, false, true);
-    gpio_conf(sd_card_p->sdio_if_p->D3_gpio,  GPIO_FUNC_PIO1, true, false, false, true);
+
+    if( !sd_card_p->sdio_if_p->use_only_D0_for_data ) {
+        gpio_conf(sd_card_p->sdio_if_p->D1_gpio,  GPIO_FUNC_PIO1, true, false, false, true);
+        gpio_conf(sd_card_p->sdio_if_p->D2_gpio,  GPIO_FUNC_PIO1, true, false, false, true);
+        gpio_conf(sd_card_p->sdio_if_p->D3_gpio,  GPIO_FUNC_PIO1, true, false, false, true);
+    }
 
     bool ok = sd_sdio_begin(sd_card_p);
     if (ok) {
@@ -576,10 +579,13 @@ static void sd_sdio_deinit(sd_card_t *sd_card_p) {
     gpio_conf(sd_card_p->sdio_if_p->CLK_gpio, GPIO_FUNC_NULL, false, false, false, false);
     gpio_conf(sd_card_p->sdio_if_p->CMD_gpio, GPIO_FUNC_NULL, false, false, false, false);
     gpio_conf(sd_card_p->sdio_if_p->D0_gpio,  GPIO_FUNC_NULL, false, false, false, false);
-    gpio_conf(sd_card_p->sdio_if_p->D1_gpio,  GPIO_FUNC_NULL, false, false, false, false);
-    gpio_conf(sd_card_p->sdio_if_p->D2_gpio,  GPIO_FUNC_NULL, false, false, false, false);
-    gpio_conf(sd_card_p->sdio_if_p->D3_gpio,  GPIO_FUNC_NULL, false, false, false, false);
 
+    if( !sd_card_p->sdio_if_p->use_only_D0_for_data ) {
+        gpio_conf(sd_card_p->sdio_if_p->D1_gpio,  GPIO_FUNC_NULL, false, false, false, false);
+        gpio_conf(sd_card_p->sdio_if_p->D2_gpio,  GPIO_FUNC_NULL, false, false, false, false);
+        gpio_conf(sd_card_p->sdio_if_p->D3_gpio,  GPIO_FUNC_NULL, false, false, false, false);
+    }
+    
     //TODO: free other resources: PIO, SMs, etc.
 
     sd_unlock(sd_card_p);    
