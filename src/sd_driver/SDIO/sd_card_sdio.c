@@ -289,6 +289,15 @@ uint8_t sd_sdio_type(sd_card_t *sd_card_p) // const
         return SDCARD_V2;
 }
 
+static inline uint32_t sd_sdio_cmd_address(sd_card_t *sd_card_p, uint32_t sector)
+{
+    // SDSC (CCS=0) uses byte addressing, SDHC/SDXC (CCS=1) uses 512-byte block addressing.
+    if (sd_sdio_type(sd_card_p) == SDCARD_V2HC) {
+        return sector;
+    }
+    return sector * SDIO_BLOCK_SIZE;
+}
+
 
 /* Writing and reading */
 
@@ -305,8 +314,9 @@ bool sd_sdio_writeSector(sd_card_t *sd_card_p, uint32_t sector, const uint8_t* s
     }
 
     uint32_t reply;
+    uint32_t cmd_addr = sd_sdio_cmd_address(sd_card_p, sector);
     if (/* !checkReturnOk(rp2040_sdio_command_R1(sd_card_p, 16, 512, &reply)) || // SET_BLOCKLEN */
-        !checkReturnOk(rp2040_sdio_command_R1(sd_card_p, CMD24_WRITE_BLOCK, sector, &reply)) || // WRITE_BLOCK
+        !checkReturnOk(rp2040_sdio_command_R1(sd_card_p, CMD24_WRITE_BLOCK, cmd_addr, &reply)) || // WRITE_BLOCK
         !checkReturnOk(rp2040_sdio_tx_start(sd_card_p, src, 1))) // Start transmission
     {
         return false;
@@ -346,7 +356,8 @@ bool sd_sdio_writeSectors(sd_card_t *sd_card_p, uint32_t sector, const uint8_t *
             if (!sd_sdio_stopTransmission(sd_card_p, true)) return false;
         }
         uint32_t reply;
-        if (!checkReturnOk(rp2040_sdio_command_R1(sd_card_p, CMD25_WRITE_MULTIPLE_BLOCK, sector, &reply)) ||
+        uint32_t cmd_addr = sd_sdio_cmd_address(sd_card_p, sector);
+        if (!checkReturnOk(rp2040_sdio_command_R1(sd_card_p, CMD25_WRITE_MULTIPLE_BLOCK, cmd_addr, &reply)) ||
             !checkReturnOk(rp2040_sdio_tx_start(sd_card_p, src, n)))  // Start transmission
         {
             return false;
@@ -391,9 +402,10 @@ bool sd_sdio_readSector(sd_card_t *sd_card_p, uint32_t sector, uint8_t* dst)
         dst = (uint8_t*)STATE.dma_buf;
     }
     uint32_t reply;
+    uint32_t cmd_addr = sd_sdio_cmd_address(sd_card_p, sector);
     if (/* !checkReturnOk(rp2040_sdio_command_R1(sd_card_p, 16, 512, &reply)) || // SET_BLOCKLEN */
         !checkReturnOk(rp2040_sdio_rx_start(sd_card_p, dst, 1, SDIO_BLOCK_SIZE)) || // Prepare for reception
-        !checkReturnOk(rp2040_sdio_command_R1(sd_card_p, CMD17_READ_SINGLE_BLOCK, sector, &reply))) // READ_SINGLE_BLOCK
+        !checkReturnOk(rp2040_sdio_command_R1(sd_card_p, CMD17_READ_SINGLE_BLOCK, cmd_addr, &reply))) // READ_SINGLE_BLOCK
     {
         return false;
     }
@@ -436,9 +448,10 @@ bool sd_sdio_readSectors(sd_card_t *sd_card_p, uint32_t sector, uint8_t* dst, si
     }
 
     uint32_t reply;
+    uint32_t cmd_addr = sd_sdio_cmd_address(sd_card_p, sector);
     if (/* !checkReturnOk(rp2040_sdio_command_R1(sd_card_p, 16, 512, &reply)) || // SET_BLOCKLEN */
         !checkReturnOk(rp2040_sdio_rx_start(sd_card_p, dst, n, SDIO_BLOCK_SIZE)) || // Prepare for reception
-        !checkReturnOk(rp2040_sdio_command_R1(sd_card_p, CMD18_READ_MULTIPLE_BLOCK, sector, &reply))) // READ_MULTIPLE_BLOCK
+        !checkReturnOk(rp2040_sdio_command_R1(sd_card_p, CMD18_READ_MULTIPLE_BLOCK, cmd_addr, &reply))) // READ_MULTIPLE_BLOCK
     {
         return false;
     }

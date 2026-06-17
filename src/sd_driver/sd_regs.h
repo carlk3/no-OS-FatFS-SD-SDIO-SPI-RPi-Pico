@@ -132,10 +132,15 @@ static inline uint32_t CSD_sectors(CSD_t csd) /*  const  */ {
         c_size = ext_bits16(csd, 73, 62);
         // | device size multiplier                           | C_SIZE_MULT        | 3     | xxxb          | R         | [49:47]   |
         uint8_t c_size_mult = ext_bits16(csd, 49, 47);
+        // | max. read data block length                      | READ_BL_LEN        | 4     | xh            | R         | [83:80]   |
+        uint8_t read_bl_len = ext_bits16(csd, 83, 80);
         //  MULT = 2^(C_SIZE_MULT+2)
         uint32_t mult = 1UL << (c_size_mult + 2);
-        //  BLOCKNR = (C_SIZE+1) * MULT
-        return (c_size + 1) * mult;
+        //  BLOCKNR = (C_SIZE+1) * MULT (in units of BLOCK_LEN bytes)
+        uint32_t blocknr = (c_size + 1) * mult;
+        uint32_t block_len = 1UL << read_bl_len;
+        // Convert to 512-byte sectors expected by FatFs.
+        return (uint32_t)(((uint64_t)blocknr * block_len) / 512u);
     } else if (ver == 1) {
         // | device size                                    | C_SIZE               | 22    | xxxxxxh              | R         | [69:48]   |
         c_size = ext_bits16(csd, 69, 48);
