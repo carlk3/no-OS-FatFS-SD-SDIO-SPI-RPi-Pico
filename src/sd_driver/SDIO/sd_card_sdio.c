@@ -70,7 +70,7 @@ static char const *errstr(sdio_status_t error) {
 static bool logSDError(sd_card_t *sd_card_p, int line)
 {
     STATE.error_line = line;
-    EMSG_PRINTF("%s at line %d; error code %d\n", 
+    EMSG_PRINTF("%s at line %d; error code %d\n",
         errstr(STATE.error), line, (int)STATE.error);
     return false;
 }
@@ -78,7 +78,7 @@ static bool logSDError(sd_card_t *sd_card_p, int line)
 /*
     CLKDIV is from sd_driver\SDIO\rp2040_sdio.pio
 
-    baud = clk_sys / (CLKDIV * clk_div) 
+    baud = clk_sys / (CLKDIV * clk_div)
     baud * CLKDIV * clk_div = clk_sys;
     clk_div = clk_sys / (CLKDIV * baud)
 */
@@ -94,10 +94,10 @@ bool sd_sdio_begin(sd_card_t *sd_card_p)
 {
     uint32_t reply;
     sdio_status_t status;
-    
+
     // Initialize at 400 kHz clock speed
     if (!rp2040_sdio_init(sd_card_p, calculate_clk_div(400 * 1000)))
-        return false; 
+        return false;
 
     // Establish initial connection with the card
     for (int retries = 0; retries < 5; retries++)
@@ -116,7 +116,7 @@ bool sd_sdio_begin(sd_card_t *sd_card_p)
     if (reply != 0x1AA || status != SDIO_OK)
     {
         // azdbg("SDIO not responding to CMD8 SEND_IF_COND, status ", (int)status, " reply ", reply);
-        EMSG_PRINTF("%s,%d SDIO not responding to CMD8 SEND_IF_COND, status 0x%x reply 0x%lx\n", 
+        EMSG_PRINTF("%s,%d SDIO not responding to CMD8 SEND_IF_COND, status 0x%x reply 0x%lx\n",
             __func__, __LINE__, status, reply);
         return false;
     }
@@ -167,7 +167,7 @@ bool sd_sdio_begin(sd_card_t *sd_card_p)
     sd_card_p->state.sectors = CSD_sectors(sd_card_p->state.CSD);
 
     // Select card
-    // Valid in "stby" state; 
+    // Valid in "stby" state;
     // If card is addressed, transitions to "tran" state
     if (!checkReturnOk(rp2040_sdio_command_R1(sd_card_p, CMD7_SELECT_CARD, STATE.rca, &reply)))
     {
@@ -175,12 +175,12 @@ bool sd_sdio_begin(sd_card_t *sd_card_p)
         return false;
     }
 
-    /* At power up CD/DAT3 has a 50KOhm pull up enabled in the card. 
-    This resistor serves two functions Card detection and Mode Selection. 
-    For Mode Selection, the host can drive the line high or let it be pulled high to select SD mode. 
-    If the host wants to select SPI mode it should drive the line low. 
-    For Card detection, the host detects that the line is pulled high. 
-    This pull-up should be disconnected by the user, during regular data transfer, 
+    /* At power up CD/DAT3 has a 50KOhm pull up enabled in the card.
+    This resistor serves two functions Card detection and Mode Selection.
+    For Mode Selection, the host can drive the line high or let it be pulled high to select SD mode.
+    If the host wants to select SPI mode it should drive the line low.
+    For Card detection, the host detects that the line is pulled high.
+    This pull-up should be disconnected by the user, during regular data transfer,
     with SET_CLR_CARD_DETECT (ACMD42) command. */
     // Disconnect the 50 KOhm pull-up resistor on CD/DAT3
     // Valid in "tran" state; stays in "tran" state
@@ -208,7 +208,7 @@ bool sd_sdio_begin(sd_card_t *sd_card_p)
     if (!sd_card_p->sdio_if_p->baud_rate)
         sd_card_p->sdio_if_p->baud_rate = clock_get_hz(clk_sys) / 12; // Default
     if (!rp2040_sdio_init(sd_card_p, calculate_clk_div(sd_card_p->sdio_if_p->baud_rate)))
-        return false; 
+        return false;
 
     return true;
 }
@@ -228,7 +228,7 @@ uint32_t sd_sdio_errorLine(sd_card_t *sd_card_p) // const
     return STATE.error_line;
 }
 
-bool sd_sdio_isBusy(sd_card_t *sd_card_p) 
+bool sd_sdio_isBusy(sd_card_t *sd_card_p)
 {
     // return (sio_hw->gpio_in & (1 << SDIO_D0)) == 0;
     return (sio_hw->gpio_in & (1 << sd_card_p->sdio_if_p->D0_gpio)) == 0;
@@ -329,7 +329,7 @@ bool sd_sdio_writeSector(sd_card_t *sd_card_p, uint32_t sector, const uint8_t* s
 
     if (STATE.error != SDIO_OK)
     {
-        EMSG_PRINTF("sd_sdio_writeSector(%lu) failed: %s (%d)\n", 
+        EMSG_PRINTF("sd_sdio_writeSector(%lu) failed: %s (%d)\n",
             sector, errstr(STATE.error), (int)STATE.error);
     }
 
@@ -416,7 +416,7 @@ bool sd_sdio_readSector(sd_card_t *sd_card_p, uint32_t sector, uint8_t* dst)
 
     if (STATE.error != SDIO_OK)
     {
-        EMSG_PRINTF("sd_sdio_readSector(,%lu,) failed: %s (%d)\n", 
+        EMSG_PRINTF("sd_sdio_readSector(,%lu,) failed: %s (%d)\n",
             sector, errstr(STATE.error), (int)STATE.error);
     }
 
@@ -433,7 +433,7 @@ bool sd_sdio_readSectors(sd_card_t *sd_card_p, uint32_t sector, uint8_t* dst, si
     if (STATE.ongoing_wr_mlt_blk)
         // Stop any ongoing transmission
         if (!sd_sdio_stopTransmission(sd_card_p, true)) return false;
-        
+
     if (((uint32_t)dst & 3) != 0 || sector + n >= sd_card_p->state.sectors)
     {
         // Unaligned read or end-of-drive read, execute sector-by-sector
@@ -462,7 +462,7 @@ bool sd_sdio_readSectors(sd_card_t *sd_card_p, uint32_t sector, uint8_t* dst, si
 
     if (STATE.error != SDIO_OK)
     {
-        EMSG_PRINTF("sd_sdio_readSectors(%ld,...,%d)  failed: %s (%d)\n", 
+        EMSG_PRINTF("sd_sdio_readSectors(%ld,...,%d)  failed: %s (%d)\n",
             sector, n, errstr(STATE.error), STATE.error);
         sd_sdio_stopTransmission(sd_card_p, true);
         return false;
@@ -518,7 +518,7 @@ static bool sd_sdio_test_com(sd_card_t *sd_card_p) {
 
         // Initialize at 400 kHz clock speed
         if (!rp2040_sdio_init(sd_card_p, calculate_clk_div(400 * 1000)))
-            return false; 
+            return false;
 
         // Establish initial connection with the card
         rp2040_sdio_command_R1(sd_card_p, CMD0_GO_IDLE_STATE, 0, NULL); // GO_IDLE_STATE
@@ -595,7 +595,7 @@ static void sd_sdio_deinit(sd_card_t *sd_card_p) {
 
     //TODO: free other resources: PIO, SMs, etc.
 
-    sd_unlock(sd_card_p);    
+    sd_unlock(sd_card_p);
 }
 
 uint32_t sd_sdio_sectorCount(sd_card_t *sd_card_p) {

@@ -37,7 +37,7 @@ specific language governing permissions and limitations under the License.
 #define TRACE_PRINTF(fmt, args...)
 // #define TRACE_PRINTF printf
 
-#ifdef NDEBUG 
+#ifdef NDEBUG
 #  pragma GCC diagnostic ignored "-Wunused-variable"
 #endif
 

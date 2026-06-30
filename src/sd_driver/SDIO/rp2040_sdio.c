@@ -139,7 +139,7 @@ static void sdio_send_command(const sd_card_t *sd_card_p, uint8_t command, uint3
         (command << 16) | // Command byte
         (((arg >> 24) & 0xFF) << 8) | // MSB byte of argument
         (((arg >> 16) & 0xFF) << 0);
-    
+
     uint32_t word1 =
         (((arg >> 8) & 0xFF) << 24) |
         (((arg >> 0) & 0xFF) << 16) | // LSB byte of argument
@@ -159,7 +159,7 @@ static void sdio_send_command(const sd_card_t *sd_card_p, uint8_t command, uint3
     crc = crc7_table[crc ^ ((word1 >> 24) & 0xFF)];
     crc = crc7_table[crc ^ ((word1 >> 16) & 0xFF)];
     word1 |= crc << 8;
-    
+
     // Transmit command
     pio_sm_clear_fifos(SDIO_PIO, SDIO_CMD_SM);
     pio_sm_put(SDIO_PIO, SDIO_CMD_SM, word0);
@@ -497,7 +497,7 @@ static void sdio_start_next_block_tx(sd_card_t *sd_card_p)
 {
     // Initialize PIO
     pio_sm_init(SDIO_PIO, SDIO_DATA_SM, STATE.pio_data_tx_offset, &STATE.pio_cfg_data_tx);
-    
+
     // Configure DMA to send the data block payload (512 bytes)
     dma_channel_config dmacfg = dma_channel_get_default_config(SDIO_DMA_CH);
     channel_config_set_transfer_data_size(&dmacfg, DMA_SIZE_32);
@@ -540,7 +540,7 @@ static void sdio_start_next_block_tx(sd_card_t *sd_card_p)
     pio_sm_exec(SDIO_PIO, SDIO_DATA_SM, pio_encode_out(pio_x, 32));
     pio_sm_put(SDIO_PIO, SDIO_DATA_SM, 31);
     pio_sm_exec(SDIO_PIO, SDIO_DATA_SM, pio_encode_out(pio_y, 32));
-    
+
     // Initialize pins to output and high
     pio_sm_exec(SDIO_PIO, SDIO_DATA_SM, pio_encode_set(pio_pins, 15));
     pio_sm_exec(SDIO_PIO, SDIO_DATA_SM, pio_encode_set(pio_pindirs, 15));
@@ -548,7 +548,7 @@ static void sdio_start_next_block_tx(sd_card_t *sd_card_p)
     // Write start token and start the DMA transfer.
     pio_sm_put(SDIO_PIO, SDIO_DATA_SM, 0xFFFFFFF0);
     dma_channel_start(SDIO_DMA_CH);
-    
+
     // Start state machine
     pio_sm_set_enabled(SDIO_PIO, SDIO_DATA_SM, true);
 }
@@ -611,17 +611,17 @@ static sdio_status_t check_sdio_write_response(uint32_t card_response)
     else if (wr_status == 5)
     {
         EMSG_PRINTF("SDIO card reports write CRC error, status %lx\n", card_response);
-        return SDIO_ERR_WRITE_CRC;    
+        return SDIO_ERR_WRITE_CRC;
     }
     else if (wr_status == 6)
     {
         EMSG_PRINTF("SDIO card reports write failure, status %lx\n", card_response);
-        return SDIO_ERR_WRITE_FAIL;    
+        return SDIO_ERR_WRITE_FAIL;
     }
     else
     {
         EMSG_PRINTF("SDIO card reports unknown write status %lx\n", card_response);
-        return SDIO_ERR_WRITE_FAIL;    
+        return SDIO_ERR_WRITE_FAIL;
     }
 }
 
@@ -652,7 +652,7 @@ void sdio_irq_handler(sd_card_t *sd_card_p) {
             }
         }
     }
-    
+
     if (STATE.transfer_state == SDIO_TX_WAIT_IDLE)
     {
         if (!dma_channel_is_busy(SDIO_DMA_CHB))
@@ -682,7 +682,7 @@ void sdio_irq_handler(sd_card_t *sd_card_p) {
             {
                 rp2040_sdio_stop(sd_card_p);
             }
-        }    
+        }
     }
 }
 
@@ -744,7 +744,7 @@ static sdio_status_t rp2040_sdio_stop(sd_card_t *sd_card_p)
     }
 
     pio_sm_set_enabled(SDIO_PIO, SDIO_DATA_SM, false);
-    pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_DATA_SM, SDIO_D0, 4, false);    
+    pio_sm_set_consecutive_pindirs(SDIO_PIO, SDIO_DATA_SM, SDIO_D0, 4, false);
     STATE.transfer_state = SDIO_IDLE;
     return SDIO_OK;
 }
@@ -829,10 +829,10 @@ bool rp2040_sdio_init(sd_card_t *sd_card_p, float clk_div) {
     typedef enum gpio_function gpio_function_t;
 #endif
    gpio_function_t fn;
-    if (pio1 == SDIO_PIO) 
+    if (pio1 == SDIO_PIO)
         fn = GPIO_FUNC_PIO1;
     else
-        fn = GPIO_FUNC_PIO0; 
+        fn = GPIO_FUNC_PIO0;
     gpio_set_function(SDIO_CMD, fn);
     gpio_set_function(SDIO_CLK, fn);
     gpio_set_function(SDIO_D0, fn);
