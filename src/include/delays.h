@@ -6,39 +6,39 @@
  */
 /* Using millis() or micros() for timeouts
 
-For example, 
+For example,
 
     uint32_t start = millis();
     do {
         // ...
        }
-    } while (millis() - start < TIMEOUT);             
+    } while (millis() - start < TIMEOUT);
 
-There is no problem if the millis() counter wraps, 
+There is no problem if the millis() counter wraps,
 due to the properties of unsigned integer modulo arithmetic.
 
-"A computation involving unsigned operands can never overflow, 
-because a result that cannot be represented by the resulting 
-unsigned integer type is reduced modulo the number that is 
-one greater than the largest value that can be represented 
-by the resulting type." 
+"A computation involving unsigned operands can never overflow,
+because a result that cannot be represented by the resulting
+unsigned integer type is reduced modulo the number that is
+one greater than the largest value that can be represented
+by the resulting type."
     -- ISO/IEC 9899:1999 (E) §6.2.5/9
 
 In other words, a uint32_t will wrap at 0 and UINT_MAX.
 
-So, for example, 
+So, for example,
     0x00000000 - 0xFFFFFFFF = 0x00000001
 
 Remember that an unsigned integer will never be negative!
 
-Be careful with comparisons. In the example above, 
+Be careful with comparisons. In the example above,
 if 0x00000000 is the result of the counter wrapping,
 and 0xFFFFFFFF is the start timestamp, a comparison like
 
     millis() - start < TIMEOUT
 
 is OK, but the following code is problematic if, say, the first call
-to millis() returns 0xFFFFFFF0 and the second 
+to millis() returns 0xFFFFFFF0 and the second
 call to millis() returns 0xFFFFFFFF:
 
     uint32_t end = millis() + 100; // end = 0x00000054
@@ -59,7 +59,7 @@ extern "C" {
 
 static inline uint32_t millis() {
     __compiler_memory_barrier();
-    return time_us_64() / 1000;
+    return time_us_32() / 1000;
     __compiler_memory_barrier();
 }
 
