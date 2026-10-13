@@ -184,6 +184,20 @@
 //
 #include "sd_card_spi.h"
 
+#if PICO_RP2350
+/* PSRAM on the QMI's second chip select (0x11000000 cached, 0x15000000 uncached).
+A DMA that reads or writes PSRAM stalls EVERY DMA channel while the QMI works
+(RP2350 datasheet 4.4.3: "QMI serial transfers force lengthy bus stalls on the
+DMA ... stalling the DMA prevents any other active DMA channels from making
+progress").  The SPI keeps clocking during the stall, so the RX FIFO overruns,
+the RX channel comes up short and the transfer times out.  A PSRAM block is
+copied through the SPI's own SRAM buffer instead; the CPU copy costs ~11-13 us
+a block against ~164 us on the wire at 25 MHz. */
+#define IN_PSRAM(p) ((((uintptr_t)(p) >> 24) & 0xFB) == 0x11)
+#else
+#define IN_PSRAM(p) false
+#endif
+
 #if defined(NDEBUG) || !USE_DBG_PRINTF
 #  pragma GCC diagnostic ignored "-Wunused-function"
 #  pragma GCC diagnostic ignored "-Wunused-variable"
@@ -854,8 +868,13 @@ static block_dev_err_t in_sd_read_blocks(sd_card_t *sd_card_p, uint8_t *buffer,
             DBG_PRINTF("%s:%d Read timeout\n", __func__, __LINE__);
             return SD_BLOCK_DEVICE_ERROR_NO_RESPONSE;
         }
+#if PICO_RP2350
+        uint8_t *const dest = IN_PSRAM(buffer) ? sd_card_p->spi_if_p->spi->psram_bounce : buffer;
+#else
+        uint8_t *const dest = buffer;
+#endif
         // read data
-        sd_spi_transfer_start(sd_card_p, NULL, buffer, sd_block_size);
+        sd_spi_transfer_start(sd_card_p, NULL, dest, sd_block_size);
 
         // Check the CRC16 checksum for the previous data block
         if (prev_buffer_addr) {
@@ -870,6 +889,7 @@ static block_dev_err_t in_sd_read_blocks(sd_card_t *sd_card_p, uint8_t *buffer,
         uint32_t timeout = calculate_transfer_time_ms(sd_card_p->spi_if_p->spi, sd_block_size);
         bool ok = sd_spi_transfer_wait_complete(sd_card_p, timeout);
         if (!ok) return SD_BLOCK_DEVICE_ERROR_NO_RESPONSE;
+        if (dest != buffer) memcpy(buffer, dest, sd_block_size);  // before the next block reuses it
 
         // Read the CRC16 checksum for the data block
         prev_block_crc = sd_spi_read(sd_card_p) << 8;
@@ -977,6 +997,14 @@ static block_dev_err_t send_block(sd_card_t *sd_card_p, const uint8_t *buffer, u
         return SD_BLOCK_DEVICE_ERROR_WRITE;
     }
 
+#if PICO_RP2350
+    if (IN_PSRAM(buffer)) {
+        uint8_t *const bounce = sd_card_p->spi_if_p->spi->psram_bounce;
+        myASSERT(length <= sizeof sd_card_p->spi_if_p->spi->psram_bounce);
+        memcpy(bounce, buffer, length);
+        buffer = bounce;  // the DMA and the CRC both read the SRAM copy
+    }
+#endif
     // Write the data
     sd_spi_transfer_start(sd_card_p, buffer, NULL, length);
 

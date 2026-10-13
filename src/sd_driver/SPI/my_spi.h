@@ -77,6 +77,10 @@ typedef struct spi_t {
     dma_channel_config rx_dma_cfg;
     mutex_t mutex;    
     bool initialized;  
+#if PICO_RP2350
+    // A block whose buffer is in PSRAM is copied through here: see sd_card_spi.c.
+    uint8_t psram_bounce[512] __attribute__((aligned(4)));
+#endif
 } spi_t;
 
 void spi_transfer_start(spi_t *spi_p, const uint8_t *tx, uint8_t *rx, size_t length);
