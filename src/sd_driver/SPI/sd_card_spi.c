@@ -1082,7 +1082,21 @@ static block_dev_err_t send_all_blocks(sd_card_t *sd_card_p, const uint8_t *buff
         if (SD_BLOCK_DEVICE_ERROR_NONE == err) {
             DBG_PRINTF("blocks_requested: %lu, NUM_WR_BLOCKS: %lu\n",
                     n_wrt_blks_reqd, nw);
-            *num_wrt_blks_p = n_wrt_blks_reqd - nw;
+            // Resume where the CARD stopped, not where we did.  A block can time out on our side
+            // (e.g. the RX DMA comes up short) after all of its data went out; with CRC off the
+            // card takes what follows as the CRC and programs it, so ACMD22 counts it and we do
+            // not.  Resuming at our failed block with n_wrt_blks_reqd - nw blocks left then never
+            // sends the LAST block of the request, and the retry reports success.
+            const uint32_t sent = n_wrt_blks_reqd - *num_wrt_blks_p;  // blocks we believe landed
+            if (nw >= sent && nw - sent <= *num_wrt_blks_p) {
+                *buffer_p += (nw - sent) * sd_block_size;  // skip what the card already kept
+                *data_address_p += (nw - sent);
+                *num_wrt_blks_p = n_wrt_blks_reqd - nw;
+            } else {
+                // The card kept fewer blocks than we sent: they belong to earlier calls of this
+                // multi-block write and cannot be rewound into.  Stop retrying; report the error.
+                *num_wrt_blks_p = 0;
+            }
         }
     }
     return status;
