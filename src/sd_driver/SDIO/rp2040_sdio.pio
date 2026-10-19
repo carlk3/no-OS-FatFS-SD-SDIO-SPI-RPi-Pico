@@ -36,7 +36,12 @@
 ;   PINCTRL_IN_BASE configuration, modulo 32.
 ; This is used as a WAIT index, and must be between 4 and 31.
 ; (Offsets 0-3 are D0, D1, D2, and D3.)
-.define PUBLIC SDIO_CLK_PIN_D0_OFFSET 30    ; (-2 in mod32 arithmetic)
+
+; For use-case: using GPIO0-31
+;.define PUBLIC SDIO_CLK_PIN_D0_OFFSET 30    ; (-2 in mod32 arithmetic)
+; For use-case: using GPIO32-47 such as Waveshare RP2350B-PiZero (D0=GPIO40) 
+.define PUBLIC SDIO_CLK_PIN_D0_OFFSET 22     ; (-10 in mod32 arithmetic for GPIO32-47)
+
 
 ; State machine 0 is used to:
 ; - generate continuous clock on SDIO_CLK

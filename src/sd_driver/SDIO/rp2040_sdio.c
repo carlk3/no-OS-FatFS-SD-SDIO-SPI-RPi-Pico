@@ -752,9 +752,24 @@ static sdio_status_t rp2040_sdio_stop(sd_card_t *sd_card_p)
 bool rp2040_sdio_init(sd_card_t *sd_card_p, float clk_div) {
     // Mark resources as being in use, unless it has been done already.
     if (!STATE.resources_claimed) {
-
+#if (RP2350B_SD_SDIO == 1)
+        // Set up the GPIO base for RP2350B (16-48, 32-GPIOs)
+        if (SDIO_PIO == pio0) {
+            pio_set_gpio_base(pio0, 16); 
+        }
+        else if (SDIO_PIO == pio1) {
+            pio_set_gpio_base(pio1, 16);                  
+        }
+        else if (SDIO_PIO == pio2) {
+            pio_set_gpio_base(pio2, 16);                  
+        }
+        else {
+            SDIO_PIO = pio0; // Default
+        }
+#else
         if (!SDIO_PIO)
             SDIO_PIO = pio0; // Default
+#endif            
         if (!sd_card_p->sdio_if_p->DMA_IRQ_num)
             sd_card_p->sdio_if_p->DMA_IRQ_num = DMA_IRQ_0; // Default
 
@@ -822,7 +837,15 @@ bool rp2040_sdio_init(sd_card_t *sd_card_p, float clk_div) {
     // This reduces input delay.
     // Because the CLK is driven synchronously to CPU clock,
     // there should be no metastability problems.
-    SDIO_PIO->input_sync_bypass |= (1 << SDIO_CLK) | (1 << SDIO_CMD) | (1 << SDIO_D0) | (1 << SDIO_D1) | (1 << SDIO_D2) | (1 << SDIO_D3);
+    // Use base for either RP2350A/RP2350B
+    uint base = pio_get_gpio_base(SDIO_PIO);
+    SDIO_PIO->input_sync_bypass |= 
+        (1 << (SDIO_CLK - base)) | 
+        (1 << (SDIO_CMD - base)) | 
+        (1 << (SDIO_D0 - base)) | 
+        (1 << (SDIO_D1 - base)) | 
+        (1 << (SDIO_D2 - base)) | 
+        (1 << (SDIO_D3 - base));
 
     // Redirect GPIOs to PIO
 #if PICO_SDK_VERSION_MAJOR < 2
@@ -831,6 +854,8 @@ bool rp2040_sdio_init(sd_card_t *sd_card_p, float clk_div) {
    gpio_function_t fn;
     if (pio1 == SDIO_PIO) 
         fn = GPIO_FUNC_PIO1;
+    else if (pio2 == SDIO_PIO) 
+        fn = GPIO_FUNC_PIO2;  
     else
         fn = GPIO_FUNC_PIO0; 
     gpio_set_function(SDIO_CMD, fn);

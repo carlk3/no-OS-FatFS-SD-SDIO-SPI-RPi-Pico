@@ -37,6 +37,15 @@ See https://oshwlab.com/carlk3/rp2040-sd-card-dev
 See https://docs.google.com/spreadsheets/d/1BrzLWTyifongf_VQCc2IpJqXWtsrjmG7KnIbSBy-CPU/edit?usp=sharing,
 tab "Dev Brd", for pin assignments assumed in this configuration file.
 */
+// --------------------------------------------------------------------------------------------------------
+// SPI/SDIO SD card module singal pins and SD SDIO pio block
+#define SPI_SDIO_PIO    pio2
+#define PIN_SD_SCK      30      // SDcard adapter SCK
+#define PIN_SD_MOSI     31      // SDcard adapter MOSI
+#define PIN_SD_MISO     40      // SDcard adapter MISO
+#define PIN_SD_CS       43      // SDcard adatper CS
+
+#define RP2350_PIZERO_BOARD   true 
 
 #include <assert.h>
 //
@@ -50,10 +59,14 @@ tab "Dev Brd", for pin assignments assumed in this configuration file.
 static spi_t spis[] = {  // One for each RP2040 SPI component used
     {
         // spis[0]
+#if (RP2350_PIZERO_BOARD == true)        
+        .hw_inst = spi1,  // Waveshare RP2350-PiZero uses spi1
+#else        
         .hw_inst = spi0,  // RP2040 SPI component
-        .sck_gpio = 2,    // GPIO number (not Pico pin number)
-        .mosi_gpio = 3,
-        .miso_gpio = 4,
+#endif        
+        .sck_gpio = PIN_SD_SCK, // GPIO number (not Pico pin number)
+        .mosi_gpio = PIN_SD_MOSI,
+        .miso_gpio = PIN_SD_MISO,
         /* GPIO reset drive strength is 4 mA.
          * When set_drive_strength is true,
          * the drive strength is set to 2 mA unless otherwise specified. */
@@ -61,9 +74,9 @@ static spi_t spis[] = {  // One for each RP2040 SPI component used
         .mosi_gpio_drive_strength = GPIO_DRIVE_STRENGTH_2MA,
         .sck_gpio_drive_strength = GPIO_DRIVE_STRENGTH_12MA,
         .no_miso_gpio_pull_up = true,
-        // .baud_rate = 125 * 1000 * 1000 / 10 // 12500000 Hz
+         .baud_rate = 125 * 1000 * 1000 / 10 // 12500000 Hz
         // .baud_rate = 125 * 1000 * 1000 / 8  // 15625000 Hz
-        .baud_rate = 125 * 1000 * 1000 / 6  // 20833333 Hz
+        //.baud_rate = 125 * 1000 * 1000 / 6  // 20833333 Hz
         // .baud_rate = 125 * 1000 * 1000 / 4  // 31250000 Hz
     },
     {
@@ -87,7 +100,7 @@ static spi_t spis[] = {  // One for each RP2040 SPI component used
 static sd_spi_if_t spi_ifs[] = {
     {   // spi_ifs[0]
         .spi = &spis[0],  // Pointer to the SPI driving this card
-        .ss_gpio = 7,     // The SPI slave select GPIO for this SD card
+        .ss_gpio = PIN_SD_CS,     // The SPI slave select GPIO for this SD card
         .set_drive_strength = true,
         .ss_gpio_drive_strength = GPIO_DRIVE_STRENGTH_2MA
     },
@@ -119,8 +132,8 @@ The offsets are determined by sd_driver\SDIO\rp2040_sdio.pio.
 */
 static sd_sdio_if_t sdio_ifs[] = {
     {   // sdio_ifs[0]
-        .CMD_gpio = 3,
-        .D0_gpio = 4,
+        .CMD_gpio = PIN_SD_MOSI,
+        .D0_gpio = PIN_SD_MISO,
         /* GPIO reset drive strength is 4 mA.
          * When set_drive_strength is true,
          * the drive strength is set to 2 mA unless otherwise specified. */
@@ -131,12 +144,12 @@ static sd_sdio_if_t sdio_ifs[] = {
         .D1_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
         .D2_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
         .D3_gpio_drive_strength = GPIO_DRIVE_STRENGTH_4MA,
-        .SDIO_PIO = pio1,
+        .SDIO_PIO = SPI_SDIO_PIO,
         .DMA_IRQ_num = DMA_IRQ_1,
         //.baud_rate = 125 * 1000 * 1000 / 8  // 15625000 Hz
-        //.baud_rate = 125 * 1000 * 1000 / 7  // 17857143 Hz
+        .baud_rate = 125 * 1000 * 1000 / 7  // 17857143 Hz
         //.baud_rate = 125 * 1000 * 1000 / 6  // 20833333 Hz
-        .baud_rate = 125 * 1000 * 1000 / 5  // 25000000 Hz
+        //.baud_rate = 125 * 1000 * 1000 / 5  // 25000000 Hz
         //.baud_rate = 125 * 1000 * 1000 / 4  // 31250000 Hz
     },
     {   // sdio_ifs[1]
@@ -161,14 +174,16 @@ static sd_sdio_if_t sdio_ifs[] = {
 /* Hardware Configuration of the SD Card "objects"
     These correspond to SD card sockets
 */
+// Updated to support SD SDIO mode
 static sd_card_t sd_cards[] = {  // One for each SD card
-#ifdef SPI_SD0
+#if (RP2350B_SD_SDIO == 1)
     {   // sd_cards[0]: Socket sd0
-        .type = SD_IF_SPI,
-        .spi_if_p = &spi_ifs[0],  // Pointer to the SPI interface driving this card
+        .type = SD_IF_SDIO,        
+        .sdio_if_p = &sdio_ifs[0],// Pointer to the SPI interface driving this card
+      
         // SD Card detect:
-        .use_card_detect = true,
-        .card_detect_gpio = 9,  
+        .use_card_detect = false,  // If set to true won't detect SD card
+        .card_detect_gpio = PIN_SD_CS,  
         .card_detected_true = 0, // What the GPIO read returns when a card is
                                  // present.
         .card_detect_use_pull = true,
@@ -176,11 +191,12 @@ static sd_card_t sd_cards[] = {  // One for each SD card
     },
 #else
     {   // sd_cards[0]: Socket sd0
-        .type = SD_IF_SDIO,
-        .sdio_if_p = &sdio_ifs[0],  // Pointer to the SPI interface driving this card
+        .type = SD_IF_SPI,
+        .spi_if_p = &spi_ifs[0],  // Pointer to the SPI interface driving this card
+      
         // SD Card detect:
-        .use_card_detect = true,
-        .card_detect_gpio = 9,  
+        .use_card_detect = false,  // if set to true won't detect SD card
+        .card_detect_gpio = PIN_SD_CS,  
         .card_detected_true = 0, // What the GPIO read returns when a card is
                                  // present.
         .card_detect_use_pull = true,
