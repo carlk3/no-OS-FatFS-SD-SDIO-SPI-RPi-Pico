@@ -4,9 +4,9 @@ if(WIN32)
 else()
     set(USERHOME $ENV{HOME})
 endif()
-set(sdkVersion 2.1.0)
-set(toolchainVersion RISCV_RPI_2_0_0_5)
-set(picotoolVersion 2.1.0)
+set(sdkVersion 2.3.1)
+set(toolchainVersion 15_2_Rel1)
+set(picotoolVersion 2.3.1)
 set(picoVscode ${USERHOME}/.pico-sdk/cmake/pico-vscode.cmake)
 if (EXISTS ${picoVscode})
     include(${picoVscode})
@@ -14,7 +14,7 @@ endif()
 # ====================================================================================
 cmake_minimum_required(VERSION 3.5)
 
-set(PICO_BOARD pico2 CACHE STRING "Board type")
+set(PICO_BOARD waveshare_rp2350_pizero CACHE STRING "Board type")
 
 # Pull in Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
@@ -61,7 +61,8 @@ add_compile_definitions(
     PARAM_ASSERTIONS_ENABLE_ALL=1 
     PICO_MALLOC_PANIC=1
     PICO_USE_STACK_GUARDS=1
-
+    RP2350B_SD_SDIO=1   # 1: Use RP2350B SDIO (Waveshare RP2350-PiZero board, D0=GPIO40)
+                        # 0: Use SPI mode
     # This program is useless without standard input and output.
     USE_PRINTF
     #USE_DBG_PRINTF

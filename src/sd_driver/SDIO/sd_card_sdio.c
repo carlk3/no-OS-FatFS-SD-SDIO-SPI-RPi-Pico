@@ -230,8 +230,15 @@ uint32_t sd_sdio_errorLine(sd_card_t *sd_card_p) // const
 
 bool sd_sdio_isBusy(sd_card_t *sd_card_p) 
 {
-    // return (sio_hw->gpio_in & (1 << SDIO_D0)) == 0;
-    return (sio_hw->gpio_in & (1 << sd_card_p->sdio_if_p->D0_gpio)) == 0;
+    uint gpio = sd_card_p->sdio_if_p->D0_gpio;
+
+    if (gpio < 32) {
+        // RP2350A GPIO goes uo to 32
+        return (sio_hw->gpio_in & (1u << gpio)) == 0;
+    }
+    else {
+        // RP2350B GPIO goes uo to 48        
+        return (sio_hw->gpio_hi_in & (1u << (gpio - 32))) == 0;
 }
 
 bool sd_sdio_readOCR(sd_card_t *sd_card_p, uint32_t* ocr)
@@ -647,6 +654,7 @@ void sd_sdio_ctor(sd_card_t *sd_card_p) {
     myASSERT(!sd_card_p->sdio_if_p->D2_gpio);
     myASSERT(!sd_card_p->sdio_if_p->D3_gpio);
 
+// For SDIO mode, make sure SDIO_CLK_PIN_D0_OFFSET is set correctly in rp2040_sdio.pio
     sd_card_p->sdio_if_p->CLK_gpio = (sd_card_p->sdio_if_p->D0_gpio + SDIO_CLK_PIN_D0_OFFSET) % 32;
     sd_card_p->sdio_if_p->D1_gpio = sd_card_p->sdio_if_p->D0_gpio + 1;
     sd_card_p->sdio_if_p->D2_gpio = sd_card_p->sdio_if_p->D0_gpio + 2;
