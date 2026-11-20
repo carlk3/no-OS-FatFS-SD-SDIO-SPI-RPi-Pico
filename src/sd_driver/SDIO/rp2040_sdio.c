@@ -12,6 +12,7 @@
 #include <string.h>
 #include <stdlib.h>
 //
+#include "hardware/clocks.h"
 #include "hardware/dma.h"
 #include "hardware/gpio.h"
 #include "hardware/pio.h"
@@ -160,6 +161,12 @@ static void sdio_send_command(const sd_card_t *sd_card_p, uint8_t command, uint3
     crc = crc7_table[crc ^ ((word1 >> 16) & 0xFF)];
     word1 |= crc << 8;
     
+    // NRC: at least 8 SD clocks between the end of the last response and this command (the
+    // clock keeps running). Some cards ignore a command sent sooner, e.g. ACMD41 right after
+    // CMD55's response once the card's power-up has started.
+    const uint32_t nrc_cycles = 8u * CLKDIV * (SDIO_PIO->sm[SDIO_CMD_SM].clkdiv >> PIO_SM0_CLKDIV_INT_LSB);
+    busy_wait_us_32(nrc_cycles / (clock_get_hz(clk_sys) / 1000000u) + 1u);
+
     // Transmit command
     pio_sm_clear_fifos(SDIO_PIO, SDIO_CMD_SM);
     pio_sm_put(SDIO_PIO, SDIO_CMD_SM, word0);
