@@ -41,6 +41,8 @@ typedef struct sd_sdio_if_state_t {
 
     uint32_t ocr; // Operating condition register from card
     uint32_t rca; // Relative card address
+    bool mmc; // An eMMC (MMC protocol), started by mmc_begin()
+    uint32_t mmc_sectors; // An eMMC's size, from its EXT_CSD
     int error_line;
     sdio_status_t error;
     uint32_t dma_buf[128];
