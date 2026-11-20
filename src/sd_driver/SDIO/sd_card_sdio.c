@@ -90,6 +90,105 @@ static float calculate_clk_div(uint baud) {
     return div;
 }
 
+bool sd_sdio_isBusy(sd_card_t *sd_card_p);
+
+// Wait for the end of an R1b busy (DAT0 held low)
+static bool mmc_wait_ready(sd_card_t *sd_card_p, uint32_t timeout_ms)
+{
+    uint32_t start = millis();
+    while (sd_sdio_isBusy(sd_card_p))
+    {
+        if ((uint32_t)(millis() - start) > timeout_ms)
+        {
+            EMSG_PRINTF("%s,%d eMMC still busy after %lu ms\n", __func__, __LINE__, (unsigned long)timeout_ms);
+            return false;
+        }
+    }
+    return true;
+}
+
+#define MMC_CMD8_SEND_EXT_CSD 8         // MMC's CMD8 (SD's is SEND_IF_COND)
+#define MMC_SWITCH_BUS_WIDTH_4 0x03B70100 // CMD6 SWITCH: write EXT_CSD[183] BUS_WIDTH = 1 (4 bits)
+#define MMC_LEGACY_MAX_HZ (26 * 1000 * 1000) // Without HS_TIMING
+
+/*
+An eMMC (e.g. on a micro-SD adapter board) speaks the MMC protocol: it does not answer
+CMD8 SEND_IF_COND. Its start, at 400 kHz after CMD0: CMD1 SEND_OP_COND (sector mode,
+2.7-3.6 V) until ready, CMD2, CMD3 with an address given by the host, CMD9, CMD7,
+CMD6 SWITCH to the 4-bit bus (this driver's data transfers are 4-bit only), CMD16,
+then CMD8 SEND_EXT_CSD read on the data bus for its size (SEC_COUNT, bytes 212-215;
+the CSD's size for an eMMC of 2 GB or less). Reads and writes are then an SDHC card's.
+*/
+static bool mmc_begin(sd_card_t *sd_card_p)
+{
+    uint32_t reply;
+    rp2040_sdio_command_R1(sd_card_p, CMD0_GO_IDLE_STATE, 0, NULL);
+    uint32_t start = millis();
+    do {
+        if (rp2040_sdio_command_R3(sd_card_p, CMD1_SEND_OP_COND, 0x40FF8000, &STATE.ocr) != SDIO_OK)
+        {
+            EMSG_PRINTF("%s,%d SDIO not responding to CMD8 SEND_IF_COND nor to CMD1 SEND_OP_COND\n",
+                __func__, __LINE__);
+            return false;
+        }
+        if ((uint32_t)(millis() - start) > sd_timeouts.sd_sdio_begin)
+        {
+            EMSG_PRINTF("%s,%d eMMC initialization timeout (OCR 0x%lx)\n", __func__, __LINE__, (unsigned long)STATE.ocr);
+            return false;
+        }
+    } while (!(STATE.ocr & (1u << 31)));
+    STATE.mmc = true;
+
+    if (!checkReturnOk(rp2040_sdio_command_R2(sd_card_p, CMD2_ALL_SEND_CID, 0, (uint8_t *)&sd_card_p->state.CID)))
+        return false;
+    STATE.rca = 1u << 16;
+    if (!checkReturnOk(rp2040_sdio_command_R1(sd_card_p, CMD3_SEND_RELATIVE_ADDR, STATE.rca, &reply)))
+        return false;
+    if (!checkReturnOk(rp2040_sdio_command_R2(sd_card_p, CMD9_SEND_CSD, STATE.rca, sd_card_p->state.CSD)))
+        return false;
+    if (!checkReturnOk(rp2040_sdio_command_R1(sd_card_p, CMD7_SELECT_CARD, STATE.rca, &reply)) ||
+        !mmc_wait_ready(sd_card_p, 500))
+        return false;
+    if (!checkReturnOk(rp2040_sdio_command_R1(sd_card_p, CMD6_SWITCH_FUNC, MMC_SWITCH_BUS_WIDTH_4, &reply)) ||
+        !mmc_wait_ready(sd_card_p, 1000))
+        return false;
+    if (!checkReturnOk(rp2040_sdio_command_R1(sd_card_p, CMD13_SEND_STATUS, STATE.rca, &reply)))
+        return false;
+    if (reply & (1u << 7))
+    {
+        EMSG_PRINTF("%s,%d the eMMC refused the 4-bit bus (SWITCH_ERROR, status 0x%lx)\n", __func__, __LINE__,
+            (unsigned long)reply);
+        return false;
+    }
+    if (!checkReturnOk(rp2040_sdio_command_R1(sd_card_p, CMD16_SET_BLOCKLEN, 512, &reply)))
+        return false;
+
+    uint8_t *ext = (uint8_t *)STATE.dma_buf;
+    if (!checkReturnOk(rp2040_sdio_rx_start(sd_card_p, ext, 1, SDIO_BLOCK_SIZE)) ||
+        !checkReturnOk(rp2040_sdio_command_R1(sd_card_p, MMC_CMD8_SEND_EXT_CSD, 0, &reply)))
+        return false;
+    do {
+        STATE.error = rp2040_sdio_rx_poll(sd_card_p, SDIO_WORDS_PER_BLOCK);
+    } while (STATE.error == SDIO_BUSY);
+    if (STATE.error != SDIO_OK)
+    {
+        EMSG_PRINTF("%s,%d EXT_CSD not read: %s (%d)\n", __func__, __LINE__, errstr(STATE.error), (int)STATE.error);
+        return false;
+    }
+    STATE.mmc_sectors = (uint32_t)ext[212] | (uint32_t)ext[213] << 8 | (uint32_t)ext[214] << 16 | (uint32_t)ext[215] << 24;
+    if (!STATE.mmc_sectors)
+        STATE.mmc_sectors = CSD_sectors(sd_card_p->state.CSD);
+    sd_card_p->state.sectors = STATE.mmc_sectors;
+
+    // Increase to high clock rate
+    if (!sd_card_p->sdio_if_p->baud_rate)
+        sd_card_p->sdio_if_p->baud_rate = clock_get_hz(clk_sys) / 12; // Default
+    uint baud = sd_card_p->sdio_if_p->baud_rate;
+    if (baud > MMC_LEGACY_MAX_HZ)
+        baud = MMC_LEGACY_MAX_HZ;
+    return rp2040_sdio_init(sd_card_p, calculate_clk_div(baud));
+}
+
 bool sd_sdio_begin(sd_card_t *sd_card_p)
 {
     uint32_t reply;
@@ -98,6 +197,7 @@ bool sd_sdio_begin(sd_card_t *sd_card_p)
     // Initialize at 400 kHz clock speed
     if (!rp2040_sdio_init(sd_card_p, calculate_clk_div(400 * 1000)))
         return false; 
+    STATE.mmc = false;
 
     // Establish initial connection with the card
     for (int retries = 0; retries < 5; retries++)
@@ -116,9 +216,9 @@ bool sd_sdio_begin(sd_card_t *sd_card_p)
     if (reply != 0x1AA || status != SDIO_OK)
     {
         // azdbg("SDIO not responding to CMD8 SEND_IF_COND, status ", (int)status, " reply ", reply);
-        EMSG_PRINTF("%s,%d SDIO not responding to CMD8 SEND_IF_COND, status 0x%x reply 0x%lx\n", 
+        DBG_PRINTF("%s,%d SDIO not responding to CMD8 SEND_IF_COND, status 0x%x reply 0x%lx: perhaps an eMMC\n", 
             __func__, __LINE__, status, reply);
-        return false;
+        return mmc_begin(sd_card_p);
     }
 
     // Send ACMD41 to begin card initialization and wait for it to complete
@@ -513,6 +613,11 @@ static bool sd_sdio_test_com(sd_card_t *sd_card_p) {
         sdio_status_t status = rp2040_sdio_command_R1(sd_card_p, CMD8_SEND_IF_COND, 0x1AA, &reply); // SEND_IF_COND
 
         success = (reply == 0x1AA && status == SDIO_OK);
+        if (!success) {
+            // An eMMC answers CMD1 SEND_OP_COND instead
+            rp2040_sdio_command_R1(sd_card_p, CMD0_GO_IDLE_STATE, 0, NULL);
+            success = (rp2040_sdio_command_R3(sd_card_p, CMD1_SEND_OP_COND, 0x40FF8000, &reply) == SDIO_OK);
+        }
     }
 
     return success;
@@ -587,7 +692,7 @@ static void sd_sdio_deinit(sd_card_t *sd_card_p) {
 
 uint32_t sd_sdio_sectorCount(sd_card_t *sd_card_p) {
     myASSERT(!(sd_card_p->state.m_Status & STA_NOINIT));
-    return CSD_sectors(sd_card_p->state.CSD);
+    return STATE.mmc ? STATE.mmc_sectors : CSD_sectors(sd_card_p->state.CSD);
 }
 
 static block_dev_err_t sd_sdio_write_blocks(sd_card_t *sd_card_p, const uint8_t *buffer, uint32_t ulSectorNumber,
