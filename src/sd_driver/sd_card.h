@@ -64,13 +64,14 @@ typedef struct sd_spi_if_t {
 
 typedef struct sd_sdio_if_t {
     // See sd_driver\SDIO\rp2040_sdio.pio for SDIO_CLK_PIN_D0_OFFSET
-    uint CLK_gpio;  // Must be (D0_gpio + SDIO_CLK_PIN_D0_OFFSET) % 32
+    uint CLK_gpio;  // Must be D0_gpio - 2 (30 or 31 for D0 0 or 1): SDIO_CLK_PIN_D0_OFFSET modulo 32
     uint CMD_gpio;
     uint D0_gpio;      // D0
     uint D1_gpio;      // Must be D0 + 1
     uint D2_gpio;      // Must be D0 + 2
     uint D3_gpio;      // Must be D0 + 3
-    PIO SDIO_PIO;      // either pio0 or pio1
+    PIO SDIO_PIO;      // pio0 or pio1 (or pio2 on RP2350). For GPIOs 32-47 (RP2350B),
+                       // call pio_set_gpio_base(SDIO_PIO, 16) before the card is initialized.
     uint DMA_IRQ_num;  // DMA_IRQ_0 or DMA_IRQ_1
     bool use_exclusive_DMA_IRQ_handler;
     uint baud_rate;

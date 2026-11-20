@@ -822,17 +822,29 @@ bool rp2040_sdio_init(sd_card_t *sd_card_p, float clk_div) {
     // This reduces input delay.
     // Because the CLK is driven synchronously to CPU clock,
     // there should be no metastability problems.
-    SDIO_PIO->input_sync_bypass |= (1 << SDIO_CLK) | (1 << SDIO_CMD) | (1 << SDIO_D0) | (1 << SDIO_D1) | (1 << SDIO_D2) | (1 << SDIO_D3);
+    // The bits are relative to the PIO's GPIO base (16 on an RP2350B PIO used for GPIOs 16-47).
+#if PICO_SDK_VERSION_MAJOR >= 2
+    const uint base = pio_get_gpio_base(SDIO_PIO);
+#else
+    const uint base = 0;
+#endif
+    SDIO_PIO->input_sync_bypass |= (1u << (SDIO_CLK - base)) | (1u << (SDIO_CMD - base)) | (1u << (SDIO_D0 - base)) |
+                                   (1u << (SDIO_D1 - base)) | (1u << (SDIO_D2 - base)) | (1u << (SDIO_D3 - base));
 
     // Redirect GPIOs to PIO
 #if PICO_SDK_VERSION_MAJOR < 2
     typedef enum gpio_function gpio_function_t;
 #endif
    gpio_function_t fn;
+#if PICO_SDK_VERSION_MAJOR >= 2
+    // The PIO's own GPIO function, PIO 2 included (it used to get PIO 0's)
+    fn = (gpio_function_t)pio_get_funcsel(SDIO_PIO);
+#else
     if (pio1 == SDIO_PIO) 
         fn = GPIO_FUNC_PIO1;
     else
         fn = GPIO_FUNC_PIO0; 
+#endif
     gpio_set_function(SDIO_CMD, fn);
     gpio_set_function(SDIO_CLK, fn);
     gpio_set_function(SDIO_D0, fn);
